@@ -1,4 +1,4 @@
-#define VERSION "0.1"
+#define VERSION "0.1.1"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -27,6 +27,8 @@ enum AtomType {
 typedef enum {
 	Error_OK = 0, Error_Syntax, Error_Unbound, Error_Args, Error_Type
 } Error;
+
+char *error_string[] = { "", "Syntax error", "Symbol not bound", "Wrong number of arguments", "Wrong type" };
 
 typedef struct Atom Atom;
 typedef Error(*Builtin)(Atom args, Atom *result);
@@ -61,7 +63,6 @@ Error eval_do_exec(Atom *stack, Atom *expr, Atom *env);
 Error eval_do_bind(Atom *stack, Atom *expr, Atom *env);
 Error eval_do_apply(Atom *stack, Atom *expr, Atom *env, Atom *result);
 Error eval_expr(Atom expr, Atom env, Atom *result);
-void print_err(Error err);
 
 #define car(p) ((p).value.pair->car)
 #define cdr(p) ((p).value.pair->cdr)
@@ -299,13 +300,6 @@ Error parse_simple(const char *start, const char *end, Atom *result)
 	}
 
 	/* NIL or symbol */
-	//buf = (char*)malloc(end - start + 1);
-	//p = buf;
-	//while (start != end)
-	//	/* *p++ = toupper(*start), ++start; */
-	//	*p++ = *start, ++start;
-	//*p = '\0';
-
 	buf = malloc(end - start + 1);
 	memcpy(buf, start, end - start);
 	buf[end - start] = 0;
@@ -784,7 +778,7 @@ int load_file(Atom env, const char *path)
 			Atom result;
 			Error err = eval_expr(expr, env, &result);
 			if (err) {
-				print_err(err);
+				puts(error_string[err]);
 				printf("Error in expression:\n\t");
 				print_expr(expr);
 				putchar('\n');
@@ -1134,25 +1128,6 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 	return err;
 }
 
-void print_err(Error err) {
-	switch (err) {
-	case Error_OK:
-		break;
-	case Error_Syntax:
-		puts("Syntax error");
-		break;
-	case Error_Unbound:
-		puts("Symbol not bound");
-		break;
-	case Error_Args:
-		puts("Wrong number of arguments");
-		break;
-	case Error_Type:
-		puts("Wrong type");
-		break;
-	}
-}
-
 int main(int argc, char **argv)
 {
 	printf("Arcadia %s\n", VERSION);	
@@ -1201,7 +1176,7 @@ int main(int argc, char **argv)
 			if (!err)
 				err = eval_expr(car(code_expr), env, &result);
 			if (err)
-				print_err(err);
+				puts(error_string[err]);
 			else {
 				print_expr(result);
 				putchar('\n');
