@@ -1,4 +1,4 @@
-#define VERSION "0.1.1"
+#define VERSION "0.1.2"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -1158,6 +1158,16 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("apply"), make_builtin(builtin_apply));
 	env_set(env, make_sym("eq?"), make_builtin(builtin_eqp));
 	env_set(env, make_sym("pair?"), make_builtin(builtin_pairp));
+
+	/* print the environment */
+	puts("Environment:");
+	Atom a = cdr(env);
+	while (!nilp(a)) {
+		Atom env_pair = car(a);
+		printf("%s ", car(env_pair).value.symbol);
+		a = cdr(a);
+	}
+	puts("");
 
 	if (!load_file(env, "library.arc")) {
 		load_file(env, "../library.arc");
