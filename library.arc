@@ -7,7 +7,7 @@
 (= list (fn items
   (rreduce cons nil items)))
 
-(mac def (name args body) (list '= name (list 'fn args body)))
+(mac def (name args . body) (list '= name (cons 'fn (cons args body))))
 
 (def abs (x) (if (< x 0) (- 0 x) x))
 
@@ -55,22 +55,24 @@
                     (list 'quasiquote (cdr x)))))
       (list 'quote x)))
 
-(mac let (defs . body)
-  `((fn ,(map car defs) ,@body)
-    ,@(map cadr defs)))
+(mac let (sym def . body)
+	`((fn (,sym) ,@body) ,def))
 
 (= +
-  (let ((old+ +))
+  (let old+ +
     (fn xs (reduce old+ 0 xs))))
 
 (= -
-  (let ((old- -))
+  (let old- -
     (fn (x . xs) (reduce old- x xs))))
 
 (= *
-  (let ((old* *))
+  (let old* *
     (fn xs (reduce old* 1 xs))))
 
 (= /
-  (let ((old/ /))
+  (let old/ /
     (fn (x . xs) (reduce old/ x xs))))
+		
+(mac do body
+	`((fn () ,@body)))
