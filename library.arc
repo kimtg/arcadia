@@ -76,3 +76,6 @@
 		
 (mac do body
 	`((fn () ,@body)))
+
+(mac while (pred . body)
+	`(do (def loop () (if ,pred (do ,@body (loop)) nil)) (loop)))

@@ -1,4 +1,4 @@
-#define VERSION "0.1.2"
+#define VERSION "0.1.3"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -452,6 +452,26 @@ Error env_set(Atom env, Atom symbol, Atom value)
 	cdr(env) = cons(b, cdr(env));
 
 	return Error_OK;
+}
+
+Error env_set_eq(Atom env, Atom symbol, Atom value) {
+	Atom parent = car(env);
+	Atom bs = cdr(env);
+
+	while (!nilp(bs)) {
+		Atom b = car(bs);
+		if (car(b).value.symbol == symbol.value.symbol) {
+		  cdr(b) = value;
+		  return Error_OK;
+		}
+		bs = cdr(bs);
+	}
+
+	if (nilp(parent)) {
+	  return env_set(env, symbol, value);
+	}
+
+	return env_set_eq(parent, symbol, value);
 }
 
 int listp(Atom expr)
@@ -963,7 +983,7 @@ Error eval_do_return(Atom *stack, Atom *expr, Atom *env, Atom *result)
 		/* Finished working on special form */
 		if (op.value.symbol == sym_eq.value.symbol) {
 			Atom sym = list_get(*stack, 4);
-			(void)env_set(*env, sym, *result);
+			(void)env_set_eq(*env, sym, *result);
 			*stack = car(*stack);
 			*expr = cons(sym_quote, cons(sym, nil));
 			return Error_OK;
