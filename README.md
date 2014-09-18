@@ -7,7 +7,7 @@ quote = fn if mac apply car cdr cons + - * / == < apply eq? pair?
 
 ## Library
 rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiq
-uote let + - * /
+uote let + - * / do
 
 ## License ##
 
