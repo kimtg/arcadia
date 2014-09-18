@@ -1,4 +1,4 @@
-#define VERSION "0.1.3"
+#define VERSION "0.1.4"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -70,7 +70,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result);
 
 static const Atom nil = { AtomType_Nil };
 /* symbols for faster comparison */
-static Atom sym_t, sym_quote, sym_eq, sym_fn, sym_if, sym_mac, sym_apply;
+static Atom sym_t, sym_quote, sym_eq, sym_fn, sym_if, sym_mac, sym_apply, sym_while;
 Atom code_expr;
 
 struct Allocation {	
@@ -79,11 +79,14 @@ struct Allocation {
 };
 
 struct Allocation *global_allocations = NULL;
+int cons_count = 0;
 
 Atom cons(Atom car_val, Atom cdr_val)
 {
 	struct Allocation *a;
 	Atom p;
+
+	cons_count++;
 
 	a = (struct Allocation *)malloc(sizeof(struct Allocation));	
 	a->next = global_allocations;
@@ -1025,17 +1028,16 @@ Error eval_do_return(Atom *stack, Atom *expr, Atom *env, Atom *result)
 
 Error eval_expr(Atom expr, Atom env, Atom *result)
 {
-	static int count = 0;
 	Error err = Error_OK;
 	Atom stack = nil;
 
 	do {
-		if (++count > 100000) { /* 100000 */
+		if (cons_count > 100000) { /* 100000 */
 			gc_mark(expr);
 			gc_mark(env);
 			gc_mark(stack);
 			gc();
-			count = 0;
+			cons_count = 0;
 		}
 
 		if (expr.type == AtomType_Symbol) {
@@ -1122,6 +1124,18 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 					expr = car(args);
 					continue;
 				}
+				else if (op.value.symbol == sym_while.value.symbol) {
+					if (nilp(args))
+						return Error_Args;
+					Atom pred = car(args);
+					while (eval_expr(pred, env, result), !nilp(*result)) {
+						Atom e = cdr(args);
+						while (!nilp(e)) {
+							eval_expr(car(e), env, result);
+							e = cdr(e);
+						}
+					}
+				}
 				else {
 					goto push;
 				}
@@ -1164,6 +1178,7 @@ int main(int argc, char **argv)
 	sym_if = make_sym("if");
 	sym_mac = make_sym("mac");
 	sym_apply = make_sym("apply");
+	sym_while = make_sym("while");
 
 	env_set(env, make_sym("car"), make_builtin(builtin_car));
 	env_set(env, make_sym("cdr"), make_builtin(builtin_cdr));
