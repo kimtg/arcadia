@@ -1,4 +1,4 @@
-#define VERSION "0.1.4"
+#define VERSION "0.1.5"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -458,23 +458,22 @@ Error env_set(Atom env, Atom symbol, Atom value)
 }
 
 Error env_set_eq(Atom env, Atom symbol, Atom value) {
-	Atom parent = car(env);
-	Atom bs = cdr(env);
+	Atom env_origin = env;
+	while (!nilp(env)) {
+		Atom bs = cdr(env);
 
-	while (!nilp(bs)) {
-		Atom b = car(bs);
-		if (car(b).value.symbol == symbol.value.symbol) {
-		  cdr(b) = value;
-		  return Error_OK;
+		while (!nilp(bs)) {
+			Atom b = car(bs);
+			if (car(b).value.symbol == symbol.value.symbol) {
+			  cdr(b) = value;
+			  return Error_OK;
+			}
+			bs = cdr(bs);
 		}
-		bs = cdr(bs);
+		env = car(env);
 	}
 
-	if (nilp(parent)) {
-	  return env_set(env, symbol, value);
-	}
-
-	return env_set_eq(parent, symbol, value);
+	return env_set(env_origin, symbol, value);
 }
 
 int listp(Atom expr)
