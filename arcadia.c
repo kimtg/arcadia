@@ -1,4 +1,4 @@
-#define VERSION "0.1.5"
+#define VERSION "0.1.6"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -55,14 +55,9 @@ struct Pair {
 Error apply(Atom fn, Atom args, Atom *result);
 int listp(Atom expr);
 char *slurp(const char *path);
-Atom list_get(Atom list, int k);
-void list_set(Atom list, int k, Atom value);
-void list_reverse(Atom *list);
-Atom make_frame(Atom parent, Atom env, Atom tail);
-Error eval_do_exec(Atom *stack, Atom *expr, Atom *env);
-Error eval_do_bind(Atom *stack, Atom *expr, Atom *env);
-Error eval_do_apply(Atom *stack, Atom *expr, Atom *env, Atom *result);
 Error eval_expr(Atom expr, Atom env, Atom *result);
+void gc_mark(Atom root);
+void gc();
 
 #define car(p) ((p).value.pair->car)
 #define cdr(p) ((p).value.pair->cdr)
@@ -545,7 +540,6 @@ Error apply(Atom fn, Atom args, Atom *result)
 	}
 
 	return Error_OK;
-
 }
 
 Error builtin_car(Atom args, Atom *result)
@@ -819,345 +813,140 @@ int load_file(Atom env, const char *path)
 	}
 }
 
-Atom list_get(Atom list, int k)
-{
-	while (k--)
-		list = cdr(list);
-	return car(list);
-}
-
-void list_set(Atom list, int k, Atom value)
-{
-	while (k--)
-		list = cdr(list);
-	car(list) = value;
-}
-
-void list_reverse(Atom *list)
-{
-	Atom tail = nil;
-	while (!nilp(*list)) {
-		Atom p = cdr(*list);
-		cdr(*list) = tail;
-		tail = *list;
-		*list = p;
-	}
-	*list = tail;
-}
-
-Atom make_frame(Atom parent, Atom env, Atom tail)
-{
-	return cons(parent,
-		cons(env,
-		cons(nil, /* op */
-		cons(tail,
-		cons(nil, /* args */
-		cons(nil, /* body */
-		nil))))));
-}
-
-Error eval_do_exec(Atom *stack, Atom *expr, Atom *env)
-{
-	Atom body;
-
-	*env = list_get(*stack, 1);
-	body = list_get(*stack, 5);
-	*expr = car(body);
-	body = cdr(body);
-	if (nilp(body)) {
-		/* Finished function; pop the stack */
-		*stack = car(*stack);
-	}
-	else {
-		list_set(*stack, 5, body);
-	}
-
-	return Error_OK;
-}
-
-Error eval_do_bind(Atom *stack, Atom *expr, Atom *env)
-{
-	Atom op, args, arg_names, body;
-
-	body = list_get(*stack, 5);
-	if (!nilp(body))
-		return eval_do_exec(stack, expr, env);
-
-	op = list_get(*stack, 2);
-	args = list_get(*stack, 4);
-
-	*env = env_create(car(op));
-	arg_names = car(cdr(op));
-	body = cdr(cdr(op));
-	list_set(*stack, 1, *env);
-	list_set(*stack, 5, body);
-
-	/* Bind the arguments */
-	while (!nilp(arg_names)) {
-		if (arg_names.type == AtomType_Symbol) {
-			env_set(*env, arg_names, args);
-			args = nil;
-			break;
-		}
-
-		if (nilp(args))
-			return Error_Args;
-		env_set(*env, car(arg_names), car(args));
-		arg_names = cdr(arg_names);
-		args = cdr(args);
-	}
-	if (!nilp(args))
-		return Error_Args;
-
-	list_set(*stack, 4, nil);
-
-	return eval_do_exec(stack, expr, env);
-}
-
-Error eval_do_apply(Atom *stack, Atom *expr, Atom *env, Atom *result)
-{
-	Atom op, args;
-
-	op = list_get(*stack, 2);
-	args = list_get(*stack, 4);
-
-	if (!nilp(args)) {
-		list_reverse(&args);
-		list_set(*stack, 4, args);
-	}
-
-	if (op.type == AtomType_Symbol) {
-		if (op.value.symbol == sym_apply.value.symbol) {
-			/* Replace the current frame */
-			*stack = car(*stack);
-			*stack = make_frame(*stack, *env, nil);
-			op = car(args);
-			args = car(cdr(args));
-			if (!listp(args))
-				return Error_Syntax;
-
-			list_set(*stack, 2, op);
-			list_set(*stack, 4, args);
-		}
-	}
-
-	if (op.type == AtomType_Builtin) {
-		*stack = car(*stack);
-		*expr = cons(op, args);
-		return Error_OK;
-	}
-	else if (op.type != AtomType_Closure) {
-		return Error_Type;
-	}
-
-	return eval_do_bind(stack, expr, env);
-}
-
-Error eval_do_return(Atom *stack, Atom *expr, Atom *env, Atom *result)
-{
-	Atom op, args, body;
-
-	*env = list_get(*stack, 1);
-	op = list_get(*stack, 2);
-	body = list_get(*stack, 5);
-
-	if (!nilp(body)) {
-		/* Still running a procedure; ignore the result */
-		return eval_do_apply(stack, expr, env, result);
-	}
-
-	if (nilp(op)) {
-		/* Finished evaluating operator */
-		op = *result;
-		list_set(*stack, 2, op);
-
-		if (op.type == AtomType_Macro) {
-			/* Don't evaluate macro arguments */
-			args = list_get(*stack, 3);
-			*stack = make_frame(*stack, *env, nil);
-			op.type = AtomType_Closure;
-			list_set(*stack, 2, op);
-			list_set(*stack, 4, args);
-			return eval_do_bind(stack, expr, env);
-		}
-	}
-	else if (op.type == AtomType_Symbol) {
-		/* Finished working on special form */
-		if (op.value.symbol == sym_eq.value.symbol) {
-			Atom sym = list_get(*stack, 4);
-			(void)env_set_eq(*env, sym, *result);
-			*stack = car(*stack);
-			*expr = cons(sym_quote, cons(sym, nil));
-			return Error_OK;
-		}
-		else if (op.value.symbol == sym_if.value.symbol) {
-			args = list_get(*stack, 3);
-			*expr = nilp(*result) ? car(cdr(args)) : car(args);
-			*stack = car(*stack);
-			return Error_OK;
-		}
-		else {
-			goto store_arg;
-		}
-	}
-	else if (op.type == AtomType_Macro) {
-		/* Finished evaluating macro */
-		*expr = *result;
-		*stack = car(*stack);
-		return Error_OK;
-	}
-	else {
-	store_arg:
-		/* Store evaluated argument */
-		args = list_get(*stack, 4);
-		list_set(*stack, 4, cons(*result, args));
-	}
-
-	args = list_get(*stack, 3);
-	if (nilp(args)) {
-		/* No more arguments left to evaluate */
-		return eval_do_apply(stack, expr, env, result);
-	}
-
-	/* Evaluate next argument */
-	*expr = car(args);
-	list_set(*stack, 3, cdr(args));
-	return Error_OK;
-}
-
 Error eval_expr(Atom expr, Atom env, Atom *result)
 {
 	Error err = Error_OK;
-	Atom stack = nil;
 
-	do {
-		if (cons_count > 100000) { /* 100000 */
-			gc_mark(expr);
-			gc_mark(env);
-			gc_mark(stack);
-			gc();
-			cons_count = 0;
-		}
+	if (cons_count > 10000) {
+	  gc_mark(env);
+	  gc();
+	  cons_count = 0;
+	}
 
-		if (expr.type == AtomType_Symbol) {
-			err = env_get(env, expr, result);
-		}
-		else if (expr.type != AtomType_Pair) {
-			*result = expr;
-		}
-		else if (!listp(expr)) {
-			return Error_Syntax;
-		}
-		else {
-			Atom op = car(expr);
-			Atom args = cdr(expr);
+	if (expr.type == AtomType_Symbol) {
+		err = env_get(env, expr, result);
+	}
+	else if (expr.type != AtomType_Pair) {
+		*result = expr;
+		return Error_OK;
+	}
+	else if (!listp(expr)) {
+		return Error_Syntax;
+	}
+	else {
+		Atom op = car(expr);
+		Atom args = cdr(expr);
 
-			if (op.type == AtomType_Symbol) {
-				/* Handle special forms */
+		if (op.type == AtomType_Symbol) {
+			/* Handle special forms */
 
-				if (op.value.symbol == sym_quote.value.symbol) {
-					if (nilp(args) || !nilp(cdr(args)))
-						return Error_Args;
+			if (op.value.symbol == sym_quote.value.symbol) {
+				if (nilp(args) || !nilp(cdr(args)))
+					return Error_Args;
 
-					*result = car(args);
-				}
-				else if (op.value.symbol == sym_eq.value.symbol) {
-					Atom sym;
+				*result = car(args);
+				return Error_OK;
+			}
+			else if (op.value.symbol == sym_eq.value.symbol) {
+				if (nilp(args) || nilp(cdr(args)))
+					return Error_Args;
 
-					if (nilp(args) || nilp(cdr(args)))
-						return Error_Args;
+				Atom sym = car(args);
+				if (sym.type == AtomType_Symbol) {
+					Atom val;
+					err = eval_expr(car(cdr(args)), env, &val);
+					if (err)
+						return err;
 
-					sym = car(args);
-					if (sym.type == AtomType_Symbol) {
-						if (!nilp(cdr(cdr(args))))
-							return Error_Args;
-						stack = make_frame(stack, env, nil);
-						list_set(stack, 2, op);
-						list_set(stack, 4, sym);
-						expr = car(cdr(args));
-						continue;
-					}
-					else {
-						return Error_Type;
-					}
-				}
-				else if (op.value.symbol == sym_fn.value.symbol) {
-					if (nilp(args) || nilp(cdr(args)))
-						return Error_Args;
-
-					err = make_closure(env, car(args), cdr(args), result);
-				}
-				else if (op.value.symbol == sym_if.value.symbol) {
-					if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))
-						|| !nilp(cdr(cdr(cdr(args)))))
-						return Error_Args;
-
-					stack = make_frame(stack, env, cdr(args));
-					list_set(stack, 2, op);
-					expr = car(args);
-					continue;
-				}
-				else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
-					Atom name, macro;
-
-					if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args))))
-						return Error_Args;
-
-					name = car(args);
-					if (name.type != AtomType_Symbol)
-						return Error_Type;
-
-					err = make_closure(env, car(cdr(args)), cdr(cdr(args)), &macro);
-					if (!err) {
-						macro.type = AtomType_Macro;
-						*result = name;
-						env_set(env, name, macro);
-					}
-				}
-				else if (op.value.symbol == sym_apply.value.symbol) {
-					if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-						return Error_Args;
-
-					stack = make_frame(stack, env, cdr(args));
-					list_set(stack, 2, op);
-					expr = car(args);
-					continue;
-				}
-				else if (op.value.symbol == sym_while.value.symbol) {
-					if (nilp(args))
-						return Error_Args;
-					Atom pred = car(args);
-					while (eval_expr(pred, env, result), !nilp(*result)) {
-						Atom e = cdr(args);
-						while (!nilp(e)) {
-							eval_expr(car(e), env, result);
-							e = cdr(e);
-						}
-					}
+					*result = sym;
+					return env_set_eq(env, sym, val);
 				}
 				else {
-					goto push;
+					return Error_Type;
 				}
 			}
-			else if (op.type == AtomType_Builtin) {
-				err = (*op.value.builtin)(args, result);
+			else if (op.value.symbol == sym_fn.value.symbol) {
+				if (nilp(args) || nilp(cdr(args)))
+					return Error_Args;
+
+				return make_closure(env, car(args), cdr(args), result);
 			}
-			else {
-			push:
-				/* Handle function application */
-				stack = make_frame(stack, env, args);
-				expr = op;
-				continue;
+			else if (op.value.symbol == sym_if.value.symbol) {
+				Atom cond, val;
+
+				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))
+				    || !nilp(cdr(cdr(cdr(args)))))
+					return Error_Args;
+
+				err = eval_expr(car(args), env, &cond);
+				if (err)
+					return err;
+
+				val = nilp(cond) ? car(cdr(cdr(args))) : car(cdr(args));
+				return eval_expr(val, env, result);
+			}
+			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
+				Atom name, macro;
+
+				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args))))
+					return Error_Args;
+
+				name = car(args);
+				if (name.type != AtomType_Symbol)
+					return Error_Type;
+
+				err = make_closure(env, car(cdr(args)), cdr(cdr(args)), &macro);
+				if (!err) {
+					macro.type = AtomType_Macro;
+					*result = name;
+					return env_set(env, name, macro);
+				} else
+					return err;
+			}
+			else if (op.value.symbol == sym_while.value.symbol) {
+				if (nilp(args))
+					return Error_Args;
+				Atom pred = car(args);
+				while (eval_expr(pred, env, result), !nilp(*result)) {
+					Atom e = cdr(args);
+					while (!nilp(e)) {
+						eval_expr(car(e), env, result);
+						e = cdr(e);
+					}
+				}
+				return Error_OK;
 			}
 		}
 
-		if (nilp(stack))
-			break;
+		/* Evaluate operator */			
+		err = eval_expr(op, env, &op);
+		if (err)
+		  return err;
 
-		if (!err)
-			err = eval_do_return(&stack, &expr, &env, result);
-	} while (!err);
-
+		/* Is it a macro? */
+		if (op.type == AtomType_Macro) {
+		  Atom expansion;
+		  op.type = AtomType_Closure;
+		  err = apply(op, args, &expansion);
+		  if (err)
+			return err;
+		  return eval_expr(expansion, env, result);
+		}
+			  
+		/* Evaulate arguments */
+		args = copy_list(args);
+		Atom p = args;
+		while (!nilp(p)) {
+		  err = eval_expr(car(p), env, &car(p));
+		  if (err)
+			return err;
+				
+		  p = cdr(p);
+		}
+			
+		return apply(op, args, result);
+	}
+		
 	return err;
 }
 
@@ -1225,6 +1014,7 @@ int main(int argc, char **argv)
 				print_expr(result);
 				putchar('\n');
 			}
+
 			code_expr = cdr(code_expr);
 		}
 
@@ -1234,4 +1024,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-

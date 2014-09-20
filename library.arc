@@ -77,4 +77,5 @@
 (mac do body
 	`((fn () ,@body)))
 
-
+(mac ++ (a) `(= ,a (+ ,a 1)))
+(mac -- (a) `(= ,a (- ,a 1)))
