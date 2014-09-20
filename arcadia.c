@@ -1,4 +1,4 @@
-#define VERSION "0.1.6"
+#define VERSION "0.1.7"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -818,6 +818,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 	Error err = Error_OK;
 
 	if (cons_count > 10000) {
+	  gc_mark(expr);
 	  gc_mark(env);
 	  gc();
 	  cons_count = 0;
