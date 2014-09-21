@@ -1,4 +1,4 @@
-#define VERSION "0.1.8"
+#define VERSION "0.1.9"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -124,8 +124,7 @@ void gc()
 	struct Allocation *a, **p;
 
 	gc_mark(sym_table);
-	gc_mark(code_expr);
-
+	
 	/* Free unmarked allocations */
 	p = &global_allocations;
 	while (*p != NULL) {
@@ -1023,10 +1022,11 @@ int main(int argc, char **argv)
 				print_expr(result);
 				putchar('\n');
 			}
-
 			code_expr = cdr(code_expr);
-		}
-		gc();
+			gc_mark(code_expr);
+			gc_mark(env);
+			gc();
+		}		
 		free(buf);
 		free(input);
 	}
