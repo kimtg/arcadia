@@ -1,4 +1,4 @@
-#define VERSION "0.1.7"
+#define VERSION "0.1.8"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -48,7 +48,6 @@ static Atom sym_table = { AtomType_Nil };
 
 struct Pair {
 	struct Atom car, cdr;
-	char mark;
 };
 
 /* forward declarations */
@@ -69,7 +68,8 @@ static Atom sym_t, sym_quote, sym_eq, sym_fn, sym_if, sym_mac, sym_apply, sym_wh
 Atom code_expr;
 
 struct Allocation {	
-	void *ptr;	
+	struct Pair pair;
+	char mark;
 	struct Allocation *next;
 };
 
@@ -83,13 +83,13 @@ Atom cons(Atom car_val, Atom cdr_val)
 
 	cons_count++;
 
-	a = (struct Allocation *)malloc(sizeof(struct Allocation));	
+	a = malloc(sizeof(struct Allocation));
+	a->mark = 0;
 	a->next = global_allocations;
 	global_allocations = a;
 
-	p.type = AtomType_Pair;	
-	p.value.pair = a->ptr = malloc(sizeof(struct Pair));
-	p.value.pair->mark = 0;
+	p.type = AtomType_Pair;
+	p.value.pair = &a->pair;
 
 	car(p) = car_val;
 	cdr(p) = cdr_val;
@@ -99,15 +99,21 @@ Atom cons(Atom car_val, Atom cdr_val)
 
 void gc_mark(Atom root)
 {
+	struct Allocation *a;
+
 	if (!(root.type == AtomType_Pair
 		|| root.type == AtomType_Closure
 		|| root.type == AtomType_Macro))
 		return;
 
-	if (root.value.pair->mark)
+	a = (struct Allocation *)
+		((char *)root.value.pair
+		- offsetof(struct Allocation, pair));
+
+	if (a->mark)
 		return;
 
-	root.value.pair->mark = 1;	
+	a->mark = 1;
 
 	gc_mark(car(root));
 	gc_mark(cdr(root));
@@ -116,6 +122,7 @@ void gc_mark(Atom root)
 void gc()
 {
 	struct Allocation *a, **p;
+
 	gc_mark(sym_table);
 	gc_mark(code_expr);
 
@@ -123,10 +130,9 @@ void gc()
 	p = &global_allocations;
 	while (*p != NULL) {
 		a = *p;
-		if (!((struct Pair*)(a->ptr))->mark) {
+		if (!a->mark) {
 			*p = a->next;
-			free(a->ptr);
-			free(a);			
+			free(a);
 		}
 		else {
 			p = &a->next;
@@ -136,7 +142,7 @@ void gc()
 	/* Clear marks */
 	a = global_allocations;
 	while (a != NULL) {
-		((struct Pair*)(a->ptr))->mark = 0;
+		a->mark = 0;
 		a = a->next;
 	}
 }
@@ -817,12 +823,14 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 {
 	Error err = Error_OK;
 
+	/*
 	if (cons_count > 10000) {
 	  gc_mark(expr);
 	  gc_mark(env);
 	  gc();
 	  cons_count = 0;
 	}
+	*/
 
 	if (expr.type == AtomType_Symbol) {
 		err = env_get(env, expr, result);
@@ -1018,7 +1026,7 @@ int main(int argc, char **argv)
 
 			code_expr = cdr(code_expr);
 		}
-
+		gc();
 		free(buf);
 		free(input);
 	}
