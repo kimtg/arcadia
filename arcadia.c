@@ -1,4 +1,4 @@
-#define VERSION "0.1.9"
+#define VERSION "0.1.9a"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -832,7 +832,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 	*/
 
 	if (expr.type == AtomType_Symbol) {
-		err = env_get(env, expr, result);
+		return env_get(env, expr, result);
 	}
 	else if (expr.type != AtomType_Pair) {
 		*result = expr;
@@ -954,8 +954,6 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 			
 		return apply(op, args, result);
 	}
-		
-	return err;
 }
 
 int main(int argc, char **argv)
