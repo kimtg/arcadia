@@ -1,4 +1,4 @@
-#define VERSION "0.1.10"
+#define VERSION "0.1.9a"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -124,7 +124,6 @@ void gc()
 	struct Allocation *a, **p;
 
 	gc_mark(sym_table);
-	gc_mark(code_expr);
 	
 	/* Free unmarked allocations */
 	p = &global_allocations;
@@ -916,16 +915,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				if (nilp(args))
 					return Error_Args;
 				Atom pred = car(args);
-				while (1) {
-					if (cons_count > 100000) {
-						cons_count = 0;
-						gc_mark(pred);
-						gc_mark(env);
-						gc_mark(args);
-						gc();						
-					}
-					eval_expr(pred, env, result);
-					if (nilp(*result)) break;
+				while (eval_expr(pred, env, result), !nilp(*result)) {
 					Atom e = cdr(args);
 					while (!nilp(e)) {
 						eval_expr(car(e), env, result);
@@ -961,7 +951,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				
 		  p = cdr(p);
 		}
-		
+			
 		return apply(op, args, result);
 	}
 }
