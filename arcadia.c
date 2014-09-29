@@ -1,4 +1,4 @@
-#define VERSION "0.1.9a"
+#define VERSION "0.1.10"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -135,14 +135,8 @@ void gc()
 		}
 		else {
 			p = &a->next;
+			a->mark = 0; /* clear mark */
 		}
-	}
-
-	/* Clear marks */
-	a = global_allocations;
-	while (a != NULL) {
-		a->mark = 0;
-		a = a->next;
 	}
 }
 
