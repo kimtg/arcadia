@@ -1,6 +1,8 @@
-arcadia: arcadia.c
-	gcc -s -Wall -static -O3 -o arcadia arcadia.c
-run: arcadia
-	./arcadia
+BIN=arcadia
+
+$(BIN): arcadia.c
+	$(CC) -s -Wall -static -O3 -o $(BIN) arcadia.c
+run: $(BIN)
+	./$(BIN)
 clean:
-	rm -f arcadia
+	rm -f $(BIN)
