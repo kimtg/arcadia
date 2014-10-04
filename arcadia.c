@@ -1,4 +1,4 @@
-#define VERSION "0.1.10"
+#define VERSION "0.1.10b"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -850,10 +850,11 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				return Error_OK;
 			}
 			else if (op.value.symbol == sym_eq.value.symbol) {
+				Atom sym;
 				if (nilp(args) || nilp(cdr(args)))
 					return Error_Args;
 
-				Atom sym = car(args);
+				sym = car(args);
 				if (sym.type == AtomType_Symbol) {
 					Atom val;
 					err = eval_expr(car(cdr(args)), env, &val);
@@ -906,9 +907,10 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 					return err;
 			}
 			else if (op.value.symbol == sym_while.value.symbol) {
+				Atom pred;
 				if (nilp(args))
 					return Error_Args;
-				Atom pred = car(args);
+				pred = car(args);
 				while (eval_expr(pred, env, result), !nilp(*result)) {
 					Atom e = cdr(args);
 					while (!nilp(e)) {
