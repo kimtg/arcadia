@@ -1,4 +1,4 @@
-#define VERSION "0.1.10b"
+#define VERSION "0.2"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -76,6 +76,20 @@ struct Allocation {
 struct Allocation *global_allocations = NULL;
 int cons_count = 0;
 
+struct atom_list {
+	Atom atom;
+	struct atom_list *next;
+};
+
+struct atom_list *stack = NULL;
+
+void stack_add(Atom a) {
+	struct atom_list *pl = malloc(sizeof(struct atom_list));
+	pl->atom = a;
+	pl->next = stack;
+	stack = pl;
+}
+
 Atom cons(Atom car_val, Atom cdr_val)
 {
 	struct Allocation *a;
@@ -94,6 +108,8 @@ Atom cons(Atom car_val, Atom cdr_val)
 	car(p) = car_val;
 	cdr(p) = cdr_val;
 
+	stack_add(p);
+	
 	return p;
 }
 
@@ -124,6 +140,14 @@ void gc()
 	struct Allocation *a, **p;
 
 	gc_mark(sym_table);
+	gc_mark(code_expr);	
+
+	/* mark atoms in the stack */
+	struct atom_list *stk = stack;
+	while (stk != NULL) {
+		gc_mark(stk->atom);
+		stk = stk->next;
+	}
 	
 	/* Free unmarked allocations */
 	p = &global_allocations;
@@ -532,7 +556,7 @@ Error apply(Atom fn, Atom args, Atom *result)
 
 	/* Evaluate the body */
 	while (!nilp(body)) {
-		Error err = eval_expr(car(body), env, result);
+		Error err = eval_expr(car(body), env, result);		
 		if (err)
 			return err;
 		body = cdr(body);
@@ -812,27 +836,49 @@ int load_file(Atom env, const char *path)
 	}
 }
 
+void restore_stack(struct atom_list *ss) {
+	struct atom_list *a = stack;
+	while (a != ss && a != NULL) {
+		struct atom_list *a2 = a->next;
+		free(a);
+		stack = a2;
+		a = a2;
+	}
+}
+
 Error eval_expr(Atom expr, Atom env, Atom *result)
 {
 	Error err = Error_OK;
+	struct atom_list *ss = stack; /* save stack point */
 
-	/*
-	if (cons_count > 10000) {
+	/*if (cons_count > 10000) {
 	  gc_mark(expr);
 	  gc_mark(env);
 	  gc();
 	  cons_count = 0;
+	}*/
+	if (cons_count > 10000) {
+		stack_add(expr);
+		stack_add(env);
+		gc();
+		cons_count = 0;
 	}
-	*/
 
 	if (expr.type == AtomType_Symbol) {
-		return env_get(env, expr, result);
+		err = env_get(env, expr, result);
+		restore_stack(ss);
+		stack_add(*result);
+		return err;
 	}
 	else if (expr.type != AtomType_Pair) {
 		*result = expr;
+		restore_stack(ss);
+		stack_add(*result);
 		return Error_OK;
 	}
 	else if (!listp(expr)) {
+		restore_stack(ss);
+		stack_add(*result);
 		return Error_Syntax;
 	}
 	else {
@@ -843,73 +889,119 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 			/* Handle special forms */
 
 			if (op.value.symbol == sym_quote.value.symbol) {
-				if (nilp(args) || !nilp(cdr(args)))
+				if (nilp(args) || !nilp(cdr(args))) {
+					restore_stack(ss);
+					stack_add(*result);
 					return Error_Args;
+				}
 
 				*result = car(args);
+				restore_stack(ss);
+				stack_add(*result);
 				return Error_OK;
 			}
 			else if (op.value.symbol == sym_eq.value.symbol) {
 				Atom sym;
-				if (nilp(args) || nilp(cdr(args)))
+				if (nilp(args) || nilp(cdr(args))) {
+					restore_stack(ss);
+					stack_add(*result);
 					return Error_Args;
+				}
 
 				sym = car(args);
 				if (sym.type == AtomType_Symbol) {
 					Atom val;
 					err = eval_expr(car(cdr(args)), env, &val);
-					if (err)
+					if (err) {
+						restore_stack(ss);
+						stack_add(*result);
 						return err;
+					}
 
 					*result = sym;
-					return env_set_eq(env, sym, val);
+					err = env_set_eq(env, sym, val);
+					restore_stack(ss);
+					stack_add(*result);
+					return err;
 				}
 				else {
+					restore_stack(ss);
+					stack_add(*result);
 					return Error_Type;
 				}
 			}
 			else if (op.value.symbol == sym_fn.value.symbol) {
-				if (nilp(args) || nilp(cdr(args)))
+				if (nilp(args) || nilp(cdr(args))) {
+					restore_stack(ss);
+					stack_add(*result);
 					return Error_Args;
-
-				return make_closure(env, car(args), cdr(args), result);
+				}
+				err = make_closure(env, car(args), cdr(args), result);
+				restore_stack(ss);
+				stack_add(*result);
+				return err;
 			}
 			else if (op.value.symbol == sym_if.value.symbol) {
 				Atom cond, val;
 
 				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))
-				    || !nilp(cdr(cdr(cdr(args)))))
+					|| !nilp(cdr(cdr(cdr(args))))) {
+					restore_stack(ss);
+					stack_add(*result);
 					return Error_Args;
+				}
 
 				err = eval_expr(car(args), env, &cond);
-				if (err)
+				if (err) {
+					restore_stack(ss);
+					stack_add(*result);
 					return err;
+				}
 
 				val = nilp(cond) ? car(cdr(cdr(args))) : car(cdr(args));
-				return eval_expr(val, env, result);
+				err = eval_expr(val, env, result);
+				restore_stack(ss);
+				stack_add(*result);
+				return err;
 			}
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
 				Atom name, macro;
 
-				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args))))
+				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))) {
+					restore_stack(ss);
+					stack_add(*result);
 					return Error_Args;
+				}
 
 				name = car(args);
-				if (name.type != AtomType_Symbol)
+				if (name.type != AtomType_Symbol) {
+					restore_stack(ss);
+					stack_add(*result);
 					return Error_Type;
+				}
 
 				err = make_closure(env, car(cdr(args)), cdr(cdr(args)), &macro);
 				if (!err) {
 					macro.type = AtomType_Macro;
 					*result = name;
-					return env_set(env, name, macro);
-				} else
+					err = env_set(env, name, macro);
+					restore_stack(ss);
+					stack_add(*result);
 					return err;
+				}
+				else {
+					restore_stack(ss);
+					stack_add(*result);
+					return err;
+				}
 			}
 			else if (op.value.symbol == sym_while.value.symbol) {
 				Atom pred;
-				if (nilp(args))
+				if (nilp(args)) {
+					restore_stack(ss);
+					stack_add(*result);
 					return Error_Args;
+				}
 				pred = car(args);
 				while (eval_expr(pred, env, result), !nilp(*result)) {
 					Atom e = cdr(args);
@@ -918,23 +1010,35 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 						e = cdr(e);
 					}
 				}
+				restore_stack(ss);
+				stack_add(*result);
 				return Error_OK;
 			}
 		}
 
 		/* Evaluate operator */			
 		err = eval_expr(op, env, &op);
-		if (err)
-		  return err;
+		if (err) {
+			restore_stack(ss);
+			stack_add(*result);
+			return err;
+		}
 
 		/* Is it a macro? */
 		if (op.type == AtomType_Macro) {
 		  Atom expansion;
 		  op.type = AtomType_Closure;
 		  err = apply(op, args, &expansion);
-		  if (err)
-			return err;
-		  return eval_expr(expansion, env, result);
+		  stack_add(expansion);
+		  if (err) {
+			  restore_stack(ss);
+			  stack_add(*result);
+			  return err;
+		  }
+		  err = eval_expr(expansion, env, result);
+		  restore_stack(ss);
+		  stack_add(*result);
+		  return err;
 		}
 			  
 		/* Evaulate arguments */
@@ -942,13 +1046,18 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 		Atom p = args;
 		while (!nilp(p)) {
 		  err = eval_expr(car(p), env, &car(p));
-		  if (err)
-			return err;
+		  if (err) {
+			  restore_stack(ss);
+			  stack_add(*result);
+			  return err;
+		  }
 				
 		  p = cdr(p);
 		}
-			
-		return apply(op, args, result);
+		err = apply(op, args, result);
+		restore_stack(ss);
+		stack_add(*result);
+		return err;
 	}
 }
 
@@ -1017,9 +1126,9 @@ int main(int argc, char **argv)
 				putchar('\n');
 			}
 			code_expr = cdr(code_expr);
-			gc_mark(code_expr);
+			/*gc_mark(code_expr);
 			gc_mark(env);
-			gc();
+			gc();*/
 		}		
 		free(buf);
 		free(input);
