@@ -1,4 +1,4 @@
-#define VERSION "0.2.1"
+#define VERSION "0.3"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -76,18 +76,17 @@ struct Allocation {
 struct Allocation *global_allocations = NULL;
 int cons_count = 0;
 
-struct atom_list {
-	Atom atom;
-	struct atom_list *next;
-};
-
-struct atom_list *stack = NULL;
+Atom *stack = NULL;
+int stack_capacity = 0;
+int stack_size = 0;
 
 void stack_add(Atom a) {
-	struct atom_list *pl = malloc(sizeof(struct atom_list));
-	pl->atom = a;
-	pl->next = stack;
-	stack = pl;
+	stack_size++;
+	if (stack_size > stack_capacity) {
+		stack_capacity = stack_size * 2;
+		stack = realloc(stack, stack_capacity * sizeof(Atom));
+	}
+	stack[stack_size - 1] = a;
 }
 
 Atom cons(Atom car_val, Atom cdr_val)
@@ -143,10 +142,9 @@ void gc()
 	gc_mark(code_expr);	
 
 	/* mark atoms in the stack */
-	struct atom_list *stk = stack;
-	while (stk != NULL) {
-		gc_mark(stk->atom);
-		stk = stk->next;
+	int i;
+	for (i = 0; i < stack_size; i++) {
+		gc_mark(stack[i]);
 	}
 	
 	/* Free unmarked allocations */
@@ -836,20 +834,19 @@ int load_file(Atom env, const char *path)
 	}
 }
 
-void restore_stack(struct atom_list *ss) {
-	struct atom_list *a = stack;
-	while (a != ss && a != NULL) {
-		struct atom_list *a2 = a->next;
-		free(a);
-		a = a2;
+void restore_stack(int saved_size) {
+	stack_size = saved_size;
+	/* if there is waste of memory, realloc */
+	if (stack_size < stack_capacity / 4) {
+		stack_capacity /= 2;
+		stack = realloc(stack, stack_capacity * sizeof(Atom));
 	}
-	stack = ss;
 }
 
 Error eval_expr(Atom expr, Atom env, Atom *result)
 {
 	Error err = Error_OK;
-	struct atom_list *ss = stack; /* save stack point */
+	int ss = stack_size; /* save stack point */
 
 	/*if (cons_count > 10000) {
 	  gc_mark(expr);
