@@ -1,4 +1,4 @@
-#define VERSION "0.2"
+#define VERSION "0.2.1"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -841,9 +841,9 @@ void restore_stack(struct atom_list *ss) {
 	while (a != ss && a != NULL) {
 		struct atom_list *a2 = a->next;
 		free(a);
-		stack = a2;
 		a = a2;
 	}
+	stack = ss;
 }
 
 Error eval_expr(Atom expr, Atom env, Atom *result)
