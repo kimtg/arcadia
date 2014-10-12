@@ -70,9 +70,6 @@
 (mac ++ (a) `(= ,a (+ ,a 1)))
 (mac -- (a) `(= ,a (- ,a 1)))
 
-(mac scar (p value) `(set ,p (cons ,value (cdr ,p))))
-(mac scdr (p value) `(set ,p (cons (car ,p) ,value)))
-
 (mac = (place value)
   (if (pair? place)
     (if (is (car place) 'car)

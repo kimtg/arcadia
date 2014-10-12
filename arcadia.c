@@ -1,4 +1,4 @@
-#define VERSION "0.4.3"
+#define VERSION "0.4.4"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -799,6 +799,22 @@ Error builtin_no(Atom args, Atom *result)
 	return Error_OK;
 }
 
+Error builtin_scar(Atom args, Atom *result) {
+	Atom place = car(args);
+	Atom value = car(cdr(args));
+	place.value.pair->car = value;
+	*result = value;
+	return Error_OK;
+}
+
+Error builtin_scdr(Atom args, Atom *result) {
+	Atom place = car(args);
+	Atom value = car(cdr(args));
+	place.value.pair->cdr = value;
+	*result = value;
+	return Error_OK;
+}
+
 char *slurp(const char *path)
 {
 	FILE *file;
@@ -1233,6 +1249,8 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("is"), make_builtin(builtin_is));
 	env_set(env, make_sym("pair?"), make_builtin(builtin_pairp));
 	env_set(env, make_sym("no"), make_builtin(builtin_no));
+	env_set(env, make_sym("scar"), make_builtin(builtin_scar));
+	env_set(env, make_sym("scdr"), make_builtin(builtin_scdr));
 
 	if (!load_file(env, "library.arc")) {
 		load_file(env, "../library.arc");
