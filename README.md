@@ -3,7 +3,7 @@
 (C) 2014 Kim, Taegyoon
 
 ## Special form
-quote = fn if mac while
+quote set fn if mac while
 
 ## Built-in
 no pair? is apply < == t / * - + cons cdr car
