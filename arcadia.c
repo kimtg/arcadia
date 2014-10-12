@@ -578,7 +578,8 @@ Error apply(Atom fn, Atom args, Atom *result)
 	else if (fn.type == AtomType_Pair && listp(fn)) { /* implicit indexing for list */
 		int index = (int)(car(args)).value.number;
 		Atom a = fn;
-		for (int i = 0; i < index; i++) {
+		int i;
+		for (i = 0; i < index; i++) {
 			a = cdr(a);
 			if (nilp(a)) {
 				*result = nil;
