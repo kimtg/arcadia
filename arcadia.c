@@ -1,4 +1,4 @@
-#define VERSION "0.4.6"
+#define VERSION "0.4.7"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -571,14 +571,14 @@ Error apply(Atom fn, Atom args, Atom *result)
 		return Error_OK;
 	}
 	else if (fn.type == AtomType_String) { /* implicit indexing for string */
-		int index = (int)(car(args)).value.number;
+		long index = (long)(car(args)).value.number;
 		*result = make_number(fn.value.symbol[index]);
 		return Error_OK;
 	}
 	else if (fn.type == AtomType_Pair && listp(fn)) { /* implicit indexing for list */
-		int index = (int)(car(args)).value.number;
+		long index = (long)(car(args)).value.number;
 		Atom a = fn;
-		int i;
+		long i;
 		for (i = 0; i < index; i++) {
 			a = cdr(a);
 			if (nilp(a)) {
@@ -815,6 +815,13 @@ Error builtin_scdr(Atom args, Atom *result) {
 	Atom value = car(cdr(args));
 	place.value.pair->cdr = value;
 	*result = value;
+	return Error_OK;
+}
+
+Error builtin_mod(Atom args, Atom *result) {
+	Atom dividend = car(args);
+	Atom divisor = car(cdr(args));
+	*result = make_number((long)dividend.value.number % (long)divisor.value.number);
 	return Error_OK;
 }
 
@@ -1253,6 +1260,7 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("no"), make_builtin(builtin_no));
 	env_set(env, make_sym("scar"), make_builtin(builtin_scar));
 	env_set(env, make_sym("scdr"), make_builtin(builtin_scdr));
+	env_set(env, make_sym("mod"), make_builtin(builtin_mod));
 
 	if (!load_file(env, "library.arc")) {
 		load_file(env, "../library.arc");
