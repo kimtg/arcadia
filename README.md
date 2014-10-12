@@ -2,6 +2,8 @@
 
 (C) 2014 Kim, Taegyoon
 
+Arc is a dialect of Lisp.
+
 ## Special form
 quote set fn if mac while
 
@@ -10,6 +12,10 @@ no pair? is apply < == t / * - + cons cdr car scar scdr
 
 ## Library
 rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiquote let len do ++ -- =
+
+## Features
+* Easy-to-understand garbage collection
+* Implicit indexing
 
 ## License ##
 
