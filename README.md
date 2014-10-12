@@ -2,12 +2,15 @@
 
 (C) 2014 Kim, Taegyoon
 
+## Special form
+quote = fn if mac while
+
 ## Built-in
-quote = fn if mac apply car cdr cons + - * / == < apply eq? pair?
+no pair? eq? apply < == t / * - + cons cdr car
 
 ## Library
 rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiq
-uote let + - * / do
+uote let len do
 
 ## License ##
 

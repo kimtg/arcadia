@@ -58,21 +58,9 @@
 (mac let (sym def . body)
 	`((fn (,sym) ,@body) ,def))
 
-(= +
-  (let old+ +
-    (fn xs (reduce old+ 0 xs))))
-
-(= -
-  (let old- -
-    (fn (x . xs) (reduce old- x xs))))
-
-(= *
-  (let old* *
-    (fn xs (reduce old* 1 xs))))
-
-(= /
-  (let old/ /
-    (fn (x . xs) (reduce old/ x xs))))
+(def len (lst)
+	(if (no lst) 0
+		(+ 1 (len (cdr lst)))))
 		
 (mac do body
 	`((fn () ,@body)))

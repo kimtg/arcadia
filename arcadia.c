@@ -1,4 +1,4 @@
-#define VERSION "0.3.1"
+#define VERSION "0.4"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -57,6 +57,7 @@ char *slurp(const char *path);
 Error eval_expr(Atom expr, Atom env, Atom *result);
 void gc_mark(Atom root);
 void gc();
+void stack_restore(int saved_size);
 
 #define car(p) ((p).value.pair->car)
 #define cdr(p) ((p).value.pair->cdr)
@@ -258,10 +259,15 @@ void print_expr(Atom atom)
 		printf("#<BUILTIN:%p>", atom.value.builtin);
 		break;
 	case AtomType_Closure:
+		printf("closure ");
 		print_expr(cdr(atom));
 		break;
 	case AtomType_String:
 		printf("\"%s\"", atom.value.symbol);
+		break;
+	case AtomType_Macro:
+		printf("macro ");
+		print_expr(cdr(atom));
 		break;
 	default:
 		printf("unknown type");
@@ -446,7 +452,7 @@ Error env_get(Atom env, Atom symbol, Atom *result)
 	}
 
 	if (nilp(parent)) {
-		printf("%s: ", symbol.value.symbol);
+		/*printf("%s: ", symbol.value.symbol);*/
 		return Error_Unbound;
 	}
 
@@ -517,6 +523,10 @@ Atom copy_list(Atom list)
 		cdr(p) = cons(car(list), nil);
 		p = cdr(p);
 		list = cdr(list);
+		if (list.type != AtomType_Pair) { /* improper list */
+			p = list;
+			break;
+		}
 	}
 
 	return a;
@@ -605,73 +615,77 @@ Error builtin_cons(Atom args, Atom *result)
 
 Error builtin_add(Atom args, Atom *result)
 {
-	Atom a, b;
+	Atom acc = make_number(0);
+	Atom a;
+	if (!listp(args)) return Error_Args;
 
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-		return Error_Args;
-
-	a = car(args);
-	b = car(cdr(args));
-
-	if (a.type != AtomType_Number || b.type != AtomType_Number)
-		return Error_Type;
-
-	*result = make_number(a.value.number + b.value.number);
-
+	a = args;
+	while (!nilp(a)) {
+		acc.value.number += car(a).value.number;
+		a = cdr(a);
+	}
+	*result = acc;
 	return Error_OK;
 }
 
 Error builtin_subtract(Atom args, Atom *result)
 {
-	Atom a, b;
-
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-		return Error_Args;
-
-	a = car(args);
-	b = car(cdr(args));
-
-	if (a.type != AtomType_Number || b.type != AtomType_Number)
-		return Error_Type;
-
-	*result = make_number(a.value.number - b.value.number);
-
+	Atom acc;
+	Atom a;
+	if (!listp(args)) return Error_Args;
+	if (nilp(args)) { /* 0 argument */
+		*result = make_number(0);
+		return Error_OK;
+	}
+	if (nilp(cdr(args))) { /* 1 argument */
+		*result = make_number(-car(args).value.number);
+		return Error_OK;
+	}
+	acc = make_number(car(args).value.number);
+	a = cdr(args);
+	while (!nilp(a)) {
+		acc.value.number -= car(a).value.number;
+		a = cdr(a);
+	}
+	*result = acc;
 	return Error_OK;
 }
 
 Error builtin_multiply(Atom args, Atom *result)
 {
-	Atom a, b;
+	Atom acc = make_number(1);
+	Atom a;
+	if (!listp(args)) return Error_Args;
 
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-		return Error_Args;
-
-	a = car(args);
-	b = car(cdr(args));
-
-	if (a.type != AtomType_Number || b.type != AtomType_Number)
-		return Error_Type;
-
-	*result = make_number(a.value.number * b.value.number);
-
+	a = args;
+	while (!nilp(a)) {
+		acc.value.number *= car(a).value.number;
+		a = cdr(a);
+	}
+	*result = acc;
 	return Error_OK;
 }
 
 Error builtin_divide(Atom args, Atom *result)
 {
-	Atom a, b;
-
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-		return Error_Args;
-
-	a = car(args);
-	b = car(cdr(args));
-
-	if (a.type != AtomType_Number || b.type != AtomType_Number)
-		return Error_Type;
-
-	*result = make_number(a.value.number / b.value.number);
-
+	Atom acc;
+	Atom a;
+	if (!listp(args)) return Error_Args;
+	if (nilp(args)) { /* 0 argument */
+		*result = make_number(1);
+		return Error_OK;
+	}
+	if (nilp(cdr(args))) { /* 1 argument */
+		*result = make_number(1.0 / car(args).value.number);
+		return Error_OK;
+	}
+	acc = make_number(car(args).value.number);
+	a = cdr(args);
+	while (!nilp(a)) {
+		acc.value.number /= car(a).value.number;
+		a = cdr(a);
+	}
+	*result = acc;
 	return Error_OK;
 }
 
@@ -776,6 +790,15 @@ Error builtin_pairp(Atom args, Atom *result)
 	return Error_OK;
 }
 
+Error builtin_no(Atom args, Atom *result)
+{
+	if (nilp(args) || !nilp(cdr(args)))
+		return Error_Args;
+
+	*result = (nilp(car(args))) ? sym_t : nil;
+	return Error_OK;
+}
+
 char *slurp(const char *path)
 {
 	FILE *file;
@@ -802,6 +825,135 @@ char *slurp(const char *path)
 	return buf;
 }
 
+/* compile-time macro */
+Error preprocess(Atom expr, Atom env, Atom *result) {
+	Error err = Error_OK;
+	int ss = stack_size; /* save stack point */
+
+	if (cons_count > 10000) {
+		stack_add(expr);
+		stack_add(env);
+		gc();
+		cons_count = 0;
+	}
+
+	if (expr.type == AtomType_Symbol) {
+		*result = expr;		
+		stack_restore(ss);
+		stack_add(*result);
+		return Error_OK;
+	}
+	else if (expr.type != AtomType_Pair) {
+		*result = expr;
+		stack_restore(ss);
+		stack_add(*result);
+		return Error_OK;
+	}
+	else if (!listp(expr)) {
+		*result = expr;
+		stack_restore(ss);
+		stack_add(*result);
+		return Error_OK;
+	}
+	else {
+		Atom op = car(expr);
+		Atom args = cdr(expr);
+
+		if (op.type == AtomType_Symbol) {
+			/* Handle special forms */
+
+			if (op.value.symbol == sym_quote.value.symbol) {
+				if (nilp(args) || !nilp(cdr(args))) {
+					stack_restore(ss);
+					return Error_Args;
+				}
+
+				*result = expr;
+				stack_restore(ss);
+				stack_add(*result);
+				return Error_OK;
+			}
+			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
+				Atom name, macro;
+
+				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))) {
+					stack_restore(ss);
+					return Error_Args;
+				}
+
+				name = car(args);
+				if (name.type != AtomType_Symbol) {
+					stack_restore(ss);
+					return Error_Type;
+				}
+
+				err = make_closure(env, car(cdr(args)), cdr(cdr(args)), &macro);
+				if (!err) {
+					macro.type = AtomType_Macro;
+					*result = nil;
+					err = env_set(env, name, macro);
+					stack_restore(ss);
+					stack_add(*result);
+					return err;
+				}
+				else {
+					stack_restore(ss);
+					return err;
+				}
+			}
+		}
+
+		/* Is it a macro? */
+		if (op.type == AtomType_Symbol && !env_get(env, op, result) && result->type == AtomType_Macro) {
+			/* Evaluate operator */
+			err = eval_expr(op, env, &op);
+			if (err) {
+				stack_restore(ss);
+				stack_add(*result);
+				return err;
+			}
+
+			op.type = AtomType_Closure;
+			err = apply(op, args, result);
+			if (err) {
+				stack_restore(ss);
+				return err;
+			}
+			stack_restore(ss);
+			stack_add(*result);
+			return Error_OK;
+		}
+		else {
+			/* preprocess elements */
+			Atom expr2 = copy_list(expr);
+			Atom p = expr2;
+			while (!nilp(p)) {
+				err = preprocess(car(p), env, &car(p));
+				if (err) {
+					stack_restore(ss);
+					stack_add(*result);
+					return err;
+				}
+				p = cdr(p);
+			}
+			*result = expr2;
+			stack_restore(ss);
+			stack_add(*result);
+			return Error_OK;
+		}
+	}
+}
+
+Error preprocess_eval(Atom expr, Atom env, Atom *result) {
+	Atom expr2;
+	Error err = preprocess(expr, env, &expr2);
+	if (err) return err;
+	/*printf("expanded: ");
+	print_expr(expr2);
+	puts("");*/
+	return eval_expr(expr2, env, result);
+}
+
 int load_file(Atom env, const char *path)
 {
 	char *text;
@@ -813,7 +965,7 @@ int load_file(Atom env, const char *path)
 		Atom expr;
 		while (read_expr(p, &p, &expr) == Error_OK) {
 			Atom result;
-			Error err = eval_expr(expr, env, &result);
+			Error err = preprocess_eval(expr, env, &result);
 			if (err) {
 				puts(error_string[err]);
 				printf("Error in expression:\n\t");
@@ -875,7 +1027,6 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 	}
 	else if (!listp(expr)) {
 		stack_restore(ss);
-		stack_add(*result);
 		return Error_Syntax;
 	}
 	else {
@@ -888,7 +1039,6 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 			if (op.value.symbol == sym_quote.value.symbol) {
 				if (nilp(args) || !nilp(cdr(args))) {
 					stack_restore(ss);
-					stack_add(*result);
 					return Error_Args;
 				}
 
@@ -901,7 +1051,6 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				Atom sym;
 				if (nilp(args) || nilp(cdr(args))) {
 					stack_restore(ss);
-					stack_add(*result);
 					return Error_Args;
 				}
 
@@ -923,14 +1072,12 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				}
 				else {
 					stack_restore(ss);
-					stack_add(*result);
 					return Error_Type;
 				}
 			}
 			else if (op.value.symbol == sym_fn.value.symbol) {
 				if (nilp(args) || nilp(cdr(args))) {
 					stack_restore(ss);
-					stack_add(*result);
 					return Error_Args;
 				}
 				err = make_closure(env, car(args), cdr(args), result);
@@ -944,7 +1091,6 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))
 					|| !nilp(cdr(cdr(cdr(args))))) {
 					stack_restore(ss);
-					stack_add(*result);
 					return Error_Args;
 				}
 
@@ -966,14 +1112,12 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 
 				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))) {
 					stack_restore(ss);
-					stack_add(*result);
 					return Error_Args;
 				}
 
 				name = car(args);
 				if (name.type != AtomType_Symbol) {
 					stack_restore(ss);
-					stack_add(*result);
 					return Error_Type;
 				}
 
@@ -996,7 +1140,6 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				Atom pred;
 				if (nilp(args)) {
 					stack_restore(ss);
-					stack_add(*result);
 					return Error_Args;
 				}
 				pred = car(args);
@@ -1026,6 +1169,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 		  Atom expansion;
 		  op.type = AtomType_Closure;
 		  err = apply(op, args, &expansion);
+		  print_expr(expansion);
 		  stack_add(expansion);
 		  if (err) {
 			  stack_restore(ss);
@@ -1089,6 +1233,7 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("apply"), make_builtin(builtin_apply));
 	env_set(env, make_sym("eq?"), make_builtin(builtin_eqp));
 	env_set(env, make_sym("pair?"), make_builtin(builtin_pairp));
+	env_set(env, make_sym("no"), make_builtin(builtin_no));
 
 	/* print the environment */
 	puts("Environment:");
@@ -1115,7 +1260,7 @@ int main(int argc, char **argv)
 
 		while (!nilp(code_expr)) {
 			if (!err)
-				err = eval_expr(car(code_expr), env, &result);
+				err = preprocess_eval(car(code_expr), env, &result);
 			if (err)
 				puts(error_string[err]);
 			else {
