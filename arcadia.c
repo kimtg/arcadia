@@ -1,4 +1,4 @@
-#define VERSION "0.4.2"
+#define VERSION "0.4.3"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -972,12 +972,12 @@ int load_file(Atom env, const char *path)
 				print_expr(expr);
 				putchar('\n');
 			}
-			else {
+			/*else {
 				print_expr(result);
 				putchar(' ');
-			}
+			}*/
 		}
-		puts("");
+		/*puts("");*/
 		free(text);
 		return 1;
 	}
@@ -1064,7 +1064,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 						return err;
 					}
 
-					*result = sym;
+					*result = val;
 					err = env_set_eq(env, sym, val);
 					stack_restore(ss);
 					stack_add(*result);
@@ -1234,19 +1234,19 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("pair?"), make_builtin(builtin_pairp));
 	env_set(env, make_sym("no"), make_builtin(builtin_no));
 
+	if (!load_file(env, "library.arc")) {
+		load_file(env, "../library.arc");
+	}
+
 	/* print the environment */
 	puts("Environment:");
 	Atom a = cdr(env);
 	while (!nilp(a)) {
 		Atom env_pair = car(a);
-		printf("%s ", car(env_pair).value.symbol);
+		printf(" %s", car(env_pair).value.symbol);
 		a = cdr(a);
 	}
 	puts("");
-
-	if (!load_file(env, "library.arc")) {
-		load_file(env, "../library.arc");
-	}
 
 	while ((input = readline("> ")) != NULL) {
 		char *buf = (char *)malloc(strlen(input) + 3);
