@@ -1,4 +1,4 @@
-#define VERSION "0.4"
+#define VERSION "0.4.1"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -890,7 +890,7 @@ Error preprocess(Atom expr, Atom env, Atom *result) {
 				err = make_closure(env, car(cdr(args)), cdr(cdr(args)), &macro);
 				if (!err) {
 					macro.type = AtomType_Macro;
-					*result = nil;
+					*result = cons(sym_quote, cons(car(args), nil));
 					err = env_set(env, name, macro);
 					stack_restore(ss);
 					stack_add(*result);
