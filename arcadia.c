@@ -1,4 +1,4 @@
-#define VERSION "0.4.5"
+#define VERSION "0.4.6"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -710,24 +710,6 @@ Error builtin_divide(Atom args, Atom *result)
 	return Error_OK;
 }
 
-Error builtin_eqeq(Atom args, Atom *result)
-{
-	Atom a, b;
-
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-		return Error_Args;
-
-	a = car(args);
-	b = car(cdr(args));
-
-	if (a.type != AtomType_Number || b.type != AtomType_Number)
-		return Error_Type;
-
-	*result = (a.value.number == b.value.number) ? sym_t : nil;
-
-	return Error_OK;
-}
-
 Error builtin_less(Atom args, Atom *result)
 {
 	Atom a, b;
@@ -1264,7 +1246,6 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("*"), make_builtin(builtin_multiply));
 	env_set(env, make_sym("/"), make_builtin(builtin_divide));
 	env_set(env, sym_t, sym_t);
-	env_set(env, make_sym("=="), make_builtin(builtin_eqeq));
 	env_set(env, make_sym("<"), make_builtin(builtin_less));
 	env_set(env, make_sym("apply"), make_builtin(builtin_apply));
 	env_set(env, make_sym("is"), make_builtin(builtin_is));
