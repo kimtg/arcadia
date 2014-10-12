@@ -6,10 +6,10 @@
 quote = fn if mac while
 
 ## Built-in
-no pair? eq? apply < == t / * - + cons cdr car
+no pair? is apply < == t / * - + cons cdr car
 
 ## Library
-rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiquote let len do
+rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiquote let len do ++ -- scar scdr =
 
 ## License ##
 

@@ -1,3 +1,5 @@
+(mac = args (cons 'set args))
+
 (= rreduce (fn (proc init list)
   (if list
       (proc (car list)
@@ -44,9 +46,9 @@
 
 (mac quasiquote (x)
   (if (pair? x)
-      (if (eq? (car x) 'unquote)
+      (if (is (car x) 'unquote)
           (cadr x)
-          (if (and (pair? (car x)) (eq? (caar x) 'unquote-splicing))
+          (if (and (pair? (car x)) (is (caar x) 'unquote-splicing))
               (list 'append
                     (cadr (car x))
                     (list 'quasiquote (cdr x)))
@@ -67,3 +69,15 @@
 
 (mac ++ (a) `(= ,a (+ ,a 1)))
 (mac -- (a) `(= ,a (- ,a 1)))
+
+(mac scar (p value) `(set ,p (cons ,value (cdr ,p))))
+(mac scdr (p value) `(set ,p (cons (car ,p) ,value)))
+
+(mac = (place value)
+  (if (pair? place)
+    (if (is (car place) 'car)
+      (list 'scar (cadr place) value)
+      (if (is (car place) 'cdr)
+        (list 'scdr (cadr place) value)
+        nil))
+    (list 'set place value)))

@@ -1,4 +1,4 @@
-#define VERSION "0.4.1"
+#define VERSION "0.4.2"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -65,7 +65,7 @@ void stack_restore(int saved_size);
 
 static const Atom nil = { AtomType_Nil };
 /* symbols for faster comparison */
-static Atom sym_t, sym_quote, sym_eq, sym_fn, sym_if, sym_mac, sym_apply, sym_while;
+static Atom sym_t, sym_quote, sym_set, sym_fn, sym_if, sym_mac, sym_apply, sym_while;
 Atom code_expr;
 
 struct Allocation {	
@@ -741,7 +741,7 @@ Error builtin_apply(Atom args, Atom *result)
 	return apply(fn, args, result);
 }
 
-Error builtin_eqp(Atom args, Atom *result)
+Error builtin_is(Atom args, Atom *result)
 {
 	Atom a, b;
 	int eq = 0;
@@ -1047,7 +1047,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				stack_add(*result);
 				return Error_OK;
 			}
-			else if (op.value.symbol == sym_eq.value.symbol) {
+			else if (op.value.symbol == sym_set.value.symbol) {
 				Atom sym;
 				if (nilp(args) || nilp(cdr(args))) {
 					stack_restore(ss);
@@ -1169,7 +1169,6 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 		  Atom expansion;
 		  op.type = AtomType_Closure;
 		  err = apply(op, args, &expansion);
-		  print_expr(expansion);
 		  stack_add(expansion);
 		  if (err) {
 			  stack_restore(ss);
@@ -1213,7 +1212,7 @@ int main(int argc, char **argv)
 	/* Set up the initial environment */
 	sym_t = make_sym("t");
 	sym_quote = make_sym("quote");
-	sym_eq = make_sym("=");
+	sym_set = make_sym("set");
 	sym_fn = make_sym("fn");
 	sym_if = make_sym("if");
 	sym_mac = make_sym("mac");
@@ -1231,7 +1230,7 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("=="), make_builtin(builtin_eqeq));
 	env_set(env, make_sym("<"), make_builtin(builtin_less));
 	env_set(env, make_sym("apply"), make_builtin(builtin_apply));
-	env_set(env, make_sym("eq?"), make_builtin(builtin_eqp));
+	env_set(env, make_sym("is"), make_builtin(builtin_is));
 	env_set(env, make_sym("pair?"), make_builtin(builtin_pairp));
 	env_set(env, make_sym("no"), make_builtin(builtin_no));
 
