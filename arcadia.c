@@ -1,4 +1,4 @@
-#define VERSION "0.4.4"
+#define VERSION "0.4.5"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -538,39 +538,59 @@ Error apply(Atom fn, Atom args, Atom *result)
 
 	if (fn.type == AtomType_Builtin)
 		return (*fn.value.builtin)(args, result);
-	else if (fn.type != AtomType_Closure)
-		return Error_Type;
+	else if (fn.type == AtomType_Closure) {
+		env = env_create(car(fn));
+		arg_names = car(cdr(fn));
+		body = cdr(cdr(fn));
 
-	env = env_create(car(fn));
-	arg_names = car(cdr(fn));
-	body = cdr(cdr(fn));
+		/* Bind the arguments */
+		while (!nilp(arg_names)) {
+			if (arg_names.type == AtomType_Symbol) {
+				env_set(env, arg_names, args);
+				args = nil;
+				break;
+			}
 
-	/* Bind the arguments */
-	while (!nilp(arg_names)) {
-		if (arg_names.type == AtomType_Symbol) {
-			env_set(env, arg_names, args);
-			args = nil;
-			break;
+			if (nilp(args))
+				return Error_Args;
+			env_set(env, car(arg_names), car(args));
+			arg_names = cdr(arg_names);
+			args = cdr(args);
+		}
+		if (!nilp(args))
+			return Error_Args;
+
+		/* Evaluate the body */
+		while (!nilp(body)) {
+			Error err = eval_expr(car(body), env, result);
+			if (err)
+				return err;
+			body = cdr(body);
 		}
 
-		if (nilp(args))
-			return Error_Args;
-		env_set(env, car(arg_names), car(args));
-		arg_names = cdr(arg_names);
-		args = cdr(args);
+		return Error_OK;
 	}
-	if (!nilp(args))
-		return Error_Args;
-
-	/* Evaluate the body */
-	while (!nilp(body)) {
-		Error err = eval_expr(car(body), env, result);		
-		if (err)
-			return err;
-		body = cdr(body);
+	else if (fn.type == AtomType_String) { /* implicit indexing for string */
+		int index = (int)(car(args)).value.number;
+		*result = make_number(fn.value.symbol[index]);
+		return Error_OK;
 	}
-
-	return Error_OK;
+	else if (fn.type == AtomType_Pair && listp(fn)) { /* implicit indexing for list */
+		int index = (int)(car(args)).value.number;
+		Atom a = fn;
+		for (int i = 0; i < index; i++) {
+			a = cdr(a);
+			if (nilp(a)) {
+				*result = nil;
+				return Error_OK;
+			}
+		}
+		*result = car(a);
+		return Error_OK;
+	}
+	else {
+		return Error_Type;
+	}
 }
 
 Error builtin_car(Atom args, Atom *result)
