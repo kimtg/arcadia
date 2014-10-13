@@ -17,6 +17,9 @@ rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiq
 * Easy-to-understand garbage collection
 * Implicit indexing
 
+## See also
+[Arc Tutorial](http://old.ycombinator.com/arc/tut.txt)
+
 ## License ##
 
    Copyright 2014 Kim, Taegyoon
