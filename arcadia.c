@@ -1,4 +1,4 @@
-#define VERSION "0.4.7"
+#define VERSION "0.4.8"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -98,6 +98,10 @@ Atom cons(Atom car_val, Atom cdr_val)
 	cons_count++;
 
 	a = malloc(sizeof(struct Allocation));
+	if (a == NULL) {
+		puts("Not enough memory.");
+		exit(1);
+	}
 	a->mark = 0;
 	a->next = global_allocations;
 	global_allocations = a;
@@ -838,6 +842,7 @@ char *slurp(const char *path)
 	}
 	fseek(file, 0, SEEK_END);
 	len = ftell(file);
+	if (len < 0) return NULL;
 	fseek(file, 0, SEEK_SET);
 
 	buf = (char *)malloc(len + 1);
