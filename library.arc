@@ -49,10 +49,10 @@
 (mac or (a b) (list 'if a t b))
 
 (mac quasiquote (x)
-  (if (pair? x)
+  (if (isa x 'cons)
       (if (is (car x) 'unquote)
           (cadr x)
-          (if (and (pair? (car x)) (is (caar x) 'unquote-splicing))
+          (if (and (isa (car x) 'cons) (is (caar x) 'unquote-splicing))
               (list 'append
                     (cadr (car x))
                     (list 'quasiquote (cdr x)))
@@ -81,13 +81,12 @@
 			(++ i)))
 	pair)
 
-(def nth (n pair) (car (nthcdr n pair)))
 (def setnth (n a value)
-	(if (isa a 'pair) (scar (nthcdr n pair) value)
+	(if (isa a 'cons) (scar (nthcdr n a) value)
 		(string-setnth n a value)))
 
 (mac = (place value)
-  (if (pair? place)
+  (if (isa place 'cons)
     (if (is (car place) 'car)
       (list 'scar (cadr place) value)
       (if (is (car place) 'cdr)

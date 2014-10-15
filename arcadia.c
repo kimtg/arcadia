@@ -1,4 +1,4 @@
-#define VERSION "0.4.9"
+#define VERSION "0.4.10"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -843,7 +843,7 @@ Error builtin_string_setnth(Atom args, Atom *result) {
   Atom x = car(cdr(args));
   if (x.type != AtomType_String) return Error_Type;
   Atom value = car(cdr(cdr(args)));
-  x.value.symbol[(long)n.value.number] = value.value.number;
+  x.value.symbol[(long)n.value.number] = (char)value.value.number;
   return Error_OK;
 }
 
@@ -1283,7 +1283,6 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("<"), make_builtin(builtin_less));
 	env_set(env, make_sym("apply"), make_builtin(builtin_apply));
 	env_set(env, make_sym("is"), make_builtin(builtin_is));
-	env_set(env, make_sym("pair?"), make_builtin(builtin_pairp));
 	env_set(env, make_sym("scar"), make_builtin(builtin_scar));
 	env_set(env, make_sym("scdr"), make_builtin(builtin_scdr));
 	env_set(env, make_sym("mod"), make_builtin(builtin_mod));
