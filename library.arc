@@ -6,10 +6,14 @@
             (rreduce proc init (cdr list)))
       init)))
 
-(= list (fn items
-  (rreduce cons nil items)))
+(= list (fn args args))
 
 (mac def (name args . body) (list '= name (cons 'fn (cons args body))))
+
+(def no (x) (is x nil))
+
+(def isa (x y)
+	(is (type x) y))
 
 (def abs (x) (if (< x 0) (- 0 x) x))
 
@@ -78,7 +82,9 @@
 	pair)
 
 (def nth (n pair) (car (nthcdr n pair)))
-(def setnth (n pair value) (scar (nthcdr n pair) value))
+(def setnth (n a value)
+	(if (isa a 'pair) (scar (nthcdr n pair) value)
+		(string-setnth n a value)))
 
 (mac = (place value)
   (if (pair? place)
@@ -88,5 +94,3 @@
         (list 'scdr (cadr place) value)
         (list 'setnth (cadr place) (car place) value)))
     (list 'set place value)))
-
-

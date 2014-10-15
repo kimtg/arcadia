@@ -1,4 +1,4 @@
-#define VERSION "0.4.8a"
+#define VERSION "0.4.9"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -64,8 +64,8 @@ void stack_restore(int saved_size);
 #define nilp(atom) ((atom).type == AtomType_Nil)
 
 static const Atom nil = { AtomType_Nil };
-/* symbols for faster comparison */
-static Atom sym_t, sym_quote, sym_set, sym_fn, sym_if, sym_mac, sym_apply, sym_while;
+/* symbols for faster execution */
+static Atom sym_t, sym_quote, sym_set, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num;
 Atom code_expr;
 
 struct Allocation {	
@@ -797,15 +797,6 @@ Error builtin_pairp(Atom args, Atom *result)
 	return Error_OK;
 }
 
-Error builtin_no(Atom args, Atom *result)
-{
-	if (nilp(args) || !nilp(cdr(args)))
-		return Error_Args;
-
-	*result = (nilp(car(args))) ? sym_t : nil;
-	return Error_OK;
-}
-
 Error builtin_scar(Atom args, Atom *result) {
 	Atom place = car(args);
 	if (place.type != AtomType_Pair) return Error_Type;
@@ -829,6 +820,31 @@ Error builtin_mod(Atom args, Atom *result) {
 	Atom divisor = car(cdr(args));
 	*result = make_number((long)dividend.value.number % (long)divisor.value.number);
 	return Error_OK;
+}
+
+Error builtin_type(Atom args, Atom *result) {
+  Atom x = car(args);
+  switch (x.type) {
+  case AtomType_Pair: *result = sym_cons; break;
+  case AtomType_Symbol:
+  case AtomType_Nil: *result = sym_sym; break;
+  case AtomType_Builtin:
+  case AtomType_Closure: *result = sym_fn; break;
+  case AtomType_String: *result = sym_string; break;
+  case AtomType_Number: *result = sym_num; break;
+  case AtomType_Macro: *result = sym_mac; break;
+  default: *result = nil; break; /* impossible */
+  }
+  return Error_OK;
+}
+
+Error builtin_string_setnth(Atom args, Atom *result) {
+  Atom n = car(args);
+  Atom x = car(cdr(args));
+  if (x.type != AtomType_String) return Error_Type;
+  Atom value = car(cdr(cdr(args)));
+  x.value.symbol[(long)n.value.number] = value.value.number;
+  return Error_OK;
 }
 
 char *slurp(const char *path)
@@ -1251,6 +1267,10 @@ int main(int argc, char **argv)
 	sym_mac = make_sym("mac");
 	sym_apply = make_sym("apply");
 	sym_while = make_sym("while");
+	sym_cons = make_sym("cons");
+	sym_sym = make_sym("sym");
+	sym_string = make_sym("string");
+	sym_num = make_sym("num");
 
 	env_set(env, make_sym("car"), make_builtin(builtin_car));
 	env_set(env, make_sym("cdr"), make_builtin(builtin_cdr));
@@ -1264,10 +1284,11 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("apply"), make_builtin(builtin_apply));
 	env_set(env, make_sym("is"), make_builtin(builtin_is));
 	env_set(env, make_sym("pair?"), make_builtin(builtin_pairp));
-	env_set(env, make_sym("no"), make_builtin(builtin_no));
 	env_set(env, make_sym("scar"), make_builtin(builtin_scar));
 	env_set(env, make_sym("scdr"), make_builtin(builtin_scdr));
 	env_set(env, make_sym("mod"), make_builtin(builtin_mod));
+	env_set(env, make_sym("type"), make_builtin(builtin_type));
+	env_set(env, make_sym("string-setnth"), make_builtin(builtin_string_setnth));
 
 	if (!load_file(env, "library.arc")) {
 		load_file(env, "../library.arc");

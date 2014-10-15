@@ -8,10 +8,10 @@ Arc is a dialect of Lisp.
 quote set fn if mac while
 
 ## Built-in
-no pair? is apply < t / * - + cons cdr car scar scdr mod
+pair? is apply < t / * - + cons cdr car scar scdr mod type
 
 ## Library
-rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiquote let len do ++ -- = nthcdr nth setnth
+rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiquote let len do ++ -- = nthcdr nth setnth no
 
 ## Features
 * Easy-to-understand garbage collection
