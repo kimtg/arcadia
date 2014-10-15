@@ -1,4 +1,4 @@
-#define VERSION "0.4.8"
+#define VERSION "0.4.8a"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -808,6 +808,7 @@ Error builtin_no(Atom args, Atom *result)
 
 Error builtin_scar(Atom args, Atom *result) {
 	Atom place = car(args);
+	if (place.type != AtomType_Pair) return Error_Type;
 	Atom value = car(cdr(args));
 	place.value.pair->car = value;
 	*result = value;
@@ -816,6 +817,7 @@ Error builtin_scar(Atom args, Atom *result) {
 
 Error builtin_scdr(Atom args, Atom *result) {
 	Atom place = car(args);
+	if (place.type != AtomType_Pair) return Error_Type;
 	Atom value = car(cdr(args));
 	place.value.pair->cdr = value;
 	*result = value;

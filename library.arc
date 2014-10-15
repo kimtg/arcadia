@@ -72,7 +72,7 @@
 
 (def nthcdr (n pair)
 	(let i 0
-		(while (< i n)
+		(while (and (< i n) pair)
 			(= pair (cdr pair))
 			(++ i)))
 	pair)
