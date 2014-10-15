@@ -1,3 +1,6 @@
+// #qo CFLAGS: -s -Wall -O3
+// #qo LDFLAGS: -static
+
 #define VERSION "0.4.8"
 
 #ifdef _MSC_VER
