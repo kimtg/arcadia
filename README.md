@@ -18,8 +18,8 @@ rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiq
 * Implicit indexing
 
 ## See also
-[Arc Tutorial](http://old.ycombinator.com/arc/tut.txt)
-[Try Arc: Arc REPL In Your Web Browser](http://tryarc.org/)
+* [Arc Tutorial](http://old.ycombinator.com/arc/tut.txt)
+* [Try Arc: Arc REPL In Your Web Browser](http://tryarc.org/)
 
 ## License ##
 
