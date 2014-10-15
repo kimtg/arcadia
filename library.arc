@@ -70,11 +70,23 @@
 (mac ++ (a) `(= ,a (+ ,a 1)))
 (mac -- (a) `(= ,a (- ,a 1)))
 
+(def nthcdr (n pair)
+	(let i 0
+		(while (< i n)
+			(= pair (cdr pair))
+			(++ i)))
+	pair)
+
+(def nth (n pair) (car (nthcdr n pair)))
+(def setnth (n pair value) (scar (nthcdr n pair) value))
+
 (mac = (place value)
   (if (pair? place)
     (if (is (car place) 'car)
       (list 'scar (cadr place) value)
       (if (is (car place) 'cdr)
         (list 'scdr (cadr place) value)
-        nil))
+        (list 'setnth (cadr place) (car place) value)))
     (list 'set place value)))
+
+

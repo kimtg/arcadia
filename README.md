@@ -11,7 +11,7 @@ quote set fn if mac while
 no pair? is apply < t / * - + cons cdr car scar scdr mod
 
 ## Library
-rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiquote let len do ++ -- =
+rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiquote let len do ++ -- = nthcdr nth setnth
 
 ## Features
 * Easy-to-understand garbage collection
