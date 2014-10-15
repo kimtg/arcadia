@@ -19,6 +19,7 @@ rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiq
 
 ## See also
 [Arc Tutorial](http://old.ycombinator.com/arc/tut.txt)
+[Try Arc: Arc REPL In Your Web Browser](http://tryarc.org/)
 
 ## License ##
 
