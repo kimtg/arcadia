@@ -20,6 +20,17 @@ rreduce list def abs reduce reverse unary-map map append caar cadr and or quasiq
 ## See also
 [Arc Tutorial](http://old.ycombinator.com/arc/tut.txt)
 
+## Building
+
+Using [qo](http://github.com/andlabs/qo), run this command:
+
+```console
+$ qo
+```
+
+The resulting binary (`Arcadia`) will be put in the current working directory. 
+Move it around as you see fit.
+
 ## License ##
 
    Copyright 2014 Kim, Taegyoon
