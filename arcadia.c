@@ -1,4 +1,4 @@
-#define VERSION "0.4.11"
+#define VERSION "0.4.12"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -1149,26 +1149,37 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				return err;
 			}
 			else if (op.value.symbol == sym_if.value.symbol) {
-				Atom cond, val;
+			  Atom cond;
 
-				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))
-					|| !nilp(cdr(cdr(cdr(args))))) {
+				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))) {
 					stack_restore(ss);
 					return Error_Args;
 				}
 
-				err = eval_expr(car(args), env, &cond);
-				if (err) {
+				while (!nilp(args)) {
+				  err = eval_expr(car(args), env, &cond);
+				  if (err) {
 					stack_restore(ss);
 					stack_add(*result);
 					return err;
+				  }
+				  if (nilp(cdr(args))) {
+					*result = cond;
+					stack_restore(ss);
+					stack_add(*result);
+					return Error_OK;
+				  }
+				  if (!nilp(cond)) {
+					err = eval_expr(car(cdr(args)), env, result);					
+					stack_restore(ss);
+					stack_add(*result);
+					return err;
+				  }
+				  
+				  args = cdr(cdr(args));
 				}
-
-				val = nilp(cond) ? car(cdr(cdr(args))) : car(cdr(args));
-				err = eval_expr(val, env, result);
-				stack_restore(ss);
-				stack_add(*result);
-				return err;
+				*result = nil;
+				return Error_OK;
 			}
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
 				Atom name, macro;
@@ -1206,10 +1217,14 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 					return Error_Args;
 				}
 				pred = car(args);
-				while (eval_expr(pred, env, result), !nilp(*result)) {
+				while (!eval_expr(pred, env, result) && !nilp(*result)) {
 					Atom e = cdr(args);
 					while (!nilp(e)) {
-						eval_expr(car(e), env, result);
+						err = eval_expr(car(e), env, result);
+						if (err) {
+						  stack_restore(ss);
+						  return err;
+						}
 						e = cdr(e);
 					}
 				}
