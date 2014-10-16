@@ -93,3 +93,6 @@
         (list 'scdr (cadr place) value)
         (list 'setnth (cadr place) (car place) value)))
     (list 'set place value)))
+
+(mac when (test . body)
+       (list 'if test (cons 'do body)))

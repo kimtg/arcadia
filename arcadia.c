@@ -1151,7 +1151,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 			else if (op.value.symbol == sym_if.value.symbol) {
 			  Atom cond;
 
-				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))) {
+				if (nilp(args) || nilp(cdr(args))) {
 					stack_restore(ss);
 					return Error_Args;
 				}
