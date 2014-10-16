@@ -1,4 +1,4 @@
-#define VERSION "0.4.12"
+#define VERSION "0.4.13"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -227,8 +227,6 @@ Error make_closure(Atom env, Atom args, Atom body, Atom *result)
 	return Error_OK;
 }
 
-
-
 void print_expr(Atom atom)
 {
 	switch (atom.type) {
@@ -263,18 +261,72 @@ void print_expr(Atom atom)
 		printf("#<BUILTIN:%p>", atom.value.builtin);
 		break;
 	case AtomType_Closure:
-		printf("closure ");
+		printf("(closure ");
 		print_expr(cdr(atom));
+		putchar(')');
 		break;
 	case AtomType_String:
 		printf("\"%s\"", atom.value.symbol);
 		break;
 	case AtomType_Macro:
-		printf("macro ");
+		printf("(macro ");
 		print_expr(cdr(atom));
+		putchar(')');
 		break;
 	default:
-		printf("unknown type");
+		printf("(unknown type)");
+		break;
+	}
+}
+
+void pr(Atom atom)
+{
+	switch (atom.type) {
+	case AtomType_Nil:
+		printf("nil");
+		break;
+	case AtomType_Pair:
+		putchar('(');
+		print_expr(car(atom));
+		atom = cdr(atom);
+		while (!nilp(atom)) {
+			if (atom.type == AtomType_Pair) {
+				putchar(' ');
+				print_expr(car(atom));
+				atom = cdr(atom);
+			}
+			else {
+				printf(" . ");
+				print_expr(atom);
+				break;
+			}
+		}
+		putchar(')');
+		break;
+	case AtomType_Symbol:
+		printf("%s", atom.value.symbol);
+		break;
+	case AtomType_Number:
+		printf("%.16g", atom.value.number);
+		break;
+	case AtomType_Builtin:
+		printf("#<BUILTIN:%p>", atom.value.builtin);
+		break;
+	case AtomType_Closure:
+		printf("(closure ");
+		print_expr(cdr(atom));
+		putchar(')');
+		break;
+	case AtomType_String:
+		printf("%s", atom.value.symbol);
+		break;
+	case AtomType_Macro:
+		printf("(macro ");
+		print_expr(cdr(atom));
+		putchar(')');
+		break;
+	default:
+		printf("(unknown type)");
 		break;
 	}
 }
@@ -299,7 +351,11 @@ Error lex(const char *str, const char **start, const char **end)
 	else if (str[0] == ',')
 		*end = str + (str[1] == '@' ? 2 : 1);
 	else if (str[0] == '"') {
-		*end = str + strcspn(str + 1, "\"") + 2;
+		str++;
+		while (*str != '"' && *str != 0) {
+		  str++;
+		}
+		*end = str + 1;
 	}
 	else
 		*end = str + strcspn(str, delim);
@@ -861,6 +917,21 @@ Error builtin_string_setnth(Atom args, Atom *result) {
   return Error_OK;
 }
 
+Error builtin_pr(Atom args, Atom *result) {
+  *result = car(args);
+  while (!nilp(args)) {
+	pr(car(args));
+	args = cdr(args);
+  }
+  return Error_OK;
+}
+
+Error builtin_prn(Atom args, Atom *result) {
+  Error err = builtin_pr(args, result);
+  puts("");
+  return err;
+}
+
 char *slurp(const char *path)
 {
 	FILE *file;
@@ -1317,6 +1388,8 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("mod"), make_builtin(builtin_mod));
 	env_set(env, make_sym("type"), make_builtin(builtin_type));
 	env_set(env, make_sym("string-setnth"), make_builtin(builtin_string_setnth));
+	env_set(env, make_sym("pr"), make_builtin(builtin_pr));
+	env_set(env, make_sym("prn"), make_builtin(builtin_prn));
 
 	if (!load_file(env, "library.arc")) {
 		load_file(env, "../library.arc");

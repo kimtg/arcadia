@@ -95,4 +95,4 @@
     (list 'set place value)))
 
 (mac when (test . body)
-       (list 'if test (cons 'do body)))
+	 (list 'if test (cons 'do body)))
