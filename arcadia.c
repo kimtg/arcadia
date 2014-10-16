@@ -1,4 +1,4 @@
-#define VERSION "0.4.10"
+#define VERSION "0.4.11"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -429,11 +429,25 @@ Error read_expr(const char *input, const char **end, Atom *result)
 }
 
 char *readline(char *prompt) {
-	char ret[2000]; /* one screenful */
-	printf(prompt);
-	fgets(ret, sizeof(ret), stdin);
-	if (feof(stdin)) return NULL;
-	return (char*)strdup(ret);
+  size_t size = 80;
+  //The size is extended by the input with the value of the provisional
+  char *str;
+  int ch;
+  size_t len = 0;
+  printf(prompt);
+  str = malloc(sizeof(char) * size); //size is start size
+  if (!str) return NULL;
+  while (EOF != (ch = fgetc(stdin)) && ch != '\n') {
+	str[len++] = ch;
+	if(len == size){
+	  str = realloc(str, sizeof(char)*(size*=2));
+	  if (!str) return NULL;
+	}
+  }
+  if (ch == EOF && len == 0) return NULL;
+  str[len++]='\0';
+
+  return realloc(str, sizeof(char)*len);
 }
 
 Atom env_create(Atom parent)
