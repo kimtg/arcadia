@@ -1,4 +1,4 @@
-#define VERSION "0.4.14"
+#define VERSION "0.4.15"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -919,10 +919,10 @@ Error builtin_pr(Atom args, Atom *result) {
   return Error_OK;
 }
 
-Error builtin_prn(Atom args, Atom *result) {
-  Error err = builtin_pr(args, result);
-  puts("");
-  return err;
+Error builtin_writeb(Atom args, Atom *result) {
+	putchar((int)car(args).value.number);
+	*result = nil;
+	return Error_OK;
 }
 
 char *slurp(const char *path)
@@ -1377,7 +1377,7 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("type"), make_builtin(builtin_type));
 	env_set(env, make_sym("string-setnth"), make_builtin(builtin_string_setnth));
 	env_set(env, make_sym("pr"), make_builtin(builtin_pr));
-	env_set(env, make_sym("prn"), make_builtin(builtin_prn));
+	env_set(env, make_sym("writeb"), make_builtin(builtin_writeb));
 
 	if (!load_file(env, "library.arc")) {
 		load_file(env, "../library.arc");

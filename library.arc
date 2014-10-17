@@ -42,7 +42,6 @@
 (def append (a b) (rreduce cons b a))
 
 (def caar (x) (car (car x)))
-
 (def cadr (x) (car (cdr x)))
 
 (mac and (a b) (list 'if a b nil))
@@ -96,3 +95,7 @@
 
 (mac when (test . body)
 	 (list 'if test (cons 'do body)))
+
+(mac do1 xs `(let it ,(car xs) ,@(cdr xs) it))
+
+(def prn xs (do1 (apply pr xs) (writeb 10)))
