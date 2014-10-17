@@ -1,4 +1,4 @@
-#define VERSION "0.4.13"
+#define VERSION "0.4.14"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -787,18 +787,11 @@ Error builtin_divide(Atom args, Atom *result)
 Error builtin_less(Atom args, Atom *result)
 {
 	Atom a, b;
-
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-		return Error_Args;
-
+	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args)))) return Error_Args;
 	a = car(args);
 	b = car(cdr(args));
-
-	if (a.type != AtomType_Number || b.type != AtomType_Number)
-		return Error_Type;
-
+	if (a.type != AtomType_Number || b.type != AtomType_Number) return Error_Type;
 	*result = (a.value.number < b.value.number) ? sym_t : nil;
-
 	return Error_OK;
 }
 
@@ -868,18 +861,18 @@ Error builtin_pairp(Atom args, Atom *result)
 }
 
 Error builtin_scar(Atom args, Atom *result) {
-	Atom place = car(args);
+	Atom place = car(args), value;
 	if (place.type != AtomType_Pair) return Error_Type;
-	Atom value = car(cdr(args));
+	value = car(cdr(args));
 	place.value.pair->car = value;
 	*result = value;
 	return Error_OK;
 }
 
 Error builtin_scdr(Atom args, Atom *result) {
-	Atom place = car(args);
+	Atom place = car(args), value;
 	if (place.type != AtomType_Pair) return Error_Type;
-	Atom value = car(cdr(args));
+	value = car(cdr(args));
 	place.value.pair->cdr = value;
 	*result = value;
 	return Error_OK;
@@ -910,9 +903,9 @@ Error builtin_type(Atom args, Atom *result) {
 
 Error builtin_string_setnth(Atom args, Atom *result) {
   Atom n = car(args);
-  Atom x = car(cdr(args));
+  Atom x = car(cdr(args)), value;
   if (x.type != AtomType_String) return Error_Type;
-  Atom value = car(cdr(cdr(args)));
+  value = car(cdr(cdr(args)));
   x.value.symbol[(long)n.value.number] = (char)value.value.number;
   return Error_OK;
 }
@@ -1221,12 +1214,6 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 			}
 			else if (op.value.symbol == sym_if.value.symbol) {
 			  Atom cond;
-
-				if (nilp(args) || nilp(cdr(args))) {
-					stack_restore(ss);
-					return Error_Args;
-				}
-
 				while (!nilp(args)) {
 				  err = eval_expr(car(args), env, &cond);
 				  if (err) {
@@ -1245,11 +1232,12 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 					stack_restore(ss);
 					stack_add(*result);
 					return err;
-				  }
-				  
+				  }				  
 				  args = cdr(cdr(args));
 				}
 				*result = nil;
+				stack_restore(ss);
+				stack_add(*result);
 				return Error_OK;
 			}
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
@@ -1424,13 +1412,9 @@ int main(int argc, char **argv)
 				putchar('\n');
 			}
 			code_expr = cdr(code_expr);
-			/*gc_mark(code_expr);
-			gc_mark(env);
-			gc();*/
 		}		
 		free(buf);
 		free(input);
 	}
-
 	return 0;
 }
