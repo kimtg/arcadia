@@ -933,7 +933,7 @@ char *slurp(const char *path)
 
 	file = fopen(path, "rb");
 	if (!file) {
-		printf("Reading %s filed.\n", path);
+		printf("Reading %s failed.\n", path);
 		return NULL;
 	}
 	fseek(file, 0, SEEK_END);
