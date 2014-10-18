@@ -27,16 +27,16 @@
 (def reverse (list)
   (reduce (fn (a x) (cons x a)) nil list))
 
-(def unary-map (proc list)
+(def map1 (proc list)
   (rreduce (fn (x rest) (cons (proc x) rest))
          nil
          list))
 
 (def map (proc . arg-lists)
   (if (car arg-lists)
-      (cons (apply proc (unary-map car arg-lists))
+      (cons (apply proc (map1 car arg-lists))
             (apply map (cons proc
-                             (unary-map cdr arg-lists))))
+                             (map1 cdr arg-lists))))
       nil))
 
 (def append (a b) (rreduce cons b a))
@@ -80,9 +80,9 @@
 			(++ i)))
 	pair)
 
-(def setnth (n a value)
-	(if (isa a 'cons) (scar (nthcdr n a) value)
-		(string-setnth n a value)))
+(def sref (object value index)
+	(if (isa object 'cons) (scar (nthcdr index object) value)
+		(string-setnth index object value)))
 
 (mac = (place value)
   (if (isa place 'cons)
@@ -90,7 +90,7 @@
       (list 'scar (cadr place) value)
       (if (is (car place) 'cdr)
         (list 'scdr (cadr place) value)
-        (list 'setnth (cadr place) (car place) value)))
+        (list 'sref (car place) value (cadr place))))
     (list 'set place value)))
 
 (mac when (test . body)
