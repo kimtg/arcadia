@@ -1,4 +1,4 @@
-#define VERSION "0.4.15"
+#define VERSION "0.4.16"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#include <math.h>
 
 #ifdef _MSC_VER
 #define strdup _strdup
@@ -582,6 +583,17 @@ int listp(Atom expr)
 	return 1;
 }
 
+long len(Atom xs) {
+  Atom a = xs;
+  long ret = 0;
+  if (!listp(xs)) return 0;
+  while (!nilp(a)) {
+	ret++;
+	a = cdr(a);
+  }
+  return ret;
+}
+
 Atom copy_list(Atom list)
 {
 	Atom a, p;
@@ -911,6 +923,10 @@ Error builtin_string_setnth(Atom args, Atom *result) {
 }
 
 Error builtin_pr(Atom args, Atom *result) {
+  if (nilp(args)) {
+	*result = nil;
+	return Error_OK;
+  }
   *result = car(args);
   while (!nilp(args)) {
 	pr(car(args));
@@ -920,9 +936,35 @@ Error builtin_pr(Atom args, Atom *result) {
 }
 
 Error builtin_writeb(Atom args, Atom *result) {
-	putchar((int)car(args).value.number);
-	*result = nil;
-	return Error_OK;
+  if (len(args) != 1) return Error_Args;
+  putchar((int)car(args).value.number);
+  *result = nil;
+  return Error_OK;
+}
+
+Error builtin_expt(Atom args, Atom *result) {
+  Atom a, b;
+  if (len(args) != 2) return Error_Args;
+  a = car(args);
+  b = car(cdr(args));
+  *result = make_number(pow(a.value.number, b.value.number));
+  return Error_OK;
+}
+
+Error builtin_log(Atom args, Atom *result) {
+  Atom a;
+  if (len(args) != 1) return Error_Args;
+  a = car(args);
+  *result = make_number(log(a.value.number));
+  return Error_OK;
+}
+
+Error builtin_sqrt(Atom args, Atom *result) {
+  Atom a;
+  if (len(args) != 1) return Error_Args;
+  a = car(args);
+  *result = make_number(sqrt(a.value.number));
+  return Error_OK;
 }
 
 char *slurp(const char *path)
@@ -1378,6 +1420,9 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("string-setnth"), make_builtin(builtin_string_setnth));
 	env_set(env, make_sym("pr"), make_builtin(builtin_pr));
 	env_set(env, make_sym("writeb"), make_builtin(builtin_writeb));
+	env_set(env, make_sym("expt"), make_builtin(builtin_expt));
+	env_set(env, make_sym("log"), make_builtin(builtin_log));
+	env_set(env, make_sym("sqrt"), make_builtin(builtin_sqrt));
 
 	if (!load_file(env, "library.arc")) {
 		load_file(env, "../library.arc");
