@@ -870,15 +870,6 @@ Error builtin_is(Atom args, Atom *result)
 	return Error_OK;
 }
 
-Error builtin_pairp(Atom args, Atom *result)
-{
-	if (nilp(args) || !nilp(cdr(args)))
-		return Error_Args;
-
-	*result = (car(args).type == AtomType_Pair) ? sym_t : nil;
-	return Error_OK;
-}
-
 Error builtin_scar(Atom args, Atom *result) {
 	Atom place = car(args), value;
 	if (place.type != AtomType_Pair) return Error_Type;
