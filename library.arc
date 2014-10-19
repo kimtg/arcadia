@@ -43,6 +43,7 @@
 
 (def caar (x) (car (car x)))
 (def cadr (x) (car (cdr x)))
+(def cddr (x) (cdr (cdr x)))
 
 (mac and (a b) (list 'if a b nil))
 (mac or (a b) (list 'if a t b))
@@ -66,12 +67,40 @@
 (def len (lst)
 	(if (no lst) 0
 		(+ 1 (len (cdr lst)))))
-		
+
 (mac do body
 	`((fn () ,@body)))
 
-(mac ++ (a) `(= ,a (+ ,a 1)))
-(mac -- (a) `(= ,a (- ,a 1)))
+(def pair (xs)
+  (if (no xs)
+       nil
+      (no (cdr xs))
+       (list (list (car xs)))
+      (cons (list (car xs) (cadr xs))
+            (pair (cddr xs)))))
+
+(mac with (parms . body)
+  `((fn ,(map1 car (pair parms))
+     ,@body)
+    ,@(map1 cadr (pair parms))))
+
+(mac ++ (place)
+  (if (isa place 'cons)
+    (if (is (car place) 'car) `(let _a ,(cadr place) (scar _a (+ _a 1)))
+      (if (is (car place) 'cdr) `(let _a ,(cadr place) (scdr _a (+ _a 1)))
+        `(with (_head ,(car place)
+          _index ,(cadr place))
+          (sref _head (+ (_head _index) 1) _index))))
+    `(set ,place (+ ,place 1))))
+
+(mac -- (place)
+  (if (isa place 'cons)
+    (if (is (car place) 'car) `(let _a ,(cadr place) (scar _a (- _a 1)))
+      (if (is (car place) 'cdr) `(let _a ,(cadr place) (scdr _a (- _a 1)))
+        `(with (_head ,(car place)
+          _index ,(cadr place))
+          (sref _head (- (_head _index) 1) _index))))
+    `(set ,place (- ,place 1))))
 
 (def nthcdr (n pair)
 	(let i 0

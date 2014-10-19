@@ -5,13 +5,13 @@
 Arc is a dialect of Lisp.
 
 ## Special form
-quote set fn if mac while
+fn if mac quote set while
 
 ## Built-in
-is apply < t / * - + cons cdr car scar scdr mod type pr writeb expt log sqrt
+* + - / < apply car cdr cons expt is log mod pr scar scdr sqrt t type writeb
 
 ## Library
-rreduce list def abs reduce reverse map map1 append caar cadr and or quasiquote let len do ++ -- = nthcdr sref no when do1
+++ -- = abs and append caar cadr cddr def do do1 len let list map map1 no nthcdr or pair quasiquote reduce reverse rreduce sref when with
 
 ## Features
 * Easy-to-understand garbage collection
