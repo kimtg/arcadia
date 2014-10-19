@@ -1,4 +1,4 @@
-#define VERSION "0.4.16"
+#define VERSION "0.4.17"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -192,7 +192,6 @@ Atom make_sym(const char *s)
 	a.type = AtomType_Symbol;
 	a.value.symbol = (char*)strdup(s);
 	sym_table = cons(a, sym_table);
-
 	return a;
 }
 
@@ -226,6 +225,14 @@ Error make_closure(Atom env, Atom args, Atom body, Atom *result)
 	result->type = AtomType_Closure;
 
 	return Error_OK;
+}
+
+Atom make_string(char *x)
+{
+	Atom a;
+	a.type = AtomType_String;
+	a.value.symbol = x;
+	return a;
 }
 
 void print_expr(Atom atom)
@@ -967,6 +974,14 @@ Error builtin_sqrt(Atom args, Atom *result) {
   return Error_OK;
 }
 
+Error builtin_readline(Atom args, Atom *result) {	
+	if (len(args) != 0) return Error_Args;	
+	*result = make_string(readline(""));
+	return Error_OK;
+}
+
+/* end builtin */
+
 char *slurp(const char *path)
 {
 	FILE *file;
@@ -1423,6 +1438,7 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("expt"), make_builtin(builtin_expt));
 	env_set(env, make_sym("log"), make_builtin(builtin_log));
 	env_set(env, make_sym("sqrt"), make_builtin(builtin_sqrt));
+	env_set(env, make_sym("readline"), make_builtin(builtin_readline));
 
 	if (!load_file(env, "library.arc")) {
 		load_file(env, "../library.arc");

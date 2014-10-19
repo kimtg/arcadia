@@ -8,7 +8,7 @@ Arc is a dialect of Lisp.
 fn if mac quote set while
 
 ## Built-in
-* + - / < apply car cdr cons expt is log mod pr scar scdr sqrt t type writeb
+* + - / < apply car cdr cons expt is log mod pr readline scar scdr sqrt t type writeb
 
 ## Library
 ++ -- = abs and append caar cadr cddr def do do1 len let list map map1 no nthcdr or pair quasiquote reduce reverse rreduce sref unless when with
