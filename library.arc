@@ -11,6 +11,9 @@
 (mac def (name args . body) (list '= name (cons 'fn (cons args body))))
 
 (def no (x) (is x nil))
+(def > (x y) (< y x))
+(def <= (x y) (no (> x y)))
+(def >= (x y) (no (< x y)))
 
 (def isa (x y)
 	(is (type x) y))
