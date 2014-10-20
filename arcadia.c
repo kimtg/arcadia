@@ -1,4 +1,4 @@
-#define VERSION "0.4.17"
+#define VERSION "0.4.18"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -966,8 +966,9 @@ Error builtin_sqrt(Atom args, Atom *result) {
 }
 
 Error builtin_readline(Atom args, Atom *result) {	
-	if (len(args) != 0) return Error_Args;	
-	*result = make_string(readline(""));
+	if (len(args) != 0) return Error_Args;
+	char *str = readline("");
+	if (str == NULL) *result = nil; else *result = make_string(str);
 	return Error_OK;
 }
 
