@@ -18,6 +18,8 @@
 (def isa (x y)
 	(is (type x) y))
 
+(def isnt (x y) (no (is x y)))
+
 (def abs (x) (if (< x 0) (- 0 x) x))
 
 (def reduce (proc init list)
@@ -67,9 +69,16 @@
 (mac let (sym def . body)
 	`((fn (,sym) ,@body) ,def))
 
-(def len (lst)
+(def list-len (lst)
 	(if (no lst) 0
-		(+ 1 (len (cdr lst)))))
+		(+ 1 (list-len (cdr lst)))))
+
+(def string-len (str)
+  (= i 0)
+  (while (isnt (str i) 0) (++ i)) i)
+
+(def len (seq)
+  ((if (isa seq 'cons) list-len string-len) seq))
 
 (mac do body
 	`((fn () ,@body)))
