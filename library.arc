@@ -134,3 +134,7 @@
 (mac do1 xs `(let it ,(car xs) ,@(cdr xs) it))
 
 (def prn xs (do1 (apply pr xs) (writeb 10)))
+
+(mac for (var init max . body)
+  `(let _max ,max (= ,var ,init)
+      (while (<= ,var _max) ,@body (++ ,var))))
