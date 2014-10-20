@@ -1,4 +1,4 @@
-#define VERSION "0.4.18"
+#define VERSION "0.4.19"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -911,13 +911,16 @@ Error builtin_type(Atom args, Atom *result) {
   return Error_OK;
 }
 
-Error builtin_string_setnth(Atom args, Atom *result) {
-  Atom n = car(args);
-  Atom x = car(cdr(args)), value;
-  if (x.type != AtomType_String) return Error_Type;
-  value = car(cdr(cdr(args)));
-  x.value.symbol[(long)n.value.number] = (char)value.value.number;
-  return Error_OK;
+Error builtin_string_sref(Atom args, Atom *result) {
+	Atom index, obj, value;
+	if (len(args) != 3) return Error_Args;
+	index = car(cdr(cdr(args)));
+	obj = car(args), value;
+	if (obj.type != AtomType_String) return Error_Type;
+	value = car(cdr(args));
+	obj.value.symbol[(long)index.value.number] = (char)value.value.number;
+	*result = make_number(value.value.number);
+	return Error_OK;
 }
 
 Error builtin_pr(Atom args, Atom *result) {
@@ -1424,7 +1427,7 @@ int main(int argc, char **argv)
 	env_set(env, make_sym("scdr"), make_builtin(builtin_scdr));
 	env_set(env, make_sym("mod"), make_builtin(builtin_mod));
 	env_set(env, make_sym("type"), make_builtin(builtin_type));
-	env_set(env, make_sym("string-setnth"), make_builtin(builtin_string_setnth));
+	env_set(env, make_sym("string-sref"), make_builtin(builtin_string_sref));
 	env_set(env, make_sym("pr"), make_builtin(builtin_pr));
 	env_set(env, make_sym("writeb"), make_builtin(builtin_writeb));
 	env_set(env, make_sym("expt"), make_builtin(builtin_expt));
