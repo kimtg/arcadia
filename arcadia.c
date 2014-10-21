@@ -1,4 +1,4 @@
-#define VERSION "0.4.19"
+#define VERSION "0.4.20"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -664,11 +664,13 @@ Error apply(Atom fn, Atom args, Atom *result)
 		return Error_OK;
 	}
 	else if (fn.type == AtomType_String) { /* implicit indexing for string */
+		if (len(args) != 1) return Error_Args;
 		long index = (long)(car(args)).value.number;
 		*result = make_number(fn.value.symbol[index]);
 		return Error_OK;
 	}
 	else if (fn.type == AtomType_Pair && listp(fn)) { /* implicit indexing for list */
+		if (len(args) != 1) return Error_Args;
 		long index = (long)(car(args)).value.number;
 		Atom a = fn;
 		long i;
