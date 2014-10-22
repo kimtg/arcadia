@@ -1,4 +1,4 @@
-#define VERSION "0.4.21"
+#define VERSION "0.4.22"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -977,6 +977,11 @@ Error builtin_readline(Atom args, Atom *result) {
 	return Error_OK;
 }
 
+Error builtin_quit(Atom args, Atom *result) {
+	if (len(args) != 0) return Error_Args;
+	exit(0);
+}
+
 /* end builtin */
 
 char *slurp(const char *path)
@@ -1435,6 +1440,7 @@ void init(Atom *env) {
 	env_set(*env, make_sym("log"), make_builtin(builtin_log));
 	env_set(*env, make_sym("sqrt"), make_builtin(builtin_sqrt));
 	env_set(*env, make_sym("readline"), make_builtin(builtin_readline));
+	env_set(*env, make_sym("quit"), make_builtin(builtin_quit));
 
 	if (!load_file(*env, "library.arc")) {
 		load_file(*env, "../library.arc");

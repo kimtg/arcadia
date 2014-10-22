@@ -4,11 +4,20 @@
 
 Arc is a dialect of Lisp.
 
+## Run
+```
+Usage: arcadia [OPTIONS...] [FILES...]
+
+OPTIONS:
+    -h    print this screen.
+    -v    print version.
+```
+
 ## Special form
 fn if mac quote set while
 
 ## Built-in
-`* + - / < apply car cdr cons expt is log mod pr readline scar scdr sqrt t type writeb`
+`* + - / < apply car cdr cons expt is log mod pr readline scar scdr sqrt t type writeb quit`
 
 ## Library
 `++ -- <= = > >= abs and append caar cadr cddr def do do1 for isa isnt len let list map map1 no nthcdr or pair quasiquote reduce reverse rreduce sref unless when with`
