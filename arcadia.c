@@ -1,4 +1,4 @@
-#define VERSION "0.4.20"
+#define VERSION "0.4.21"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -494,12 +494,12 @@ Error read_expr(const char *input, const char **end, Atom *result)
 
 char *readline(char *prompt) {
   size_t size = 80;
-  //The size is extended by the input with the value of the provisional
+  /* The size is extended by the input with the value of the provisional */
   char *str;
   int ch;
   size_t len = 0;
   printf(prompt);
-  str = malloc(sizeof(char) * size); //size is start size
+  str = malloc(sizeof(char) * size); /* size is start size */
   if (!str) return NULL;
   while (EOF != (ch = fgetc(stdin)) && ch != '\n') {
 	str[len++] = ch;
@@ -987,7 +987,7 @@ char *slurp(const char *path)
 
 	file = fopen(path, "rb");
 	if (!file) {
-		printf("Reading %s failed.\n", path);
+		/* printf("Reading %s failed.\n", path); */
 		return NULL;
 	}
 	fseek(file, 0, SEEK_END);
@@ -1139,7 +1139,7 @@ int load_file(Atom env, const char *path)
 {
 	char *text;
 
-	printf("Reading %s...\n", path);
+	/* printf("Reading %s...\n", path); */
 	text = slurp(path);
 	if (text) {
 		const char *p = text;
@@ -1392,13 +1392,12 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 	}
 }
 
-int main(int argc, char **argv)
-{
-	printf("Arcadia %s\n", VERSION);	
-	Atom env;
-	char *input;
+void print_logo() {
+	printf("Arcadia %s\n", VERSION);
+}
 
-	env = env_create(nil);
+void init(Atom *env) {
+	*env = env_create(nil);
 
 	/* Set up the initial environment */
 	sym_t = make_sym("t");
@@ -1414,33 +1413,35 @@ int main(int argc, char **argv)
 	sym_string = make_sym("string");
 	sym_num = make_sym("num");
 
-	env_set(env, make_sym("car"), make_builtin(builtin_car));
-	env_set(env, make_sym("cdr"), make_builtin(builtin_cdr));
-	env_set(env, make_sym("cons"), make_builtin(builtin_cons));
-	env_set(env, make_sym("+"), make_builtin(builtin_add));
-	env_set(env, make_sym("-"), make_builtin(builtin_subtract));
-	env_set(env, make_sym("*"), make_builtin(builtin_multiply));
-	env_set(env, make_sym("/"), make_builtin(builtin_divide));
-	env_set(env, sym_t, sym_t);
-	env_set(env, make_sym("<"), make_builtin(builtin_less));
-	env_set(env, make_sym("apply"), make_builtin(builtin_apply));
-	env_set(env, make_sym("is"), make_builtin(builtin_is));
-	env_set(env, make_sym("scar"), make_builtin(builtin_scar));
-	env_set(env, make_sym("scdr"), make_builtin(builtin_scdr));
-	env_set(env, make_sym("mod"), make_builtin(builtin_mod));
-	env_set(env, make_sym("type"), make_builtin(builtin_type));
-	env_set(env, make_sym("string-sref"), make_builtin(builtin_string_sref));
-	env_set(env, make_sym("pr"), make_builtin(builtin_pr));
-	env_set(env, make_sym("writeb"), make_builtin(builtin_writeb));
-	env_set(env, make_sym("expt"), make_builtin(builtin_expt));
-	env_set(env, make_sym("log"), make_builtin(builtin_log));
-	env_set(env, make_sym("sqrt"), make_builtin(builtin_sqrt));
-	env_set(env, make_sym("readline"), make_builtin(builtin_readline));
+	env_set(*env, make_sym("car"), make_builtin(builtin_car));
+	env_set(*env, make_sym("cdr"), make_builtin(builtin_cdr));
+	env_set(*env, make_sym("cons"), make_builtin(builtin_cons));
+	env_set(*env, make_sym("+"), make_builtin(builtin_add));
+	env_set(*env, make_sym("-"), make_builtin(builtin_subtract));
+	env_set(*env, make_sym("*"), make_builtin(builtin_multiply));
+	env_set(*env, make_sym("/"), make_builtin(builtin_divide));
+	env_set(*env, sym_t, sym_t);
+	env_set(*env, make_sym("<"), make_builtin(builtin_less));
+	env_set(*env, make_sym("apply"), make_builtin(builtin_apply));
+	env_set(*env, make_sym("is"), make_builtin(builtin_is));
+	env_set(*env, make_sym("scar"), make_builtin(builtin_scar));
+	env_set(*env, make_sym("scdr"), make_builtin(builtin_scdr));
+	env_set(*env, make_sym("mod"), make_builtin(builtin_mod));
+	env_set(*env, make_sym("type"), make_builtin(builtin_type));
+	env_set(*env, make_sym("string-sref"), make_builtin(builtin_string_sref));
+	env_set(*env, make_sym("pr"), make_builtin(builtin_pr));
+	env_set(*env, make_sym("writeb"), make_builtin(builtin_writeb));
+	env_set(*env, make_sym("expt"), make_builtin(builtin_expt));
+	env_set(*env, make_sym("log"), make_builtin(builtin_log));
+	env_set(*env, make_sym("sqrt"), make_builtin(builtin_sqrt));
+	env_set(*env, make_sym("readline"), make_builtin(builtin_readline));
 
-	if (!load_file(env, "library.arc")) {
-		load_file(env, "../library.arc");
+	if (!load_file(*env, "library.arc")) {
+		load_file(*env, "../library.arc");
 	}
+}
 
+void print_env(Atom env) {
 	/* print the environment */
 	puts("Environment:");
 	Atom a = cdr(env);
@@ -1450,6 +1451,10 @@ int main(int argc, char **argv)
 		a = cdr(a);
 	}
 	puts("");
+}
+
+void repl(Atom env) {
+	char *input;
 
 	while ((input = readline("> ")) != NULL) {
 		char *buf = (char *)malloc(strlen(input) + 3);
@@ -1470,9 +1475,46 @@ int main(int argc, char **argv)
 				putchar('\n');
 			}
 			code_expr = cdr(code_expr);
-		}		
+		}
 		free(buf);
 		free(input);
+	}
+}
+
+int main(int argc, char **argv)
+{
+	Atom env;
+	if (argc == 1) { /* REPL */
+		print_logo();
+		init(&env);
+		print_env(env);
+		repl(env);
+		puts("");
+		return 0;
+	}
+	else if (argc == 2) {
+		char *opt = argv[1];
+		if (strcmp(opt, "-h") == 0) {
+			puts("Usage: arcadia [OPTIONS...] [FILES...]");
+			puts("");
+			puts("OPTIONS:");
+			puts("    -h    print this screen.");
+			puts("    -v    print version.");
+			return 0;
+		}
+		else if (strcmp(opt, "-v") == 0) {
+			puts(VERSION);
+			return 0;
+		}
+	}
+
+	/* execute files */
+	init(&env);
+	int i;
+	for (i = 1; i < argc; i++) {
+		if (!load_file(env, argv[i])) {
+			fprintf(stderr, "Cannot open file: %s\n", argv[i]);
+		}
 	}
 	return 0;
 }
