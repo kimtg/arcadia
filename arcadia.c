@@ -1,4 +1,4 @@
-#define VERSION "0.4.22"
+#define VERSION "0.4.23"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stddef.h>
 #include <math.h>
+#include <time.h>
 
 #ifdef _MSC_VER
 #define strdup _strdup
@@ -982,6 +983,18 @@ Error builtin_quit(Atom args, Atom *result) {
 	exit(0);
 }
 
+double rand_double() {
+	return (double)rand() / ((double)RAND_MAX + 1.0);
+}
+
+Error builtin_rand(Atom args, Atom *result) {
+	long alen = len(args);
+	if (alen == 0) *result = make_number(rand_double());
+	else if (alen == 1) *result = make_number(floor(rand_double() * car(args).value.number));		
+	else return Error_Args;
+	return Error_OK;
+}
+
 /* end builtin */
 
 char *slurp(const char *path)
@@ -1402,6 +1415,7 @@ void print_logo() {
 }
 
 void init(Atom *env) {
+	srand((unsigned int)time(0));
 	*env = env_create(nil);
 
 	/* Set up the initial environment */
@@ -1441,6 +1455,7 @@ void init(Atom *env) {
 	env_set(*env, make_sym("sqrt"), make_builtin(builtin_sqrt));
 	env_set(*env, make_sym("readline"), make_builtin(builtin_readline));
 	env_set(*env, make_sym("quit"), make_builtin(builtin_quit));
+	env_set(*env, make_sym("rand"), make_builtin(builtin_rand));
 
 	if (!load_file(*env, "library.arc")) {
 		load_file(*env, "../library.arc");
