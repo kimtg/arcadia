@@ -1,4 +1,4 @@
-#define VERSION "0.4.26"
+#define VERSION "0.4.27"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -349,9 +349,9 @@ void pr(Atom atom)
 Error lex(const char *str, const char **start, const char **end)
 {
 	const char *ws = " \t\r\n";
-	const char *delim = "() \t\r\n";
+	const char *delim = "() \t\r\n;";
 	const char *prefix = "()'`";
-
+start:
 	str += strspn(str, ws);
 
 	if (str[0] == '\0') {
@@ -371,6 +371,10 @@ Error lex(const char *str, const char **start, const char **end)
 		  str++;
 		}
 		*end = str + 1;
+	}
+	else if (str[0] == ';') { /* end-of-line comment */
+		str += strcspn(str, "\n");
+		goto start;
 	}
 	else
 		*end = str + strcspn(str, delim);
@@ -1518,8 +1522,8 @@ void repl(Atom env) {
 	char *input;
 
 	while ((input = readline("> ")) != NULL) {
-		char *buf = (char *)malloc(strlen(input) + 3);
-		sprintf(buf, "(%s)", input);
+		char *buf = (char *)malloc(strlen(input) + 4);
+		sprintf(buf, "(%s\n)", input);
 		const char *p = buf;
 		Error err;
 		Atom result;
