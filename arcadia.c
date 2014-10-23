@@ -1,4 +1,4 @@
-#define VERSION "0.4.24"
+#define VERSION "0.4.25"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -84,6 +84,10 @@ int stack_capacity = 0;
 int stack_size = 0;
 
 void stack_add(Atom a) {
+	if (!(a.type == AtomType_Pair
+		|| a.type == AtomType_Closure
+		|| a.type == AtomType_Macro))
+		return;
 	stack_size++;
 	if (stack_size > stack_capacity) {
 		stack_capacity = stack_size * 2;
@@ -1368,6 +1372,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 					return Error_Args;
 				}
 				pred = car(args);
+				int ss2 = stack_size;
 				while (!eval_expr(pred, env, result) && !nilp(*result)) {
 					Atom e = cdr(args);
 					while (!nilp(e)) {
@@ -1378,6 +1383,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 						}
 						e = cdr(e);
 					}
+					stack_restore(ss2);
 				}
 				stack_restore(ss);
 				stack_add(*result);
