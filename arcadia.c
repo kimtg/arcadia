@@ -1,4 +1,4 @@
-#define VERSION "0.4.25"
+#define VERSION "0.4.26"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -60,6 +60,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result);
 void gc_mark(Atom root);
 void gc();
 void stack_restore(int saved_size);
+Error macex(Atom expr, Atom *result);
 
 #define car(p) ((p).value.pair->car)
 #define cdr(p) ((p).value.pair->cdr)
@@ -69,6 +70,7 @@ static const Atom nil = { AtomType_Nil };
 /* symbols for faster execution */
 static Atom sym_t, sym_quote, sym_set, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num;
 Atom code_expr;
+Atom env; /* the global environment */
 
 struct Allocation {	
 	struct Pair pair;
@@ -1019,6 +1021,16 @@ Error builtin_read(Atom args, Atom *result) {
 	return Error_OK;
 }
 
+Error builtin_macex(Atom args, Atom *result) {
+	long alen = len(args);
+	if (alen == 1) {		
+		Error err = macex(car(args), result);
+		return err;
+	}
+	else return Error_Args;
+	return Error_OK;
+}
+
 /* end builtin */
 
 char *slurp(const char *path)
@@ -1049,7 +1061,7 @@ char *slurp(const char *path)
 }
 
 /* compile-time macro */
-Error preprocess(Atom expr, Atom env, Atom *result) {
+Error macex(Atom expr, Atom *result) {
 	Error err = Error_OK;
 	int ss = stack_size; /* save stack point */
 
@@ -1151,7 +1163,7 @@ Error preprocess(Atom expr, Atom env, Atom *result) {
 			Atom expr2 = copy_list(expr);
 			Atom p = expr2;
 			while (!nilp(p)) {
-				err = preprocess(car(p), env, &car(p));
+				err = macex(car(p), &car(p));
 				if (err) {
 					stack_restore(ss);
 					stack_add(*result);
@@ -1167,9 +1179,9 @@ Error preprocess(Atom expr, Atom env, Atom *result) {
 	}
 }
 
-Error preprocess_eval(Atom expr, Atom env, Atom *result) {
+Error macex_eval(Atom expr, Atom env, Atom *result) {
 	Atom expr2;
-	Error err = preprocess(expr, env, &expr2);
+	Error err = macex(expr, &expr2);
 	if (err) return err;
 	/*printf("expanded: ");
 	print_expr(expr2);
@@ -1188,7 +1200,7 @@ int load_file(Atom env, const char *path)
 		Atom expr;
 		while (read_expr(p, &p, &expr) == Error_OK) {
 			Atom result;
-			Error err = preprocess_eval(expr, env, &result);
+			Error err = macex_eval(expr, env, &result);
 			if (err) {
 				puts(error_string[err]);
 				printf("Error in expression:\n\t");
@@ -1483,6 +1495,7 @@ void init(Atom *env) {
 	env_set(*env, make_sym("quit"), make_builtin(builtin_quit));
 	env_set(*env, make_sym("rand"), make_builtin(builtin_rand));
 	env_set(*env, make_sym("read"), make_builtin(builtin_read));
+	env_set(*env, make_sym("macex"), make_builtin(builtin_macex));
 
 	if (!load_file(*env, "library.arc")) {
 		load_file(*env, "../library.arc");
@@ -1515,7 +1528,7 @@ void repl(Atom env) {
 
 		while (!nilp(code_expr)) {
 			if (!err)
-				err = preprocess_eval(car(code_expr), env, &result);
+				err = macex_eval(car(code_expr), env, &result);
 			if (err)
 				puts(error_string[err]);
 			else {
@@ -1530,8 +1543,7 @@ void repl(Atom env) {
 }
 
 int main(int argc, char **argv)
-{
-	Atom env;
+{	
 	if (argc == 1) { /* REPL */
 		print_logo();
 		init(&env);

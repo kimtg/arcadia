@@ -17,7 +17,7 @@ OPTIONS:
 fn if mac quote set while
 
 ## Built-in
-`* + - / < apply car cdr cons expt is log mod pr readline scar scdr sqrt t type writeb quit rand read`
+`* + - / < apply car cdr cons expt is log macex mod pr readline scar scdr sqrt t type writeb quit rand read`
 
 ## Library
 `++ -- <= = > >= abs and append caar cadr cddr def do do1 for isa isnt len let list map map1 no nthcdr or pair quasiquote reduce reverse rreduce sref unless when with`
