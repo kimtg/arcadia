@@ -1,4 +1,4 @@
-#define VERSION "0.4.23"
+#define VERSION "0.4.24"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -995,6 +995,26 @@ Error builtin_rand(Atom args, Atom *result) {
 	return Error_OK;
 }
 
+Error builtin_read(Atom args, Atom *result) {
+	long alen = len(args);
+	char *s;
+	if (alen == 0) {
+		s = readline("");
+		const char *buf = s;
+		Error err = read_expr(buf, &buf, result);
+		free(s);
+		return err;
+	}
+	else if (alen == 1) {
+		s = car(args).value.symbol;
+		const char *buf = s;
+		Error err = read_expr(buf, &buf, result);
+		return err;
+	}
+	else return Error_Args;
+	return Error_OK;
+}
+
 /* end builtin */
 
 char *slurp(const char *path)
@@ -1456,6 +1476,7 @@ void init(Atom *env) {
 	env_set(*env, make_sym("readline"), make_builtin(builtin_readline));
 	env_set(*env, make_sym("quit"), make_builtin(builtin_quit));
 	env_set(*env, make_sym("rand"), make_builtin(builtin_rand));
+	env_set(*env, make_sym("read"), make_builtin(builtin_read));
 
 	if (!load_file(*env, "library.arc")) {
 		load_file(*env, "../library.arc");
