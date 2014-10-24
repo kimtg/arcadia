@@ -1,4 +1,4 @@
-#define VERSION "0.4.27"
+#define VERSION "0.4.28"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -61,6 +61,11 @@ void gc_mark(Atom root);
 void gc();
 void stack_restore(int saved_size);
 Error macex(Atom expr, Atom *result);
+char *to_string(Atom atom);
+char *strcat_alloc(char **dst, char *src);
+char *str_new();
+
+/* end forward */
 
 #define car(p) ((p).value.pair->car)
 #define cdr(p) ((p).value.pair->cdr)
@@ -748,6 +753,7 @@ Error builtin_add(Atom args, Atom *result)
 
 	a = args;
 	while (!nilp(a)) {
+		if (car(a).type != AtomType_Number) return Error_Type;
 		acc.value.number += car(a).value.number;
 		a = cdr(a);
 	}
@@ -765,12 +771,14 @@ Error builtin_subtract(Atom args, Atom *result)
 		return Error_OK;
 	}
 	if (nilp(cdr(args))) { /* 1 argument */
+		if (car(args).type != AtomType_Number) return Error_Type;
 		*result = make_number(-car(args).value.number);
 		return Error_OK;
 	}
 	acc = make_number(car(args).value.number);
 	a = cdr(args);
 	while (!nilp(a)) {
+		if (car(a).type != AtomType_Number) return Error_Type;
 		acc.value.number -= car(a).value.number;
 		a = cdr(a);
 	}
@@ -786,6 +794,7 @@ Error builtin_multiply(Atom args, Atom *result)
 
 	a = args;
 	while (!nilp(a)) {
+		if (car(a).type != AtomType_Number) return Error_Type;
 		acc.value.number *= car(a).value.number;
 		a = cdr(a);
 	}
@@ -803,12 +812,14 @@ Error builtin_divide(Atom args, Atom *result)
 		return Error_OK;
 	}
 	if (nilp(cdr(args))) { /* 1 argument */
+		if (car(args).type != AtomType_Number) return Error_Type;
 		*result = make_number(1.0 / car(args).value.number);
 		return Error_OK;
 	}
 	acc = make_number(car(args).value.number);
 	a = cdr(args);
 	while (!nilp(a)) {
+		if (car(a).type != AtomType_Number) return Error_Type;
 		acc.value.number /= car(a).value.number;
 		a = cdr(a);
 	}
@@ -1035,7 +1046,95 @@ Error builtin_macex(Atom args, Atom *result) {
 	return Error_OK;
 }
 
+Error builtin_string(Atom args, Atom *result) {
+	char *s = str_new();
+	while (!nilp(args)) {
+		char *a = to_string(car(args));
+		strcat_alloc(&s, a);
+		args = cdr(args);
+	}
+	*result = make_string(s);
+	return Error_OK;
+}
+
+Error builtin_sym(Atom args, Atom *result) {
+	long alen = len(args);
+	if (alen == 1) {
+		*result = make_sym(to_string(car(args)));
+		return Error_OK;
+	}
+	else return Error_Args;
+}
+
 /* end builtin */
+
+char *strcat_alloc(char **dst, char *src) {
+	size_t len = strlen(*dst) + strlen(src);
+	*dst = realloc(*dst, (len + 1) * sizeof(char));
+	strcat(*dst, src);
+	return *dst;
+}
+
+char *str_new() {
+	char *s = malloc(1 * sizeof(char));
+	s[0] = 0;
+	return s;
+}
+
+char *to_string(Atom atom) {
+	char *s = str_new();
+	char buf[80];
+	switch (atom.type) {
+	case AtomType_Nil:
+		printf("*nilnilnil*");
+		strcat_alloc(&s, "nil");		
+		break;
+	case AtomType_Pair:
+		strcat_alloc(&s, "(");
+		strcat_alloc(&s, to_string(car(atom)));
+		atom = cdr(atom);
+		while (!nilp(atom)) {
+			if (atom.type == AtomType_Pair) {
+				strcat_alloc(&s, " ");
+				strcat_alloc(&s, to_string(car(atom)));
+				atom = cdr(atom);
+			}
+			else {
+				strcat_alloc(&s, " . ");
+				strcat_alloc(&s, to_string(atom));
+				break;
+			}
+		}
+		strcat_alloc(&s, ")");
+		break;
+	case AtomType_Symbol:
+	case AtomType_String:
+		strcat_alloc(&s, atom.value.symbol);
+		break;
+	case AtomType_Number:
+		sprintf(buf, "%.16g", atom.value.number);
+		strcat_alloc(&s, buf);
+		break;
+	case AtomType_Builtin:		
+		sprintf(buf, "#<BUILTIN:%p>", atom.value.builtin);
+		strcat_alloc(&s, buf);
+		break;
+	case AtomType_Closure:
+		strcat_alloc(&s, "(closure ");
+		strcat_alloc(&s, to_string(cdr(atom)));
+		strcat_alloc(&s, ")");
+		break;
+	case AtomType_Macro:
+		strcat_alloc(&s, "(macro ");
+		strcat_alloc(&s, to_string(cdr(atom)));
+		strcat_alloc(&s, ")");
+		break;
+	default:
+		strcat_alloc(&s, "(unknown type)");
+		break;
+	}
+	return s;
+}
 
 char *slurp(const char *path)
 {
@@ -1500,6 +1599,8 @@ void init(Atom *env) {
 	env_set(*env, make_sym("rand"), make_builtin(builtin_rand));
 	env_set(*env, make_sym("read"), make_builtin(builtin_read));
 	env_set(*env, make_sym("macex"), make_builtin(builtin_macex));
+	env_set(*env, make_sym("string"), make_builtin(builtin_string));
+	env_set(*env, make_sym("sym"), make_builtin(builtin_sym));
 
 	if (!load_file(*env, "library.arc")) {
 		load_file(*env, "../library.arc");

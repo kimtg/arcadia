@@ -96,22 +96,41 @@
      ,@body)
     ,@(map1 cadr (pair parms))))
 
+(def join args
+  (if (no args)
+    nil
+    (let a (car args)
+      (if (no a)
+        (apply join (cdr args))
+        (cons (car a) (apply join (cons (cdr a) (cdr args))))))))
+
+(= uniq (let uniq-count 0
+  (fn () (sym (string "_uniq" (= uniq-count (+ uniq-count 1)))))))
+
+(mac w/uniq (names . body)
+  (if (isa names 'cons)
+    `(with ,(apply join (map (fn (x) (list x '(uniq))) names))
+       ,@body)
+    `(let ,names (uniq) ,@body)))
+
 (mac ++ (place)
   (if (isa place 'cons)
-    (if (is (car place) 'car) `(let _a ,(cadr place) (scar _a (+ _a 1)))
-      (if (is (car place) 'cdr) `(let _a ,(cadr place) (scdr _a (+ _a 1)))
-        `(with (_head ,(car place)
-          _index ,(cadr place))
-          (sref _head (+ (_head _index) 1) _index))))
+    (w/uniq (a head index)
+      (if (is (car place) 'car) `(let ,a ,(cadr place) (scar ,a (+ (car ,a) 1)))
+        (if (is (car place) 'cdr) `(let ,a ,(cadr place) (scdr ,a (+ (cdr ,a) 1)))
+          `(with (,head ,(car place)
+            ,index ,(cadr place))
+            (sref ,head (+ (,head ,index) 1) ,index)))))
     `(set ,place (+ ,place 1))))
 
 (mac -- (place)
   (if (isa place 'cons)
-    (if (is (car place) 'car) `(let _a ,(cadr place) (scar _a (- _a 1)))
-      (if (is (car place) 'cdr) `(let _a ,(cadr place) (scdr _a (- _a 1)))
-        `(with (_head ,(car place)
-          _index ,(cadr place))
-          (sref _head (- (_head _index) 1) _index))))
+    (w/uniq (a head index)
+      (if (is (car place) 'car) `(let ,a ,(cadr place) (scar ,a (- (car ,a) 1)))
+        (if (is (car place) 'cdr) `(let ,a ,(cadr place) (scdr ,a (- (cdr ,a) 1)))
+          `(with (,head ,(car place)
+            ,index ,(cadr place))
+            (sref ,head (- (,head ,index) 1) ,index)))))
     `(set ,place (- ,place 1))))
 
 (def nthcdr (n pair)
@@ -145,5 +164,6 @@
 (def prn xs (do1 (apply pr xs) (writeb 10)))
 
 (mac for (var init max . body)
-  `(let _max ,max (= ,var ,init)
-      (while (<= ,var _max) ,@body (++ ,var))))
+  (w/uniq g
+  `(let ,g ,max (= ,var ,init)
+      (while (<= ,var ,g) ,@body (++ ,var)))))
