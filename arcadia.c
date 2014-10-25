@@ -1,4 +1,4 @@
-#define VERSION "0.4.28"
+#define VERSION "0.4.29"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -1066,6 +1066,17 @@ Error builtin_sym(Atom args, Atom *result) {
 	else return Error_Args;
 }
 
+Error builtin_system(Atom args, Atom *result) {
+	long alen = len(args);
+	if (alen == 1) {
+		Atom a = car(args);
+		if (a.type != AtomType_String) return Error_Type;
+		*result = make_number(system(car(args).value.symbol));
+		return Error_OK;
+	}
+	else return Error_Args;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1601,6 +1612,7 @@ void init(Atom *env) {
 	env_set(*env, make_sym("macex"), make_builtin(builtin_macex));
 	env_set(*env, make_sym("string"), make_builtin(builtin_string));
 	env_set(*env, make_sym("sym"), make_builtin(builtin_sym));
+	env_set(*env, make_sym("system"), make_builtin(builtin_system));
 
 	if (!load_file(*env, "library.arc")) {
 		load_file(*env, "../library.arc");
