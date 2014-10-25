@@ -167,3 +167,5 @@
   (w/uniq g
   `(let ,g ,max (= ,var ,init)
       (while (<= ,var ,g) ,@body (++ ,var)))))
+
+(def idfn (x) x)
