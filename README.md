@@ -20,7 +20,7 @@ fn if mac quote set while
 `* + - / < apply car cdr cons expt is log macex mod pr readline scar scdr sqrt t type writeb quit rand read string sym system`
 
 ## Library
-`++ -- <= = > >= abs and append caar cadr cddr def do do1 for isa isnt join len let list map map1 no nthcdr or pair quasiquote reduce reverse rreduce sref uniq unless w/uniq when with`
+`++ -- <= = > >= abs and append caar cadr cddr def do do1 for idfn isa isnt join len let list map map1 no nthcdr or pair quasiquote reduce reverse rreduce sref uniq unless w/uniq when with`
 
 ## Features
 * Easy-to-understand garbage collection
