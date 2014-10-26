@@ -1,4 +1,4 @@
-#define VERSION "0.4.32"
+#define VERSION "0.5"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -84,7 +84,14 @@ struct Allocation {
 	struct Allocation *next;
 };
 
+struct allocation_string {
+	char *string;
+	char mark;
+	struct allocation_string *next;
+};
+
 struct Allocation *global_allocations = NULL;
+struct allocation_string *global_allocations_string = NULL;
 int cons_count = 0;
 
 Atom *stack = NULL;
@@ -134,28 +141,43 @@ Atom cons(Atom car_val, Atom cdr_val)
 void gc_mark(Atom root)
 {
 	struct Allocation *a;
+	struct allocation_string *as;
 
-	if (!(root.type == AtomType_Pair
-		|| root.type == AtomType_Closure
-		|| root.type == AtomType_Macro))
+	switch (root.type) {
+	case AtomType_Pair:
+	case AtomType_Closure:
+	case AtomType_Macro:
+		a = (struct Allocation *)
+			((char *)root.value.pair
+			- offsetof(struct Allocation, pair));
+
+		if (a->mark)
+			return;
+
+		a->mark = 1;
+
+		gc_mark(car(root));
+		gc_mark(cdr(root));
+		break;
+	case AtomType_String:
+		as = (struct allocation_string *)
+			((char *)root.value.symbol
+			- offsetof(struct allocation_string, string));
+
+		if (as->mark)
+			return;
+
+		as->mark = 1;
+		break;
+	default:
 		return;
-
-	a = (struct Allocation *)
-		((char *)root.value.pair
-		- offsetof(struct Allocation, pair));
-
-	if (a->mark)
-		return;
-
-	a->mark = 1;
-
-	gc_mark(car(root));
-	gc_mark(cdr(root));
+	}
 }
 
 void gc()
 {
 	struct Allocation *a, **p;
+	struct allocation_string *as, **ps;
 
 	gc_mark(sym_table);
 	gc_mark(code_expr);	
@@ -177,6 +199,21 @@ void gc()
 		else {
 			p = &a->next;
 			a->mark = 0; /* clear mark */
+		}
+	}
+
+	/* Free unmarked string allocations */
+	ps = &global_allocations_string;
+	while (*ps != NULL) {
+		as = *ps;
+		if (!as->mark) {
+			*ps = as->next;
+			free(as->string);
+			free(as);
+		}
+		else {
+			ps = &as->next;
+			as->mark = 0; /* clear mark */
 		}
 	}
 }
@@ -243,8 +280,17 @@ Error make_closure(Atom env, Atom args, Atom body, Atom *result)
 Atom make_string(char *x)
 {
 	Atom a;
+	struct allocation_string *alloc;
+	cons_count++;
+	alloc = malloc(sizeof(struct allocation_string));
+	alloc->string = x;
+	alloc->mark = 0;
+	alloc->next = global_allocations_string;
+	global_allocations_string = alloc;
+
 	a.type = AtomType_String;
 	a.value.symbol = x;
+	stack_add(a);
 	return a;
 }
 
