@@ -69,16 +69,10 @@
 (mac let (sym def . body)
 	`((fn (,sym) ,@body) ,def))
 
-(def list-len (lst)
-  (let i 0
-    (while lst (++ i) (= lst (cdr lst))) i))
-
-(def string-len (str)
-  (let i 0
-    (while (isnt (str i) 0) (++ i)) i))
-
 (def len (seq)
-  ((if (isa seq 'cons) list-len string-len) seq))
+  (let i 0
+    (if (isa seq 'cons) (do (while seq (++ i) (= seq (cdr seq))) i)
+      (do (while (isnt (seq i) 0) (++ i)) i))))
 
 (mac do body
 	`((fn () ,@body)))

@@ -1,4 +1,4 @@
-#define VERSION "0.4.30"
+#define VERSION "0.4.31"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -1505,7 +1505,11 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				}
 				pred = car(args);
 				int ss2 = stack_size;
-				while (!eval_expr(pred, env, result) && !nilp(*result)) {
+				while (err = eval_expr(pred, env, result), !nilp(*result)) {
+					if (err) {
+						stack_restore(ss);
+						return err;
+					}
 					Atom e = cdr(args);
 					while (!nilp(e)) {
 						err = eval_expr(car(e), env, result);
