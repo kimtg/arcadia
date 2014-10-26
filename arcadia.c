@@ -1159,7 +1159,6 @@ char *to_string(atom atom) {
 	char buf[80];
 	switch (atom.type) {
 	case T_NIL:
-		printf("*nilnilnil*");
 		strcat_alloc(&s, "nil");		
 		break;
 	case T_CONS:
