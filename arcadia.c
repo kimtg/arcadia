@@ -1,4 +1,4 @@
-#define VERSION "0.4.31"
+#define VERSION "0.4.32"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -27,10 +27,10 @@ enum AtomType {
 };
 
 typedef enum {
-	Error_OK = 0, Error_Syntax, Error_Unbound, Error_Args, Error_Type
+	Error_OK = 0, Error_Syntax, Error_Unbound, Error_Args, Error_Type, Error_File
 } Error;
 
-char *error_string[] = { "", "Syntax error", "Symbol not bound", "Wrong number of arguments", "Wrong type" };
+char *error_string[] = { "", "Syntax error", "Symbol not bound", "Wrong number of arguments", "Wrong type", "File error" };
 
 typedef struct Atom Atom;
 typedef Error(*Builtin)(Atom args, Atom *result);
@@ -65,7 +65,7 @@ char *to_string(Atom atom);
 char *strcat_alloc(char **dst, char *src);
 char *str_new();
 Error macex_eval(Atom expr, Atom env, Atom *result);
-
+Error load_file(Atom env, const char *path);
 /* end forward */
 
 #define car(p) ((p).value.pair->car)
@@ -1083,6 +1083,16 @@ Error builtin_eval(Atom args, Atom *result) {
 	else return Error_Args;
 }
 
+Error builtin_load(Atom args, Atom *result) {
+	if (len(args) == 1) {
+		Atom a = car(args);
+		if (a.type != AtomType_String) return Error_Type;		
+		*result = nil;
+		return load_file(env, a.value.symbol);
+	}
+	else return Error_Args;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1309,7 +1319,7 @@ Error macex_eval(Atom expr, Atom env, Atom *result) {
 	return eval_expr(expr2, env, result);
 }
 
-int load_file(Atom env, const char *path)
+Error load_file(Atom env, const char *path)
 {
 	char *text;
 
@@ -1334,10 +1344,10 @@ int load_file(Atom env, const char *path)
 		}
 		/*puts("");*/
 		free(text);
-		return 1;
+		return Error_OK;
 	}
 	else {
-		return 0;
+		return Error_File;
 	}
 }
 
@@ -1624,8 +1634,9 @@ void init(Atom *env) {
 	env_set(*env, make_sym("sym"), make_builtin(builtin_sym));
 	env_set(*env, make_sym("system"), make_builtin(builtin_system));
 	env_set(*env, make_sym("eval"), make_builtin(builtin_eval));
+	env_set(*env, make_sym("load"), make_builtin(builtin_load));
 
-	if (!load_file(*env, "library.arc")) {
+	if (load_file(*env, "library.arc") != Error_OK) {
 		load_file(*env, "../library.arc");
 	}
 }
