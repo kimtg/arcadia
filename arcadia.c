@@ -1,4 +1,4 @@
-#define VERSION "0.5"
+#define VERSION "0.5.1"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -15,73 +15,73 @@
 #define strdup _strdup
 #endif
 
-enum AtomType {
-	AtomType_Nil,
-	AtomType_Pair,
-	AtomType_Symbol,
-	AtomType_Number,
-	AtomType_Builtin,
-	AtomType_Closure,
-	AtomType_Macro,
-	AtomType_String
+enum type {
+	T_NIL,
+	T_CONS,
+	T_SYMBOL,
+	T_NUM,
+	T_BUILTIN,
+	T_CLOSURE,
+	T_MACRO,
+	T_STRING
 };
 
 typedef enum {
-	Error_OK = 0, Error_Syntax, Error_Unbound, Error_Args, Error_Type, Error_File
-} Error;
+	ERROR_OK = 0, ERROR_SYNTAX, ERROR_UNBOUND, ERROR_ARGS, ERROR_TYPE, ERROR_FILE
+} error;
 
 char *error_string[] = { "", "Syntax error", "Symbol not bound", "Wrong number of arguments", "Wrong type", "File error" };
 
-typedef struct Atom Atom;
-typedef Error(*Builtin)(Atom args, Atom *result);
+typedef struct atom atom;
+typedef error(*builtin)(atom args, atom *result);
 
-struct Atom {
-	enum AtomType type;
+struct atom {
+	enum type type;
 
 	union {
 		double number;
-		struct Pair *pair;
+		struct pair *pair;
 		char *symbol;
-		Builtin builtin;
+		builtin builtin;
 	} value;
 };
 
-static Atom sym_table = { AtomType_Nil };
+static atom sym_table = { T_NIL };
 
-struct Pair {
-	struct Atom car, cdr;
+struct pair {
+	struct atom car, cdr;
 };
 
 /* forward declarations */
-Error apply(Atom fn, Atom args, Atom *result);
-int listp(Atom expr);
+error apply(atom fn, atom args, atom *result);
+int listp(atom expr);
 char *slurp(const char *path);
-Error eval_expr(Atom expr, Atom env, Atom *result);
-void gc_mark(Atom root);
+error eval_expr(atom expr, atom env, atom *result);
+void gc_mark(atom root);
 void gc();
 void stack_restore(int saved_size);
-Error macex(Atom expr, Atom *result);
-char *to_string(Atom atom);
+error macex(atom expr, atom *result);
+char *to_string(atom atom);
 char *strcat_alloc(char **dst, char *src);
 char *str_new();
-Error macex_eval(Atom expr, Atom env, Atom *result);
-Error load_file(Atom env, const char *path);
+error macex_eval(atom expr, atom env, atom *result);
+error load_file(atom env, const char *path);
 /* end forward */
 
 #define car(p) ((p).value.pair->car)
 #define cdr(p) ((p).value.pair->cdr)
-#define nilp(atom) ((atom).type == AtomType_Nil)
+#define no(atom) ((atom).type == T_NIL)
 
-static const Atom nil = { AtomType_Nil };
+static const atom nil = { T_NIL };
 /* symbols for faster execution */
-static Atom sym_t, sym_quote, sym_set, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num;
-Atom code_expr;
-Atom env; /* the global environment */
+static atom sym_t, sym_quote, sym_set, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num;
+atom code_expr;
+atom env; /* the global environment */
 
-struct Allocation {	
-	struct Pair pair;
+struct allocation {	
+	struct pair pair;
 	char mark;
-	struct Allocation *next;
+	struct allocation *next;
 };
 
 struct allocation_string {
@@ -90,35 +90,35 @@ struct allocation_string {
 	struct allocation_string *next;
 };
 
-struct Allocation *global_allocations = NULL;
+struct allocation *global_allocations = NULL;
 struct allocation_string *global_allocations_string = NULL;
 int cons_count = 0;
 
-Atom *stack = NULL;
+atom *stack = NULL;
 int stack_capacity = 0;
 int stack_size = 0;
 
-void stack_add(Atom a) {
-	if (!(a.type == AtomType_Pair
-		|| a.type == AtomType_Closure
-		|| a.type == AtomType_Macro))
+void stack_add(atom a) {
+	if (!(a.type == T_CONS
+		|| a.type == T_CLOSURE
+		|| a.type == T_MACRO))
 		return;
 	stack_size++;
 	if (stack_size > stack_capacity) {
 		stack_capacity = stack_size * 2;
-		stack = realloc(stack, stack_capacity * sizeof(Atom));
+		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
 	stack[stack_size - 1] = a;
 }
 
-Atom cons(Atom car_val, Atom cdr_val)
+atom cons(atom car_val, atom cdr_val)
 {
-	struct Allocation *a;
-	Atom p;
+	struct allocation *a;
+	atom p;
 
 	cons_count++;
 
-	a = malloc(sizeof(struct Allocation));
+	a = malloc(sizeof(struct allocation));
 	if (a == NULL) {
 		puts("Not enough memory.");
 		exit(1);
@@ -127,7 +127,7 @@ Atom cons(Atom car_val, Atom cdr_val)
 	a->next = global_allocations;
 	global_allocations = a;
 
-	p.type = AtomType_Pair;
+	p.type = T_CONS;
 	p.value.pair = &a->pair;
 
 	car(p) = car_val;
@@ -138,18 +138,18 @@ Atom cons(Atom car_val, Atom cdr_val)
 	return p;
 }
 
-void gc_mark(Atom root)
+void gc_mark(atom root)
 {
-	struct Allocation *a;
+	struct allocation *a;
 	struct allocation_string *as;
 
 	switch (root.type) {
-	case AtomType_Pair:
-	case AtomType_Closure:
-	case AtomType_Macro:
-		a = (struct Allocation *)
+	case T_CONS:
+	case T_CLOSURE:
+	case T_MACRO:
+		a = (struct allocation *)
 			((char *)root.value.pair
-			- offsetof(struct Allocation, pair));
+			- offsetof(struct allocation, pair));
 
 		if (a->mark)
 			return;
@@ -159,7 +159,7 @@ void gc_mark(Atom root)
 		gc_mark(car(root));
 		gc_mark(cdr(root));
 		break;
-	case AtomType_String:
+	case T_STRING:
 		as = (struct allocation_string *)
 			((char *)root.value.symbol
 			- offsetof(struct allocation_string, string));
@@ -176,7 +176,7 @@ void gc_mark(Atom root)
 
 void gc()
 {
-	struct Allocation *a, **p;
+	struct allocation *a, **p;
 	struct allocation_string *as, **ps;
 
 	gc_mark(sym_table);
@@ -219,67 +219,67 @@ void gc()
 }
 
 
-Atom make_number(double x)
+atom make_number(double x)
 {
-	Atom a;
-	a.type = AtomType_Number;
+	atom a;
+	a.type = T_NUM;
 	a.value.number = x;
 	return a;
 }
 
-Atom make_sym(const char *s)
+atom make_sym(const char *s)
 {
-	Atom a, p;
+	atom a, p;
 
 	p = sym_table;
-	while (!nilp(p)) {
+	while (!no(p)) {
 		a = car(p);
 		if (strcmp(a.value.symbol, s) == 0)
 			return a;
 		p = cdr(p);
 	}
 
-	a.type = AtomType_Symbol;
+	a.type = T_SYMBOL;
 	a.value.symbol = (char*)strdup(s);
 	sym_table = cons(a, sym_table);
 	return a;
 }
 
-Atom make_builtin(Builtin fn)
+atom make_builtin(builtin fn)
 {
-	Atom a;
-	a.type = AtomType_Builtin;
+	atom a;
+	a.type = T_BUILTIN;
 	a.value.builtin = fn;
 	return a;
 }
 
-Error make_closure(Atom env, Atom args, Atom body, Atom *result)
+error make_closure(atom env, atom args, atom body, atom *result)
 {
-	Atom p;
+	atom p;
 
 	if (!listp(body))
-		return Error_Syntax;
+		return ERROR_SYNTAX;
 
 	/* Check argument names are all symbols */
 	p = args;
-	while (!nilp(p)) {
-		if (p.type == AtomType_Symbol)
+	while (!no(p)) {
+		if (p.type == T_SYMBOL)
 			break;
-		else if (p.type != AtomType_Pair
-			|| car(p).type != AtomType_Symbol)
-			return Error_Type;
+		else if (p.type != T_CONS
+			|| car(p).type != T_SYMBOL)
+			return ERROR_TYPE;
 		p = cdr(p);
 	}
 
 	*result = cons(env, cons(args, body));
-	result->type = AtomType_Closure;
+	result->type = T_CLOSURE;
 
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Atom make_string(char *x)
+atom make_string(char *x)
 {
-	Atom a;
+	atom a;
 	struct allocation_string *alloc;
 	cons_count++;
 	alloc = malloc(sizeof(struct allocation_string));
@@ -288,24 +288,24 @@ Atom make_string(char *x)
 	alloc->next = global_allocations_string;
 	global_allocations_string = alloc;
 
-	a.type = AtomType_String;
+	a.type = T_STRING;
 	a.value.symbol = x;
 	stack_add(a);
 	return a;
 }
 
-void print_expr(Atom atom)
+void print_expr(atom atom)
 {
 	switch (atom.type) {
-	case AtomType_Nil:
+	case T_NIL:
 		printf("nil");
 		break;
-	case AtomType_Pair:
+	case T_CONS:
 		putchar('(');
 		print_expr(car(atom));
 		atom = cdr(atom);
-		while (!nilp(atom)) {
-			if (atom.type == AtomType_Pair) {
+		while (!no(atom)) {
+			if (atom.type == T_CONS) {
 				putchar(' ');
 				print_expr(car(atom));
 				atom = cdr(atom);
@@ -318,24 +318,24 @@ void print_expr(Atom atom)
 		}
 		putchar(')');
 		break;
-	case AtomType_Symbol:
+	case T_SYMBOL:
 		printf("%s", atom.value.symbol);
 		break;
-	case AtomType_Number:
+	case T_NUM:
 		printf("%.16g", atom.value.number);
 		break;
-	case AtomType_Builtin:
-		printf("#<BUILTIN:%p>", atom.value.builtin);
+	case T_BUILTIN:
+		printf("#<builtin:%p>", atom.value.builtin);
 		break;
-	case AtomType_Closure:
+	case T_CLOSURE:
 		printf("(closure ");
 		print_expr(cdr(atom));
 		putchar(')');
 		break;
-	case AtomType_String:
+	case T_STRING:
 		printf("\"%s\"", atom.value.symbol);
 		break;
-	case AtomType_Macro:
+	case T_MACRO:
 		printf("(macro ");
 		print_expr(cdr(atom));
 		putchar(')');
@@ -346,18 +346,18 @@ void print_expr(Atom atom)
 	}
 }
 
-void pr(Atom atom)
+void pr(atom atom)
 {
 	switch (atom.type) {
-	case AtomType_Nil:
+	case T_NIL:
 		printf("nil");
 		break;
-	case AtomType_Pair:
+	case T_CONS:
 		putchar('(');
 		print_expr(car(atom));
 		atom = cdr(atom);
-		while (!nilp(atom)) {
-			if (atom.type == AtomType_Pair) {
+		while (!no(atom)) {
+			if (atom.type == T_CONS) {
 				putchar(' ');
 				print_expr(car(atom));
 				atom = cdr(atom);
@@ -370,24 +370,24 @@ void pr(Atom atom)
 		}
 		putchar(')');
 		break;
-	case AtomType_Symbol:
+	case T_SYMBOL:
 		printf("%s", atom.value.symbol);
 		break;
-	case AtomType_Number:
+	case T_NUM:
 		printf("%.16g", atom.value.number);
 		break;
-	case AtomType_Builtin:
-		printf("#<BUILTIN:%p>", atom.value.builtin);
+	case T_BUILTIN:
+		printf("#<builtin:%p>", atom.value.builtin);
 		break;
-	case AtomType_Closure:
+	case T_CLOSURE:
 		printf("(closure ");
 		print_expr(cdr(atom));
 		putchar(')');
 		break;
-	case AtomType_String:
+	case T_STRING:
 		printf("%s", atom.value.symbol);
 		break;
-	case AtomType_Macro:
+	case T_MACRO:
 		printf("(macro ");
 		print_expr(cdr(atom));
 		putchar(')');
@@ -398,7 +398,7 @@ void pr(Atom atom)
 	}
 }
 
-Error lex(const char *str, const char **start, const char **end)
+error lex(const char *str, const char **start, const char **end)
 {
 	const char *ws = " \t\r\n";
 	const char *delim = "() \t\r\n;";
@@ -408,7 +408,7 @@ start:
 
 	if (str[0] == '\0') {
 		*start = *end = NULL;
-		return Error_Syntax;
+		return ERROR_SYNTAX;
 	}
 
 	*start = str;
@@ -431,28 +431,28 @@ start:
 	else
 		*end = str + strcspn(str, delim);
 
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error read_expr(const char *input, const char **end, Atom *result);
+error read_expr(const char *input, const char **end, atom *result);
 
-Error parse_simple(const char *start, const char *end, Atom *result)
+error parse_simple(const char *start, const char *end, atom *result)
 {
 	char *buf, *p;
 
 	/* Is it an integer? */
 	double val = strtod(start, &p);
 	if (p == end) {
-		result->type = AtomType_Number;
+		result->type = T_NUM;
 		result->value.number = val;
-		return Error_OK;
+		return ERROR_OK;
 	}
 	else if (start[0] == '"') {
-		result->type = AtomType_String;
+		result->type = T_STRING;
 		result->value.symbol = (char*)malloc(end - start - 1);
 		memcpy(result->value.symbol, start + 1, end - start);
 		result->value.symbol[end - start - 2] = 0;
-		return Error_OK;
+		return ERROR_OK;
 	}
 
 	/* NIL or symbol */
@@ -467,32 +467,32 @@ Error parse_simple(const char *start, const char *end, Atom *result)
 
 	free(buf);
 
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error read_list(const char *start, const char **end, Atom *result)
+error read_list(const char *start, const char **end, atom *result)
 {
-	Atom p;
+	atom p;
 
 	*end = start;
 	p = *result = nil;
 
 	for (;;) {
 		const char *token;
-		Atom item;
-		Error err;
+		atom item;
+		error err;
 
 		err = lex(*end, &token, end);
 		if (err)
 			return err;
 
 		if (token[0] == ')')
-			return Error_OK;
+			return ERROR_OK;
 
 		if (token[0] == '.' && *end - token == 1) {
 			/* Improper list */
-			if (nilp(p))
-				return Error_Syntax;
+			if (no(p))
+				return ERROR_SYNTAX;
 
 			err = read_expr(*end, end, &item);
 			if (err)
@@ -503,7 +503,7 @@ Error read_list(const char *start, const char **end, Atom *result)
 			/* Read the closing ')' */
 			err = lex(*end, &token, end);
 			if (!err && token[0] != ')')
-				err = Error_Syntax;
+				err = ERROR_SYNTAX;
 
 			return err;
 		}
@@ -512,7 +512,7 @@ Error read_list(const char *start, const char **end, Atom *result)
 		if (err)
 			return err;
 
-		if (nilp(p)) {
+		if (no(p)) {
 			/* First item */
 			*result = cons(item, nil);
 			p = *result;
@@ -524,10 +524,10 @@ Error read_list(const char *start, const char **end, Atom *result)
 	}
 }
 
-Error read_expr(const char *input, const char **end, Atom *result)
+error read_expr(const char *input, const char **end, atom *result)
 {
 	const char *token;
-	Error err;
+	error err;
 
 	err = lex(input, &token, end);
 	if (err)
@@ -536,7 +536,7 @@ Error read_expr(const char *input, const char **end, Atom *result)
 	if (token[0] == '(')
 		return read_list(*end, end, result);
 	else if (token[0] == ')')
-		return Error_Syntax;
+		return ERROR_SYNTAX;
 	else if (token[0] == '\'') {
 		*result = cons(make_sym("quote"), cons(nil, nil));
 		return read_expr(*end, end, &car(cdr(*result)));
@@ -577,43 +577,43 @@ char *readline(char *prompt) {
   return realloc(str, sizeof(char)*len);
 }
 
-Atom env_create(Atom parent)
+atom env_create(atom parent)
 {
 	return cons(parent, nil);
 }
 
-Error env_get(Atom env, Atom symbol, Atom *result)
+error env_get(atom env, atom symbol, atom *result)
 {
-	Atom parent = car(env);
-	Atom bs = cdr(env);
+	atom parent = car(env);
+	atom bs = cdr(env);
 
-	while (!nilp(bs)) {
-		Atom b = car(bs);
+	while (!no(bs)) {
+		atom b = car(bs);
 		if (car(b).value.symbol == symbol.value.symbol) {
 			*result = cdr(b);
-			return Error_OK;
+			return ERROR_OK;
 		}
 		bs = cdr(bs);
 	}
 
-	if (nilp(parent)) {
+	if (no(parent)) {
 		/*printf("%s: ", symbol.value.symbol);*/
-		return Error_Unbound;
+		return ERROR_UNBOUND;
 	}
 
 	return env_get(parent, symbol, result);
 }
 
-Error env_set(Atom env, Atom symbol, Atom value)
+error env_set(atom env, atom symbol, atom value)
 {
-	Atom bs = cdr(env);
-	Atom b = nil;
+	atom bs = cdr(env);
+	atom b = nil;
 
-	while (!nilp(bs)) {
+	while (!no(bs)) {
 		b = car(bs);
 		if (car(b).value.symbol == symbol.value.symbol) {
 			cdr(b) = value;
-			return Error_OK;
+			return ERROR_OK;
 		}
 		bs = cdr(bs);
 	}
@@ -621,19 +621,19 @@ Error env_set(Atom env, Atom symbol, Atom value)
 	b = cons(symbol, value);
 	cdr(env) = cons(b, cdr(env));
 
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error env_set_eq(Atom env, Atom symbol, Atom value) {
-	Atom env_origin = env;
-	while (!nilp(env)) {
-		Atom bs = cdr(env);
+error env_set_eq(atom env, atom symbol, atom value) {
+	atom env_origin = env;
+	while (!no(env)) {
+		atom bs = cdr(env);
 
-		while (!nilp(bs)) {
-			Atom b = car(bs);
+		while (!no(bs)) {
+			atom b = car(bs);
 			if (car(b).value.symbol == symbol.value.symbol) {
 			  cdr(b) = value;
-			  return Error_OK;
+			  return ERROR_OK;
 			}
 			bs = cdr(bs);
 		}
@@ -643,43 +643,43 @@ Error env_set_eq(Atom env, Atom symbol, Atom value) {
 	return env_set(env_origin, symbol, value);
 }
 
-int listp(Atom expr)
+int listp(atom expr)
 {
-	while (!nilp(expr)) {
-		if (expr.type != AtomType_Pair)
+	while (!no(expr)) {
+		if (expr.type != T_CONS)
 			return 0;
 		expr = cdr(expr);
 	}
 	return 1;
 }
 
-long len(Atom xs) {
-  Atom a = xs;
+long len(atom xs) {
+  atom a = xs;
   long ret = 0;
   if (!listp(xs)) return 0;
-  while (!nilp(a)) {
+  while (!no(a)) {
 	ret++;
 	a = cdr(a);
   }
   return ret;
 }
 
-Atom copy_list(Atom list)
+atom copy_list(atom list)
 {
-	Atom a, p;
+	atom a, p;
 
-	if (nilp(list))
+	if (no(list))
 		return nil;
 
 	a = cons(car(list), nil);
 	p = a;
 	list = cdr(list);
 
-	while (!nilp(list)) {
+	while (!no(list)) {
 		cdr(p) = cons(car(list), nil);
 		p = cdr(p);
 		list = cdr(list);
-		if (list.type != AtomType_Pair) { /* improper list */
+		if (list.type != T_CONS) { /* improper list */
 			p = list;
 			break;
 		}
@@ -688,247 +688,247 @@ Atom copy_list(Atom list)
 	return a;
 }
 
-Error apply(Atom fn, Atom args, Atom *result)
+error apply(atom fn, atom args, atom *result)
 {
-	Atom env, arg_names, body;
+	atom env, arg_names, body;
 
-	if (fn.type == AtomType_Builtin)
+	if (fn.type == T_BUILTIN)
 		return (*fn.value.builtin)(args, result);
-	else if (fn.type == AtomType_Closure) {
+	else if (fn.type == T_CLOSURE) {
 		env = env_create(car(fn));
 		arg_names = car(cdr(fn));
 		body = cdr(cdr(fn));
 
 		/* Bind the arguments */
-		while (!nilp(arg_names)) {
-			if (arg_names.type == AtomType_Symbol) {
+		while (!no(arg_names)) {
+			if (arg_names.type == T_SYMBOL) {
 				env_set(env, arg_names, args);
 				args = nil;
 				break;
 			}
 
-			if (nilp(args))
-				return Error_Args;
+			if (no(args))
+				return ERROR_ARGS;
 			env_set(env, car(arg_names), car(args));
 			arg_names = cdr(arg_names);
 			args = cdr(args);
 		}
-		if (!nilp(args))
-			return Error_Args;
+		if (!no(args))
+			return ERROR_ARGS;
 
 		/* Evaluate the body */
-		while (!nilp(body)) {
-			Error err = eval_expr(car(body), env, result);
+		while (!no(body)) {
+			error err = eval_expr(car(body), env, result);
 			if (err)
 				return err;
 			body = cdr(body);
 		}
 
-		return Error_OK;
+		return ERROR_OK;
 	}
-	else if (fn.type == AtomType_String) { /* implicit indexing for string */
-		if (len(args) != 1) return Error_Args;
+	else if (fn.type == T_STRING) { /* implicit indexing for string */
+		if (len(args) != 1) return ERROR_ARGS;
 		long index = (long)(car(args)).value.number;
 		*result = make_number(fn.value.symbol[index]);
-		return Error_OK;
+		return ERROR_OK;
 	}
-	else if (fn.type == AtomType_Pair && listp(fn)) { /* implicit indexing for list */
-		if (len(args) != 1) return Error_Args;
+	else if (fn.type == T_CONS && listp(fn)) { /* implicit indexing for list */
+		if (len(args) != 1) return ERROR_ARGS;
 		long index = (long)(car(args)).value.number;
-		Atom a = fn;
+		atom a = fn;
 		long i;
 		for (i = 0; i < index; i++) {
 			a = cdr(a);
-			if (nilp(a)) {
+			if (no(a)) {
 				*result = nil;
-				return Error_OK;
+				return ERROR_OK;
 			}
 		}
 		*result = car(a);
-		return Error_OK;
+		return ERROR_OK;
 	}
 	else {
-		return Error_Type;
+		return ERROR_TYPE;
 	}
 }
 
-Error builtin_car(Atom args, Atom *result)
+error builtin_car(atom args, atom *result)
 {
-	if (nilp(args) || !nilp(cdr(args)))
-		return Error_Args;
+	if (no(args) || !no(cdr(args)))
+		return ERROR_ARGS;
 
-	if (nilp(car(args)))
+	if (no(car(args)))
 		*result = nil;
-	else if (car(args).type != AtomType_Pair)
-		return Error_Type;
+	else if (car(args).type != T_CONS)
+		return ERROR_TYPE;
 	else
 		*result = car(car(args));
 
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_cdr(Atom args, Atom *result)
+error builtin_cdr(atom args, atom *result)
 {
-	if (nilp(args) || !nilp(cdr(args)))
-		return Error_Args;
+	if (no(args) || !no(cdr(args)))
+		return ERROR_ARGS;
 
-	if (nilp(car(args)))
+	if (no(car(args)))
 		*result = nil;
-	else if (car(args).type != AtomType_Pair)
-		return Error_Type;
+	else if (car(args).type != T_CONS)
+		return ERROR_TYPE;
 	else
 		*result = cdr(car(args));
 
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_cons(Atom args, Atom *result)
+error builtin_cons(atom args, atom *result)
 {
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-		return Error_Args;
+	if (no(args) || no(cdr(args)) || !no(cdr(cdr(args))))
+		return ERROR_ARGS;
 
 	*result = cons(car(args), car(cdr(args)));
 
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_add(Atom args, Atom *result)
+error builtin_add(atom args, atom *result)
 {
-	Atom acc = make_number(0);
-	Atom a;
-	if (!listp(args)) return Error_Args;
+	atom acc = make_number(0);
+	atom a;
+	if (!listp(args)) return ERROR_ARGS;
 
 	a = args;
-	while (!nilp(a)) {
-		if (car(a).type != AtomType_Number) return Error_Type;
+	while (!no(a)) {
+		if (car(a).type != T_NUM) return ERROR_TYPE;
 		acc.value.number += car(a).value.number;
 		a = cdr(a);
 	}
 	*result = acc;
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_subtract(Atom args, Atom *result)
+error builtin_subtract(atom args, atom *result)
 {
-	Atom acc;
-	Atom a;
-	if (!listp(args)) return Error_Args;
-	if (nilp(args)) { /* 0 argument */
+	atom acc;
+	atom a;
+	if (!listp(args)) return ERROR_ARGS;
+	if (no(args)) { /* 0 argument */
 		*result = make_number(0);
-		return Error_OK;
+		return ERROR_OK;
 	}
-	if (nilp(cdr(args))) { /* 1 argument */
-		if (car(args).type != AtomType_Number) return Error_Type;
+	if (no(cdr(args))) { /* 1 argument */
+		if (car(args).type != T_NUM) return ERROR_TYPE;
 		*result = make_number(-car(args).value.number);
-		return Error_OK;
+		return ERROR_OK;
 	}
 	acc = make_number(car(args).value.number);
 	a = cdr(args);
-	while (!nilp(a)) {
-		if (car(a).type != AtomType_Number) return Error_Type;
+	while (!no(a)) {
+		if (car(a).type != T_NUM) return ERROR_TYPE;
 		acc.value.number -= car(a).value.number;
 		a = cdr(a);
 	}
 	*result = acc;
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_multiply(Atom args, Atom *result)
+error builtin_multiply(atom args, atom *result)
 {
-	Atom acc = make_number(1);
-	Atom a;
-	if (!listp(args)) return Error_Args;
+	atom acc = make_number(1);
+	atom a;
+	if (!listp(args)) return ERROR_ARGS;
 
 	a = args;
-	while (!nilp(a)) {
-		if (car(a).type != AtomType_Number) return Error_Type;
+	while (!no(a)) {
+		if (car(a).type != T_NUM) return ERROR_TYPE;
 		acc.value.number *= car(a).value.number;
 		a = cdr(a);
 	}
 	*result = acc;
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_divide(Atom args, Atom *result)
+error builtin_divide(atom args, atom *result)
 {
-	Atom acc;
-	Atom a;
-	if (!listp(args)) return Error_Args;
-	if (nilp(args)) { /* 0 argument */
+	atom acc;
+	atom a;
+	if (!listp(args)) return ERROR_ARGS;
+	if (no(args)) { /* 0 argument */
 		*result = make_number(1);
-		return Error_OK;
+		return ERROR_OK;
 	}
-	if (nilp(cdr(args))) { /* 1 argument */
-		if (car(args).type != AtomType_Number) return Error_Type;
+	if (no(cdr(args))) { /* 1 argument */
+		if (car(args).type != T_NUM) return ERROR_TYPE;
 		*result = make_number(1.0 / car(args).value.number);
-		return Error_OK;
+		return ERROR_OK;
 	}
 	acc = make_number(car(args).value.number);
 	a = cdr(args);
-	while (!nilp(a)) {
-		if (car(a).type != AtomType_Number) return Error_Type;
+	while (!no(a)) {
+		if (car(a).type != T_NUM) return ERROR_TYPE;
 		acc.value.number /= car(a).value.number;
 		a = cdr(a);
 	}
 	*result = acc;
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_less(Atom args, Atom *result)
+error builtin_less(atom args, atom *result)
 {
-	Atom a, b;
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args)))) return Error_Args;
+	atom a, b;
+	if (no(args) || no(cdr(args)) || !no(cdr(cdr(args)))) return ERROR_ARGS;
 	a = car(args);
 	b = car(cdr(args));
-	if (a.type != AtomType_Number || b.type != AtomType_Number) return Error_Type;
+	if (a.type != T_NUM || b.type != T_NUM) return ERROR_TYPE;
 	*result = (a.value.number < b.value.number) ? sym_t : nil;
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_apply(Atom args, Atom *result)
+error builtin_apply(atom args, atom *result)
 {
-	Atom fn;
+	atom fn;
 
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-		return Error_Args;
+	if (no(args) || no(cdr(args)) || !no(cdr(cdr(args))))
+		return ERROR_ARGS;
 
 	fn = car(args);
 	args = car(cdr(args));
 
 	if (!listp(args))
-		return Error_Syntax;
+		return ERROR_SYNTAX;
 
 	return apply(fn, args, result);
 }
 
-Error builtin_is(Atom args, Atom *result)
+error builtin_is(atom args, atom *result)
 {
-	Atom a, b;
+	atom a, b;
 	int eq = 0;
 
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args))))
-		return Error_Args;
+	if (no(args) || no(cdr(args)) || !no(cdr(cdr(args))))
+		return ERROR_ARGS;
 
 	a = car(args);
 	b = car(cdr(args));
 
 	if (a.type == b.type) {
 		switch (a.type) {
-		case AtomType_Nil:
+		case T_NIL:
 			eq = 1;
 			break;
-		case AtomType_Pair:
-		case AtomType_Closure:
-		case AtomType_Macro:
+		case T_CONS:
+		case T_CLOSURE:
+		case T_MACRO:
 			eq = (a.value.pair == b.value.pair);
 			break;
-		case AtomType_Symbol:
+		case T_SYMBOL:
 			eq = (a.value.symbol == b.value.symbol);
 			break;
-		case AtomType_Number:
+		case T_NUM:
 			eq = (a.value.number == b.value.number);
 			break;
-		case AtomType_Builtin:
+		case T_BUILTIN:
 			eq = (a.value.builtin == b.value.builtin);
 			break;
 		default:
@@ -938,116 +938,116 @@ Error builtin_is(Atom args, Atom *result)
 	}
 
 	*result = eq ? sym_t : nil;
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_scar(Atom args, Atom *result) {
-	Atom place = car(args), value;
-	if (place.type != AtomType_Pair) return Error_Type;
+error builtin_scar(atom args, atom *result) {
+	atom place = car(args), value;
+	if (place.type != T_CONS) return ERROR_TYPE;
 	value = car(cdr(args));
 	place.value.pair->car = value;
 	*result = value;
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_scdr(Atom args, Atom *result) {
-	Atom place = car(args), value;
-	if (place.type != AtomType_Pair) return Error_Type;
+error builtin_scdr(atom args, atom *result) {
+	atom place = car(args), value;
+	if (place.type != T_CONS) return ERROR_TYPE;
 	value = car(cdr(args));
 	place.value.pair->cdr = value;
 	*result = value;
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_mod(Atom args, Atom *result) {
-	Atom dividend = car(args);
-	Atom divisor = car(cdr(args));
+error builtin_mod(atom args, atom *result) {
+	atom dividend = car(args);
+	atom divisor = car(cdr(args));
 	*result = make_number((long)dividend.value.number % (long)divisor.value.number);
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_type(Atom args, Atom *result) {
-  Atom x = car(args);
+error builtin_type(atom args, atom *result) {
+  atom x = car(args);
   switch (x.type) {
-  case AtomType_Pair: *result = sym_cons; break;
-  case AtomType_Symbol:
-  case AtomType_Nil: *result = sym_sym; break;
-  case AtomType_Builtin:
-  case AtomType_Closure: *result = sym_fn; break;
-  case AtomType_String: *result = sym_string; break;
-  case AtomType_Number: *result = sym_num; break;
-  case AtomType_Macro: *result = sym_mac; break;
+  case T_CONS: *result = sym_cons; break;
+  case T_SYMBOL:
+  case T_NIL: *result = sym_sym; break;
+  case T_BUILTIN:
+  case T_CLOSURE: *result = sym_fn; break;
+  case T_STRING: *result = sym_string; break;
+  case T_NUM: *result = sym_num; break;
+  case T_MACRO: *result = sym_mac; break;
   default: *result = nil; break; /* impossible */
   }
-  return Error_OK;
+  return ERROR_OK;
 }
 
-Error builtin_string_sref(Atom args, Atom *result) {
-	Atom index, obj, value;
-	if (len(args) != 3) return Error_Args;
+error builtin_string_sref(atom args, atom *result) {
+	atom index, obj, value;
+	if (len(args) != 3) return ERROR_ARGS;
 	index = car(cdr(cdr(args)));
 	obj = car(args), value;
-	if (obj.type != AtomType_String) return Error_Type;
+	if (obj.type != T_STRING) return ERROR_TYPE;
 	value = car(cdr(args));
 	obj.value.symbol[(long)index.value.number] = (char)value.value.number;
 	*result = make_number(value.value.number);
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_pr(Atom args, Atom *result) {
-  if (nilp(args)) {
+error builtin_pr(atom args, atom *result) {
+  if (no(args)) {
 	*result = nil;
-	return Error_OK;
+	return ERROR_OK;
   }
   *result = car(args);
-  while (!nilp(args)) {
+  while (!no(args)) {
 	pr(car(args));
 	args = cdr(args);
   }
-  return Error_OK;
+  return ERROR_OK;
 }
 
-Error builtin_writeb(Atom args, Atom *result) {
-  if (len(args) != 1) return Error_Args;
+error builtin_writeb(atom args, atom *result) {
+  if (len(args) != 1) return ERROR_ARGS;
   putchar((int)car(args).value.number);
   *result = nil;
-  return Error_OK;
+  return ERROR_OK;
 }
 
-Error builtin_expt(Atom args, Atom *result) {
-  Atom a, b;
-  if (len(args) != 2) return Error_Args;
+error builtin_expt(atom args, atom *result) {
+  atom a, b;
+  if (len(args) != 2) return ERROR_ARGS;
   a = car(args);
   b = car(cdr(args));
   *result = make_number(pow(a.value.number, b.value.number));
-  return Error_OK;
+  return ERROR_OK;
 }
 
-Error builtin_log(Atom args, Atom *result) {
-  Atom a;
-  if (len(args) != 1) return Error_Args;
+error builtin_log(atom args, atom *result) {
+  atom a;
+  if (len(args) != 1) return ERROR_ARGS;
   a = car(args);
   *result = make_number(log(a.value.number));
-  return Error_OK;
+  return ERROR_OK;
 }
 
-Error builtin_sqrt(Atom args, Atom *result) {
-  Atom a;
-  if (len(args) != 1) return Error_Args;
+error builtin_sqrt(atom args, atom *result) {
+  atom a;
+  if (len(args) != 1) return ERROR_ARGS;
   a = car(args);
   *result = make_number(sqrt(a.value.number));
-  return Error_OK;
+  return ERROR_OK;
 }
 
-Error builtin_readline(Atom args, Atom *result) {	
-	if (len(args) != 0) return Error_Args;
+error builtin_readline(atom args, atom *result) {
+	if (len(args) != 0) return ERROR_ARGS;
 	char *str = readline("");
 	if (str == NULL) *result = nil; else *result = make_string(str);
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_quit(Atom args, Atom *result) {
-	if (len(args) != 0) return Error_Args;
+error builtin_quit(atom args, atom *result) {
+	if (len(args) != 0) return ERROR_ARGS;
 	exit(0);
 }
 
@@ -1055,88 +1055,88 @@ double rand_double() {
 	return (double)rand() / ((double)RAND_MAX + 1.0);
 }
 
-Error builtin_rand(Atom args, Atom *result) {
+error builtin_rand(atom args, atom *result) {
 	long alen = len(args);
 	if (alen == 0) *result = make_number(rand_double());
 	else if (alen == 1) *result = make_number(floor(rand_double() * car(args).value.number));		
-	else return Error_Args;
-	return Error_OK;
+	else return ERROR_ARGS;
+	return ERROR_OK;
 }
 
-Error builtin_read(Atom args, Atom *result) {
+error builtin_read(atom args, atom *result) {
 	long alen = len(args);
 	char *s;
 	if (alen == 0) {
 		s = readline("");
 		const char *buf = s;
-		Error err = read_expr(buf, &buf, result);
+		error err = read_expr(buf, &buf, result);
 		free(s);
 		return err;
 	}
 	else if (alen == 1) {
 		s = car(args).value.symbol;
 		const char *buf = s;
-		Error err = read_expr(buf, &buf, result);
+		error err = read_expr(buf, &buf, result);
 		return err;
 	}
-	else return Error_Args;
-	return Error_OK;
+	else return ERROR_ARGS;
+	return ERROR_OK;
 }
 
-Error builtin_macex(Atom args, Atom *result) {
+error builtin_macex(atom args, atom *result) {
 	long alen = len(args);
 	if (alen == 1) {		
-		Error err = macex(car(args), result);
+		error err = macex(car(args), result);
 		return err;
 	}
-	else return Error_Args;
-	return Error_OK;
+	else return ERROR_ARGS;
+	return ERROR_OK;
 }
 
-Error builtin_string(Atom args, Atom *result) {
+error builtin_string(atom args, atom *result) {
 	char *s = str_new();
-	while (!nilp(args)) {
+	while (!no(args)) {
 		char *a = to_string(car(args));
 		strcat_alloc(&s, a);
 		args = cdr(args);
 	}
 	*result = make_string(s);
-	return Error_OK;
+	return ERROR_OK;
 }
 
-Error builtin_sym(Atom args, Atom *result) {
+error builtin_sym(atom args, atom *result) {
 	long alen = len(args);
 	if (alen == 1) {
 		*result = make_sym(to_string(car(args)));
-		return Error_OK;
+		return ERROR_OK;
 	}
-	else return Error_Args;
+	else return ERROR_ARGS;
 }
 
-Error builtin_system(Atom args, Atom *result) {
+error builtin_system(atom args, atom *result) {
 	long alen = len(args);
 	if (alen == 1) {
-		Atom a = car(args);
-		if (a.type != AtomType_String) return Error_Type;
+		atom a = car(args);
+		if (a.type != T_STRING) return ERROR_TYPE;
 		*result = make_number(system(car(args).value.symbol));
-		return Error_OK;
+		return ERROR_OK;
 	}
-	else return Error_Args;
+	else return ERROR_ARGS;
 }
 
-Error builtin_eval(Atom args, Atom *result) {
+error builtin_eval(atom args, atom *result) {
 	if (len(args) == 1) return macex_eval(car(args), env, result);
-	else return Error_Args;
+	else return ERROR_ARGS;
 }
 
-Error builtin_load(Atom args, Atom *result) {
+error builtin_load(atom args, atom *result) {
 	if (len(args) == 1) {
-		Atom a = car(args);
-		if (a.type != AtomType_String) return Error_Type;		
+		atom a = car(args);
+		if (a.type != T_STRING) return ERROR_TYPE;		
 		*result = nil;
 		return load_file(env, a.value.symbol);
 	}
-	else return Error_Args;
+	else return ERROR_ARGS;
 }
 
 /* end builtin */
@@ -1154,20 +1154,20 @@ char *str_new() {
 	return s;
 }
 
-char *to_string(Atom atom) {
+char *to_string(atom atom) {
 	char *s = str_new();
 	char buf[80];
 	switch (atom.type) {
-	case AtomType_Nil:
+	case T_NIL:
 		printf("*nilnilnil*");
 		strcat_alloc(&s, "nil");		
 		break;
-	case AtomType_Pair:
+	case T_CONS:
 		strcat_alloc(&s, "(");
 		strcat_alloc(&s, to_string(car(atom)));
 		atom = cdr(atom);
-		while (!nilp(atom)) {
-			if (atom.type == AtomType_Pair) {
+		while (!no(atom)) {
+			if (atom.type == T_CONS) {
 				strcat_alloc(&s, " ");
 				strcat_alloc(&s, to_string(car(atom)));
 				atom = cdr(atom);
@@ -1180,24 +1180,24 @@ char *to_string(Atom atom) {
 		}
 		strcat_alloc(&s, ")");
 		break;
-	case AtomType_Symbol:
-	case AtomType_String:
+	case T_SYMBOL:
+	case T_STRING:
 		strcat_alloc(&s, atom.value.symbol);
 		break;
-	case AtomType_Number:
+	case T_NUM:
 		sprintf(buf, "%.16g", atom.value.number);
 		strcat_alloc(&s, buf);
 		break;
-	case AtomType_Builtin:		
-		sprintf(buf, "#<BUILTIN:%p>", atom.value.builtin);
+	case T_BUILTIN:		
+		sprintf(buf, "#<builtin:%p>", atom.value.builtin);
 		strcat_alloc(&s, buf);
 		break;
-	case AtomType_Closure:
+	case T_CLOSURE:
 		strcat_alloc(&s, "(closure ");
 		strcat_alloc(&s, to_string(cdr(atom)));
 		strcat_alloc(&s, ")");
 		break;
-	case AtomType_Macro:
+	case T_MACRO:
 		strcat_alloc(&s, "(macro ");
 		strcat_alloc(&s, to_string(cdr(atom)));
 		strcat_alloc(&s, ")");
@@ -1237,8 +1237,8 @@ char *slurp(const char *path)
 }
 
 /* compile-time macro */
-Error macex(Atom expr, Atom *result) {
-	Error err = Error_OK;
+error macex(atom expr, atom *result) {
+	error err = ERROR_OK;
 	int ss = stack_size; /* save stack point */
 
 	if (cons_count > 10000) {
@@ -1248,59 +1248,59 @@ Error macex(Atom expr, Atom *result) {
 		cons_count = 0;
 	}
 
-	if (expr.type == AtomType_Symbol) {
+	if (expr.type == T_SYMBOL) {
 		*result = expr;		
 		stack_restore(ss);
 		stack_add(*result);
-		return Error_OK;
+		return ERROR_OK;
 	}
-	else if (expr.type != AtomType_Pair) {
+	else if (expr.type != T_CONS) {
 		*result = expr;
 		stack_restore(ss);
 		stack_add(*result);
-		return Error_OK;
+		return ERROR_OK;
 	}
 	else if (!listp(expr)) {
 		*result = expr;
 		stack_restore(ss);
 		stack_add(*result);
-		return Error_OK;
+		return ERROR_OK;
 	}
 	else {
-		Atom op = car(expr);
-		Atom args = cdr(expr);
+		atom op = car(expr);
+		atom args = cdr(expr);
 
-		if (op.type == AtomType_Symbol) {
+		if (op.type == T_SYMBOL) {
 			/* Handle special forms */
 
 			if (op.value.symbol == sym_quote.value.symbol) {
-				if (nilp(args) || !nilp(cdr(args))) {
+				if (no(args) || !no(cdr(args))) {
 					stack_restore(ss);
-					return Error_Args;
+					return ERROR_ARGS;
 				}
 
 				*result = expr;
 				stack_restore(ss);
 				stack_add(*result);
-				return Error_OK;
+				return ERROR_OK;
 			}
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
-				Atom name, macro;
+				atom name, macro;
 
-				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))) {
+				if (no(args) || no(cdr(args)) || no(cdr(cdr(args)))) {
 					stack_restore(ss);
-					return Error_Args;
+					return ERROR_ARGS;
 				}
 
 				name = car(args);
-				if (name.type != AtomType_Symbol) {
+				if (name.type != T_SYMBOL) {
 					stack_restore(ss);
-					return Error_Type;
+					return ERROR_TYPE;
 				}
 
 				err = make_closure(env, car(cdr(args)), cdr(cdr(args)), &macro);
 				if (!err) {
-					macro.type = AtomType_Macro;
+					macro.type = T_MACRO;
 					*result = cons(sym_quote, cons(car(args), nil));
 					err = env_set(env, name, macro);
 					stack_restore(ss);
@@ -1315,7 +1315,7 @@ Error macex(Atom expr, Atom *result) {
 		}
 
 		/* Is it a macro? */
-		if (op.type == AtomType_Symbol && !env_get(env, op, result) && result->type == AtomType_Macro) {
+		if (op.type == T_SYMBOL && !env_get(env, op, result) && result->type == T_MACRO) {
 			/* Evaluate operator */
 			err = eval_expr(op, env, &op);
 			if (err) {
@@ -1324,7 +1324,7 @@ Error macex(Atom expr, Atom *result) {
 				return err;
 			}
 
-			op.type = AtomType_Closure;
+			op.type = T_CLOSURE;
 			err = apply(op, args, result);
 			if (err) {
 				stack_restore(ss);
@@ -1332,13 +1332,13 @@ Error macex(Atom expr, Atom *result) {
 			}
 			stack_restore(ss);
 			stack_add(*result);
-			return Error_OK;
+			return ERROR_OK;
 		}
 		else {
 			/* preprocess elements */
-			Atom expr2 = copy_list(expr);
-			Atom p = expr2;
-			while (!nilp(p)) {
+			atom expr2 = copy_list(expr);
+			atom p = expr2;
+			while (!no(p)) {
 				err = macex(car(p), &car(p));
 				if (err) {
 					stack_restore(ss);
@@ -1350,14 +1350,14 @@ Error macex(Atom expr, Atom *result) {
 			*result = expr2;
 			stack_restore(ss);
 			stack_add(*result);
-			return Error_OK;
+			return ERROR_OK;
 		}
 	}
 }
 
-Error macex_eval(Atom expr, Atom env, Atom *result) {
-	Atom expr2;
-	Error err = macex(expr, &expr2);
+error macex_eval(atom expr, atom env, atom *result) {
+	atom expr2;
+	error err = macex(expr, &expr2);
 	if (err) return err;
 	/*printf("expanded: ");
 	print_expr(expr2);
@@ -1365,7 +1365,7 @@ Error macex_eval(Atom expr, Atom env, Atom *result) {
 	return eval_expr(expr2, env, result);
 }
 
-Error load_file(Atom env, const char *path)
+error load_file(atom env, const char *path)
 {
 	char *text;
 
@@ -1373,13 +1373,13 @@ Error load_file(Atom env, const char *path)
 	text = slurp(path);
 	if (text) {
 		const char *p = text;
-		Atom expr;
-		while (read_expr(p, &p, &expr) == Error_OK) {
-			Atom result;
-			Error err = macex_eval(expr, env, &result);
+		atom expr;
+		while (read_expr(p, &p, &expr) == ERROR_OK) {
+			atom result;
+			error err = macex_eval(expr, env, &result);
 			if (err) {
 				puts(error_string[err]);
-				printf("Error in expression:\n\t");
+				printf("error in expression:\n\t");
 				print_expr(expr);
 				putchar('\n');
 			}
@@ -1390,10 +1390,10 @@ Error load_file(Atom env, const char *path)
 		}
 		/*puts("");*/
 		free(text);
-		return Error_OK;
+		return ERROR_OK;
 	}
 	else {
-		return Error_File;
+		return ERROR_FILE;
 	}
 }
 
@@ -1402,13 +1402,13 @@ void stack_restore(int saved_size) {
 	/* if there is waste of memory, realloc */
 	if (stack_size < stack_capacity / 4) {
 		stack_capacity /= 2;
-		stack = realloc(stack, stack_capacity * sizeof(Atom));
+		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
 }
 
-Error eval_expr(Atom expr, Atom env, Atom *result)
+error eval_expr(atom expr, atom env, atom *result)
 {
-	Error err = Error_OK;
+	error err = ERROR_OK;
 	int ss = stack_size; /* save stack point */
 
 	/*if (cons_count > 10000) {
@@ -1424,50 +1424,50 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 		cons_count = 0;
 	}
 
-	if (expr.type == AtomType_Symbol) {
+	if (expr.type == T_SYMBOL) {
 		err = env_get(env, expr, result);
 		stack_restore(ss);
 		stack_add(*result);
 		return err;
 	}
-	else if (expr.type != AtomType_Pair) {
+	else if (expr.type != T_CONS) {
 		*result = expr;
 		stack_restore(ss);
 		stack_add(*result);
-		return Error_OK;
+		return ERROR_OK;
 	}
 	else if (!listp(expr)) {
 		stack_restore(ss);
-		return Error_Syntax;
+		return ERROR_SYNTAX;
 	}
 	else {
-		Atom op = car(expr);
-		Atom args = cdr(expr);
+		atom op = car(expr);
+		atom args = cdr(expr);
 
-		if (op.type == AtomType_Symbol) {
+		if (op.type == T_SYMBOL) {
 			/* Handle special forms */
 
 			if (op.value.symbol == sym_quote.value.symbol) {
-				if (nilp(args) || !nilp(cdr(args))) {
+				if (no(args) || !no(cdr(args))) {
 					stack_restore(ss);
-					return Error_Args;
+					return ERROR_ARGS;
 				}
 
 				*result = car(args);
 				stack_restore(ss);
 				stack_add(*result);
-				return Error_OK;
+				return ERROR_OK;
 			}
 			else if (op.value.symbol == sym_set.value.symbol) {
-				Atom sym;
-				if (nilp(args) || nilp(cdr(args))) {
+				atom sym;
+				if (no(args) || no(cdr(args))) {
 					stack_restore(ss);
-					return Error_Args;
+					return ERROR_ARGS;
 				}
 
 				sym = car(args);
-				if (sym.type == AtomType_Symbol) {
-					Atom val;
+				if (sym.type == T_SYMBOL) {
+					atom val;
 					err = eval_expr(car(cdr(args)), env, &val);
 					if (err) {
 						stack_restore(ss);
@@ -1483,13 +1483,13 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				}
 				else {
 					stack_restore(ss);
-					return Error_Type;
+					return ERROR_TYPE;
 				}
 			}
 			else if (op.value.symbol == sym_fn.value.symbol) {
-				if (nilp(args) || nilp(cdr(args))) {
+				if (no(args) || no(cdr(args))) {
 					stack_restore(ss);
-					return Error_Args;
+					return ERROR_ARGS;
 				}
 				err = make_closure(env, car(args), cdr(args), result);
 				stack_restore(ss);
@@ -1497,21 +1497,21 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				return err;
 			}
 			else if (op.value.symbol == sym_if.value.symbol) {
-			  Atom cond;
-				while (!nilp(args)) {
+			  atom cond;
+				while (!no(args)) {
 				  err = eval_expr(car(args), env, &cond);
 				  if (err) {
 					stack_restore(ss);
 					stack_add(*result);
 					return err;
 				  }
-				  if (nilp(cdr(args))) {
+				  if (no(cdr(args))) {
 					*result = cond;
 					stack_restore(ss);
 					stack_add(*result);
-					return Error_OK;
+					return ERROR_OK;
 				  }
-				  if (!nilp(cond)) {
+				  if (!no(cond)) {
 					err = eval_expr(car(cdr(args)), env, result);					
 					stack_restore(ss);
 					stack_add(*result);
@@ -1522,25 +1522,25 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				*result = nil;
 				stack_restore(ss);
 				stack_add(*result);
-				return Error_OK;
+				return ERROR_OK;
 			}
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
-				Atom name, macro;
+				atom name, macro;
 
-				if (nilp(args) || nilp(cdr(args)) || nilp(cdr(cdr(args)))) {
+				if (no(args) || no(cdr(args)) || no(cdr(cdr(args)))) {
 					stack_restore(ss);
-					return Error_Args;
+					return ERROR_ARGS;
 				}
 
 				name = car(args);
-				if (name.type != AtomType_Symbol) {
+				if (name.type != T_SYMBOL) {
 					stack_restore(ss);
-					return Error_Type;
+					return ERROR_TYPE;
 				}
 
 				err = make_closure(env, car(cdr(args)), cdr(cdr(args)), &macro);
 				if (!err) {
-					macro.type = AtomType_Macro;
+					macro.type = T_MACRO;
 					*result = name;
 					err = env_set(env, name, macro);
 					stack_restore(ss);
@@ -1554,20 +1554,20 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				}
 			}
 			else if (op.value.symbol == sym_while.value.symbol) {
-				Atom pred;
-				if (nilp(args)) {
+				atom pred;
+				if (no(args)) {
 					stack_restore(ss);
-					return Error_Args;
+					return ERROR_ARGS;
 				}
 				pred = car(args);
 				int ss2 = stack_size;
-				while (err = eval_expr(pred, env, result), !nilp(*result)) {
+				while (err = eval_expr(pred, env, result), !no(*result)) {
 					if (err) {
 						stack_restore(ss);
 						return err;
 					}
-					Atom e = cdr(args);
-					while (!nilp(e)) {
+					atom e = cdr(args);
+					while (!no(e)) {
 						err = eval_expr(car(e), env, result);
 						if (err) {
 						  stack_restore(ss);
@@ -1579,7 +1579,7 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 				}
 				stack_restore(ss);
 				stack_add(*result);
-				return Error_OK;
+				return ERROR_OK;
 			}
 		}
 
@@ -1592,9 +1592,9 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 		}
 
 		/* Is it a macro? */
-		if (op.type == AtomType_Macro) {
-		  Atom expansion;
-		  op.type = AtomType_Closure;
+		if (op.type == T_MACRO) {
+		  atom expansion;
+		  op.type = T_CLOSURE;
 		  err = apply(op, args, &expansion);
 		  stack_add(expansion);
 		  if (err) {
@@ -1610,8 +1610,8 @@ Error eval_expr(Atom expr, Atom env, Atom *result)
 			  
 		/* Evaulate arguments */
 		args = copy_list(args);
-		Atom p = args;
-		while (!nilp(p)) {
+		atom p = args;
+		while (!no(p)) {
 		  err = eval_expr(car(p), env, &car(p));
 		  if (err) {
 			  stack_restore(ss);
@@ -1632,7 +1632,7 @@ void print_logo() {
 	printf("Arcadia %s\n", VERSION);
 }
 
-void init(Atom *env) {
+void init(atom *env) {
 	srand((unsigned int)time(0));
 	*env = env_create(nil);
 
@@ -1682,36 +1682,36 @@ void init(Atom *env) {
 	env_set(*env, make_sym("eval"), make_builtin(builtin_eval));
 	env_set(*env, make_sym("load"), make_builtin(builtin_load));
 
-	if (load_file(*env, "library.arc") != Error_OK) {
+	if (load_file(*env, "library.arc") != ERROR_OK) {
 		load_file(*env, "../library.arc");
 	}
 }
 
-void print_env(Atom env) {
+void print_env(atom env) {
 	/* print the environment */
 	puts("Environment:");
-	Atom a = cdr(env);
-	while (!nilp(a)) {
-		Atom env_pair = car(a);
+	atom a = cdr(env);
+	while (!no(a)) {
+		atom env_pair = car(a);
 		printf(" %s", car(env_pair).value.symbol);
 		a = cdr(a);
 	}
 	puts("");
 }
 
-void repl(Atom env) {
+void repl(atom env) {
 	char *input;
 
 	while ((input = readline("> ")) != NULL) {
 		char *buf = (char *)malloc(strlen(input) + 4);
 		sprintf(buf, "(%s\n)", input);
 		const char *p = buf;
-		Error err;
-		Atom result;
+		error err;
+		atom result;
 
 		err = read_expr(p, &p, &code_expr);
 
-		while (!nilp(code_expr)) {
+		while (!no(code_expr)) {
 			if (!err)
 				err = macex_eval(car(code_expr), env, &result);
 			if (err)
