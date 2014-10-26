@@ -1,4 +1,4 @@
-(mac = args (cons 'set args))
+(mac = args (cons 'assign args))
 
 (= rreduce (fn (proc init list)
   (if list
@@ -121,7 +121,7 @@
           `(with (,head ,(car place)
             ,index ,(cadr place))
             (sref ,head (+ (,head ,index) 1) ,index)))))
-    `(set ,place (+ ,place 1))))
+    `(assign ,place (+ ,place 1))))
 
 (mac -- (place)
   (if (isa place 'cons)
@@ -131,7 +131,7 @@
           `(with (,head ,(car place)
             ,index ,(cadr place))
             (sref ,head (- (,head ,index) 1) ,index)))))
-    `(set ,place (- ,place 1))))
+    `(assign ,place (- ,place 1))))
 
 (def nthcdr (n pair)
 	(let i 0
@@ -151,7 +151,7 @@
       (if (is (car place) 'cdr)
         (list 'scdr (cadr place) value)
         (list 'sref (car place) value (cadr place))))
-    (list 'set place value)))
+    (list 'assign place value)))
 
 (mac when (test . body)
 	 (list 'if test (cons 'do body)))

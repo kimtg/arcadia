@@ -14,7 +14,7 @@ OPTIONS:
 ```
 
 ## Special form
-`fn if mac quote set while`
+`assign fn if mac quote while`
 
 ## Built-in
 `* + - / < apply car cdr cons expt eval is log macex mod pr readline scar scdr sqrt t type writeb quit rand read string sym system`
