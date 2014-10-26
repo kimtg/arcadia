@@ -74,6 +74,12 @@
     (if (isa seq 'cons) (do (while seq (++ i) (= seq (cdr seq))) i)
       (do (while (isnt (seq i) 0) (++ i)) i))))
 
+(mac each (var expr . body)
+  (w/uniq (seq i)
+    `(let ,seq ,expr
+      (if (isa ,seq 'cons) (while ,seq (= ,var (car ,seq)) ,@body (= ,seq (cdr ,seq)))
+        (let ,i 0 (while (isnt (,seq ,i) 0) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
+
 (mac do body
 	`((fn () ,@body)))
 
