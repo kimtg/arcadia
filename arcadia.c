@@ -1,4 +1,4 @@
-#define VERSION "0.5.2"
+#define VERSION "0.5.3"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -42,6 +42,7 @@ struct atom {
 		double number;
 		struct pair *pair;
 		char *symbol;
+		struct str *str;
 		builtin builtin;
 	} value;
 };
@@ -50,6 +51,14 @@ static atom sym_table = { T_NIL };
 
 struct pair {
 	struct atom car, cdr;
+	char mark;
+	struct pair *next;
+};
+
+struct str {
+	char *value;
+	char mark;
+	struct str *next;
 };
 
 /* forward declarations */
@@ -78,20 +87,8 @@ static atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sy
 atom code_expr;
 atom env; /* the global environment */
 
-struct allocation {	
-	struct pair pair;
-	char mark;
-	struct allocation *next;
-};
-
-struct allocation_string {
-	char *string;
-	char mark;
-	struct allocation_string *next;
-};
-
-struct allocation *global_allocations = NULL;
-struct allocation_string *global_allocations_string = NULL;
+struct pair *pair_head = NULL;
+struct str *str_head = NULL;
 int cons_count = 0;
 
 atom *stack = NULL;
@@ -113,22 +110,22 @@ void stack_add(atom a) {
 
 atom cons(atom car_val, atom cdr_val)
 {
-	struct allocation *a;
+	struct pair *a;
 	atom p;
 
 	cons_count++;
 
-	a = malloc(sizeof(struct allocation));
+	a = malloc(sizeof(struct pair));
 	if (a == NULL) {
 		puts("Not enough memory.");
 		exit(1);
 	}
 	a->mark = 0;
-	a->next = global_allocations;
-	global_allocations = a;
+	a->next = pair_head;
+	pair_head = a;
 
 	p.type = T_CONS;
-	p.value.pair = &a->pair;
+	p.value.pair = a;
 
 	car(p) = car_val;
 	cdr(p) = cdr_val;
@@ -140,33 +137,22 @@ atom cons(atom car_val, atom cdr_val)
 
 void gc_mark(atom root)
 {
-	struct allocation *a;
-	struct allocation_string *as;
+	struct pair *a;
+	struct str *as;
 
 	switch (root.type) {
 	case T_CONS:
 	case T_CLOSURE:
 	case T_MACRO:
-		a = (struct allocation *)
-			((char *)root.value.pair
-			- offsetof(struct allocation, pair));
-
-		if (a->mark)
-			return;
-
+		a = root.value.pair;
+		if (a->mark) return;
 		a->mark = 1;
-
 		gc_mark(car(root));
 		gc_mark(cdr(root));
 		break;
 	case T_STRING:
-		as = (struct allocation_string *)
-			((char *)root.value.symbol
-			- offsetof(struct allocation_string, string));
-
-		if (as->mark)
-			return;
-
+		as = root.value.str;
+		if (as->mark) return;
 		as->mark = 1;
 		break;
 	default:
@@ -176,8 +162,8 @@ void gc_mark(atom root)
 
 void gc()
 {
-	struct allocation *a, **p;
-	struct allocation_string *as, **ps;
+	struct pair *a, **p;
+	struct str *as, **ps;
 
 	gc_mark(sym_table);
 	gc_mark(code_expr);	
@@ -189,7 +175,7 @@ void gc()
 	}
 	
 	/* Free unmarked allocations */
-	p = &global_allocations;
+	p = &pair_head;
 	while (*p != NULL) {
 		a = *p;
 		if (!a->mark) {
@@ -203,12 +189,12 @@ void gc()
 	}
 
 	/* Free unmarked string allocations */
-	ps = &global_allocations_string;
+	ps = &str_head;
 	while (*ps != NULL) {
 		as = *ps;
 		if (!as->mark) {
 			*ps = as->next;
-			free(as->string);
+			free(as->value);
 			free(as);
 		}
 		else {
@@ -280,16 +266,15 @@ error make_closure(atom env, atom args, atom body, atom *result)
 atom make_string(char *x)
 {
 	atom a;
-	struct allocation_string *alloc;
+	struct str *s;
 	cons_count++;
-	alloc = malloc(sizeof(struct allocation_string));
-	alloc->string = x;
-	alloc->mark = 0;
-	alloc->next = global_allocations_string;
-	global_allocations_string = alloc;
+	s = a.value.str = malloc(sizeof(struct str));
+	s->value = x;
+	s->mark = 0;
+	s->next = str_head;
+	str_head = s;
 
 	a.type = T_STRING;
-	a.value.symbol = x;
 	stack_add(a);
 	return a;
 }
@@ -333,7 +318,7 @@ void print_expr(atom atom)
 		putchar(')');
 		break;
 	case T_STRING:
-		printf("\"%s\"", atom.value.symbol);
+		printf("\"%s\"", atom.value.str->value);
 		break;
 	case T_MACRO:
 		printf("(macro ");
@@ -385,7 +370,7 @@ void pr(atom atom)
 		putchar(')');
 		break;
 	case T_STRING:
-		printf("%s", atom.value.symbol);
+		printf("%s", atom.value.str->value);
 		break;
 	case T_MACRO:
 		printf("(macro ");
@@ -449,9 +434,10 @@ error parse_simple(const char *start, const char *end, atom *result)
 	}
 	else if (start[0] == '"') {
 		result->type = T_STRING;
-		result->value.symbol = (char*)malloc(end - start - 1);
-		memcpy(result->value.symbol, start + 1, end - start);
-		result->value.symbol[end - start - 2] = 0;
+		char *s = (char*)malloc(end - start - 1);
+		memcpy(s, start + 1, end - start);
+		s[end - start - 2] = 0;
+		*result = make_string(s);
 		return ERROR_OK;
 	}
 
@@ -729,7 +715,7 @@ error apply(atom fn, atom args, atom *result)
 	else if (fn.type == T_STRING) { /* implicit indexing for string */
 		if (len(args) != 1) return ERROR_ARGS;
 		long index = (long)(car(args)).value.number;
-		*result = make_number(fn.value.symbol[index]);
+		*result = make_number(fn.value.str->value[index]);
 		return ERROR_OK;
 	}
 	else if (fn.type == T_CONS && listp(fn)) { /* implicit indexing for list */
@@ -931,6 +917,9 @@ error builtin_is(atom args, atom *result)
 		case T_BUILTIN:
 			eq = (a.value.builtin == b.value.builtin);
 			break;
+		case T_STRING:
+			eq = strcmp(a.value.str->value, b.value.str->value) == 0;
+			break;
 		default:
 			/* impossible */
 			break;
@@ -989,7 +978,7 @@ error builtin_string_sref(atom args, atom *result) {
 	obj = car(args), value;
 	if (obj.type != T_STRING) return ERROR_TYPE;
 	value = car(cdr(args));
-	obj.value.symbol[(long)index.value.number] = (char)value.value.number;
+	obj.value.str->value[(long)index.value.number] = (char)value.value.number;
 	*result = make_number(value.value.number);
 	return ERROR_OK;
 }
@@ -1074,7 +1063,7 @@ error builtin_read(atom args, atom *result) {
 		return err;
 	}
 	else if (alen == 1) {
-		s = car(args).value.symbol;
+		s = car(args).value.str->value;
 		const char *buf = s;
 		error err = read_expr(buf, &buf, result);
 		return err;
@@ -1097,6 +1086,7 @@ error builtin_string(atom args, atom *result) {
 	char *s = str_new();
 	while (!no(args)) {
 		char *a = to_string(car(args));
+		make_string(a); /* manage in GC */
 		strcat_alloc(&s, a);
 		args = cdr(args);
 	}
@@ -1118,7 +1108,7 @@ error builtin_system(atom args, atom *result) {
 	if (alen == 1) {
 		atom a = car(args);
 		if (a.type != T_STRING) return ERROR_TYPE;
-		*result = make_number(system(car(args).value.symbol));
+		*result = make_number(system(car(args).value.str->value));
 		return ERROR_OK;
 	}
 	else return ERROR_ARGS;
@@ -1134,7 +1124,7 @@ error builtin_load(atom args, atom *result) {
 		atom a = car(args);
 		if (a.type != T_STRING) return ERROR_TYPE;		
 		*result = nil;
-		return load_file(env, a.value.symbol);
+		return load_file(env, a.value.str->value);
 	}
 	else return ERROR_ARGS;
 }
@@ -1181,7 +1171,7 @@ char *to_string(atom atom) {
 		break;
 	case T_SYMBOL:
 	case T_STRING:
-		strcat_alloc(&s, atom.value.symbol);
+		strcat_alloc(&s, atom.value.str->value);
 		break;
 	case T_NUM:
 		sprintf(buf, "%.16g", atom.value.number);
