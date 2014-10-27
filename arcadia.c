@@ -1,4 +1,4 @@
-#define VERSION "0.5.3"
+#define VERSION "0.5.4"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -1086,8 +1086,8 @@ error builtin_string(atom args, atom *result) {
 	char *s = str_new();
 	while (!no(args)) {
 		char *a = to_string(car(args));
-		make_string(a); /* manage in GC */
 		strcat_alloc(&s, a);
+		free(a);
 		args = cdr(args);
 	}
 	*result = make_string(s);
