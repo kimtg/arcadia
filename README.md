@@ -17,7 +17,7 @@ OPTIONS:
 `assign fn if mac quote while`
 
 ## Built-in
-`* + - / < apply car cdr cons expt eval is log macex mod pr readline scar scdr sqrt t type writeb quit rand read string sym system`
+`* + - / < apply car cdr cons expt eval int is log macex mod pr readline scar scdr sqrt t type writeb quit rand read string sym system`
 
 ## Library
 `++ -- <= = > >= abs and append caar cadr cddr def do do1 each for idfn isa isnt join len let list map map1 no nthcdr or pair quasiquote reduce reverse rreduce sref uniq unless w/uniq when with`

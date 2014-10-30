@@ -1,4 +1,4 @@
-#define VERSION "0.5.7"
+#define VERSION "0.5.8"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -1147,6 +1147,27 @@ error builtin_load(atom args, atom *result) {
 	else return ERROR_ARGS;
 }
 
+error builtin_int(atom args, atom *result) {
+	if (len(args) == 1) {
+		atom a = car(args);
+		switch (a.type) {
+		case T_STRING:
+			*result = make_number(round(atof(a.value.str->value)));
+			break;
+		case T_SYMBOL:
+			*result = make_number(round(atof(a.value.symbol)));
+			break;
+		case T_NUM:
+			*result = make_number(round(a.value.number));
+			break;
+		default:
+			return ERROR_TYPE;
+		}
+		return ERROR_OK;
+	}
+	else return ERROR_ARGS;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1674,6 +1695,7 @@ void init(atom *env, char *file_path) {
 	env_assign(*env, make_sym("system"), make_builtin(builtin_system));
 	env_assign(*env, make_sym("eval"), make_builtin(builtin_eval));
 	env_assign(*env, make_sym("load"), make_builtin(builtin_load));
+	env_assign(*env, make_sym("int"), make_builtin(builtin_int));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
