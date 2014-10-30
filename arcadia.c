@@ -1,4 +1,4 @@
-#define VERSION "0.5.6"
+#define VERSION "0.5.7"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -791,13 +791,14 @@ error builtin_cons(atom args, atom *result)
 error builtin_add(atom args, atom *result)
 {
 	atom acc = make_number(0);
-	atom a;
+	atom a, a2;
 	if (!listp(args)) return ERROR_ARGS;
 
 	a = args;
 	while (!no(a)) {
-		if (car(a).type != T_NUM) return ERROR_TYPE;
-		acc.value.number += car(a).value.number;
+		a2 = car(a);
+		if (a2.type != T_NUM) return ERROR_TYPE;
+		acc.value.number += a2.value.number;
 		a = cdr(a);
 	}
 	*result = acc;
@@ -807,7 +808,7 @@ error builtin_add(atom args, atom *result)
 error builtin_subtract(atom args, atom *result)
 {
 	atom acc;
-	atom a;
+	atom a, a2;
 	if (!listp(args)) return ERROR_ARGS;
 	if (no(args)) { /* 0 argument */
 		*result = make_number(0);
@@ -818,11 +819,14 @@ error builtin_subtract(atom args, atom *result)
 		*result = make_number(-car(args).value.number);
 		return ERROR_OK;
 	}
-	acc = make_number(car(args).value.number);
+	a2 = car(args);
+	if (a2.type != T_NUM) return ERROR_TYPE;
+	acc = make_number(a2.value.number);
 	a = cdr(args);
 	while (!no(a)) {
-		if (car(a).type != T_NUM) return ERROR_TYPE;
-		acc.value.number -= car(a).value.number;
+		a2 = car(a);
+		if (a2.type != T_NUM) return ERROR_TYPE;
+		acc.value.number -= a2.value.number;
 		a = cdr(a);
 	}
 	*result = acc;
@@ -832,13 +836,14 @@ error builtin_subtract(atom args, atom *result)
 error builtin_multiply(atom args, atom *result)
 {
 	atom acc = make_number(1);
-	atom a;
+	atom a, a2;
 	if (!listp(args)) return ERROR_ARGS;
 
 	a = args;
 	while (!no(a)) {
-		if (car(a).type != T_NUM) return ERROR_TYPE;
-		acc.value.number *= car(a).value.number;
+		a2 = car(a);
+		if (a2.type != T_NUM) return ERROR_TYPE;
+		acc.value.number *= a2.value.number;
 		a = cdr(a);
 	}
 	*result = acc;
@@ -848,10 +853,10 @@ error builtin_multiply(atom args, atom *result)
 error builtin_divide(atom args, atom *result)
 {
 	atom acc;
-	atom a;
+	atom a, a2;
 	if (!listp(args)) return ERROR_ARGS;
 	if (no(args)) { /* 0 argument */
-		*result = make_number(1);
+		*result = make_number(1.0);
 		return ERROR_OK;
 	}
 	if (no(cdr(args))) { /* 1 argument */
@@ -859,11 +864,14 @@ error builtin_divide(atom args, atom *result)
 		*result = make_number(1.0 / car(args).value.number);
 		return ERROR_OK;
 	}
-	acc = make_number(car(args).value.number);
+	a2 = car(args);
+	if (a2.type != T_NUM) return ERROR_TYPE;
+	acc = make_number(a2.value.number);
 	a = cdr(args);
 	while (!no(a)) {
-		if (car(a).type != T_NUM) return ERROR_TYPE;
-		acc.value.number /= car(a).value.number;
+		a2 = car(a);
+		if (a2.type != T_NUM) return ERROR_TYPE;
+		acc.value.number /= a2.value.number;
 		a = cdr(a);
 	}
 	*result = acc;
