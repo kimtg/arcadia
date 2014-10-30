@@ -1,4 +1,4 @@
-#define VERSION "0.5.5"
+#define VERSION "0.5.6"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -109,12 +109,20 @@ void stack_add(atom a) {
 	stack[stack_size - 1] = a;
 }
 
+void consider_gc() {
+	if (cons_count > 10000) {
+		gc();
+		cons_count = 0;
+	}
+}
+
 atom cons(atom car_val, atom cdr_val)
 {
 	struct pair *a;
 	atom p;
 
 	cons_count++;
+	consider_gc();
 
 	a = malloc(sizeof(struct pair));
 	if (a == NULL) {
@@ -269,6 +277,7 @@ atom make_string(char *x)
 	atom a;
 	struct str *s;
 	cons_count++;
+	consider_gc();
 	s = a.value.str = malloc(sizeof(struct str));
 	s->value = x;
 	s->mark = 0;
@@ -1231,12 +1240,8 @@ error macex(atom expr, atom *result) {
 	error err = ERROR_OK;
 	int ss = stack_size; /* save stack point */
 
-	if (cons_count > 10000) {
-		stack_add(expr);
-		stack_add(env);
-		gc();
-		cons_count = 0;
-	}
+	stack_add(expr);
+	stack_add(env);
 
 	if (expr.type == T_SYMBOL) {
 		*result = expr;		
@@ -1401,18 +1406,8 @@ error eval_expr(atom expr, atom env, atom *result)
 	error err = ERROR_OK;
 	int ss = stack_size; /* save stack point */
 
-	/*if (cons_count > 10000) {
-	  gc_mark(expr);
-	  gc_mark(env);
-	  gc();
-	  cons_count = 0;
-	}*/
-	if (cons_count > 10000) {
-		stack_add(expr);
-		stack_add(env);
-		gc();
-		cons_count = 0;
-	}
+	stack_add(expr);
+	stack_add(env);
 
 	if (expr.type == T_SYMBOL) {
 		err = env_get(env, expr, result);
