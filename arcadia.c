@@ -1,4 +1,4 @@
-#define VERSION "0.5.4"
+#define VERSION "0.5.5"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -75,6 +75,7 @@ char *strcat_alloc(char **dst, char *src);
 char *str_new();
 error macex_eval(atom expr, atom env, atom *result);
 error load_file(atom env, const char *path);
+char *get_dir_path(char *file_path);
 /* end forward */
 
 #define car(p) ((p).value.pair->car)
@@ -1621,7 +1622,7 @@ void print_logo() {
 	printf("Arcadia %s\n", VERSION);
 }
 
-void init(atom *env) {
+void init(atom *env, char *file_path) {
 	srand((unsigned int)time(0));
 	*env = env_create(nil);
 
@@ -1671,9 +1672,17 @@ void init(atom *env) {
 	env_assign(*env, make_sym("eval"), make_builtin(builtin_eval));
 	env_assign(*env, make_sym("load"), make_builtin(builtin_load));
 
-	if (load_file(*env, "library.arc") != ERROR_OK) {
-		load_file(*env, "../library.arc");
+	char *dir_path = get_dir_path(file_path);
+	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
+	strcpy(lib, dir_path);
+	strcat_alloc(&lib, "library.arc");
+	if (load_file(*env, lib) != ERROR_OK) {
+		strcpy(lib, dir_path);
+		strcat_alloc(&lib, "../library.arc");
+		load_file(*env, lib);
 	}
+	free(lib);
+	free(dir_path);
 }
 
 void print_env(atom env) {
@@ -1716,11 +1725,27 @@ void repl(atom env) {
 	}
 }
 
+char *get_dir_path(char *file_path) {
+	size_t len = strlen(file_path);
+	size_t i = len - 1;
+	for (; i >= 0; i--) {
+		char c = file_path[i];
+		if (c == '\\' || c == '/') {
+			break;
+		}
+	}
+	size_t len2 = i + 1;
+	char *r = malloc((len2 + 1) * sizeof(char));
+	memcpy(r, file_path, len2);
+	r[len2] = 0;
+	return r;
+}
+
 int main(int argc, char **argv)
-{	
+{
 	if (argc == 1) { /* REPL */
 		print_logo();
-		init(&env);
+		init(&env, argv[0]);
 		print_env(env);
 		repl(env);
 		puts("");
@@ -1743,7 +1768,7 @@ int main(int argc, char **argv)
 	}
 
 	/* execute files */
-	init(&env);
+	init(&env, argv[0]);
 	int i;
 	for (i = 1; i < argc; i++) {
 		if (!load_file(env, argv[i])) {
