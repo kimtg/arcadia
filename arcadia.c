@@ -1,4 +1,4 @@
-#define VERSION "0.5.8"
+#define VERSION "0.5.9"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -1752,7 +1752,7 @@ void repl(atom env) {
 
 char *get_dir_path(char *file_path) {
 	size_t len = strlen(file_path);
-	size_t i = len - 1;
+	long i = len - 1;
 	for (; i >= 0; i--) {
 		char c = file_path[i];
 		if (c == '\\' || c == '/') {
