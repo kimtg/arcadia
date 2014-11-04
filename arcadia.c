@@ -1,4 +1,4 @@
-#define VERSION "0.5.9"
+#define VERSION "0.5.10"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -99,7 +99,8 @@ int stack_size = 0;
 void stack_add(atom a) {
 	if (!(a.type == T_CONS
 		|| a.type == T_CLOSURE
-		|| a.type == T_MACRO))
+		|| a.type == T_MACRO
+		|| a.type == T_STRING))
 		return;
 	stack_size++;
 	if (stack_size > stack_capacity) {
