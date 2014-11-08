@@ -1,5 +1,5 @@
 BIN=arcadia
-CFLAGS=-s -Wall -O3
+CFLAGS=-s -Wall -Ofast
 $(BIN): arcadia.o arc.o
 	$(CC) $(CFLAGS) -static -o $(BIN) arcadia.o arc.o
 arcadia.o: arcadia.c arc.h
