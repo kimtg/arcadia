@@ -15,6 +15,15 @@
 #include <math.h>
 #include <time.h>
 
+#ifndef READ_LINE
+#define READ_LINE 1
+#endif
+
+#if READ_LINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
+
 #ifdef _MSC_VER
 #define strdup _strdup
 #endif
@@ -78,7 +87,9 @@ error arc_load_file(const char *path);
 char *get_dir_path(char *file_path);
 void arc_init(char *file_path);
 void print_env();
+#if !READ_LINE
 char *readline(char *prompt);
+#endif
 error read_expr(const char *input, const char **end, atom *result);
 void print_expr(atom atom);
 void print_error(error e);

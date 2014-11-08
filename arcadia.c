@@ -8,6 +8,11 @@ void repl() {
 	char *input;
 
 	while ((input = readline("> ")) != NULL) {
+#if READ_LINE
+		if (input && *input)
+			add_history(input);
+#endif
+
 		char *buf = (char *)malloc(strlen(input) + 4);
 		sprintf(buf, "(%s\n)", input);
 		const char *p = buf;
