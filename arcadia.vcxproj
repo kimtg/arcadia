@@ -80,6 +80,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="arc.c" />
     <ClCompile Include="arcadia.c" />
   </ItemGroup>
   <ItemGroup>
@@ -87,6 +88,9 @@
       <DeploymentContent>false</DeploymentContent>
     </None>
     <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="arc.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
