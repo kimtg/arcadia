@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.5.10h"
+#define VERSION "0.5.11"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -15,11 +15,7 @@
 #include <math.h>
 #include <time.h>
 
-#ifndef READ_LINE
-#define READ_LINE 1
-#endif
-
-#if READ_LINE
+#ifdef READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
@@ -87,7 +83,7 @@ error arc_load_file(const char *path);
 char *get_dir_path(char *file_path);
 void arc_init(char *file_path);
 void print_env();
-#if !READ_LINE
+#ifndef READLINE
 char *readline(char *prompt);
 #endif
 error read_expr(const char *input, const char **end, atom *result);

@@ -1,13 +1,13 @@
 BIN=arcadia
-CFLAGS=-Wall -Ofast -c -DREAD_LINE=1
-LDFLAGS=-s -lm -lreadline
+CFLAGS=-Wall -Ofast -c
+LDFLAGS=-s -lm
 
 $(BIN): arcadia.o arc.o
 	$(CC) $(LDFLAGS) -o $(BIN) arcadia.o arc.o
 
-no-read-line: LDFLAGS:=$(filter-out -lreadline,$(LDFLAGS))
-no-read-line: CFLAGS+=-UREAD_LINE -DREAD_LINE=0
-no-read-line: $(BIN)
+readline: CFLAGS+=-DREADLINE
+readline: LDFLAGS+=-lreadline
+readline: $(BIN)
 
 arcadia.o: arcadia.c arc.h
 	$(CC) $(CFLAGS) arcadia.c

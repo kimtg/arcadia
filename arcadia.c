@@ -8,7 +8,7 @@ void repl() {
 	char *input;
 
 	while ((input = readline("> ")) != NULL) {
-#if READ_LINE
+#ifdef READLINE
 		if (input && *input)
 			add_history(input);
 #endif
