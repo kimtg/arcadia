@@ -3,7 +3,7 @@ CFLAGS=-Wall -Ofast -c
 LDFLAGS=-s -lm
 
 $(BIN): arcadia.o arc.o
-	$(CC) $(LDFLAGS) -o $(BIN) arcadia.o arc.o
+	$(CC) -o $(BIN) arcadia.o arc.o $(LDFLAGS)
 
 readline: CFLAGS+=-DREADLINE
 readline: LDFLAGS+=-lreadline
