@@ -467,6 +467,7 @@ error read_expr(const char *input, const char **end, atom *result)
 		return parse_simple(token, *end, result);
 }
 
+#if !READ_LINE
 char *readline(char *prompt) {
 	size_t size = 80;
 	/* The size is extended by the input with the value of the provisional */
@@ -488,6 +489,7 @@ char *readline(char *prompt) {
 
 	return realloc(str, sizeof(char)*len);
 }
+#endif /* !READ_LINE */
 
 atom env_create(atom parent)
 {
@@ -909,7 +911,7 @@ error builtin_string_sref(atom args, atom *result) {
 	atom index, obj, value;
 	if (len(args) != 3) return ERROR_ARGS;
 	index = car(cdr(cdr(args)));
-	obj = car(args), value;
+	obj = car(args);/*, value; */
 	if (obj.type != T_STRING) return ERROR_TYPE;
 	value = car(cdr(args));
 	obj.value.str->value[(long)index.value.number] = (char)value.value.number;
@@ -1318,7 +1320,7 @@ error arc_load_file(const char *path)
 			atom result;
 			error err = macex_eval(expr, &result);
 			if (err) {
-				print_error(err);				
+				print_error(err);
 				printf("error in expression:\n\t");
 				print_expr(expr);
 				putchar('\n');
