@@ -1086,6 +1086,16 @@ error builtin_int(atom args, atom *result) {
 	else return ERROR_ARGS;
 }
 
+error builtin_trunc(atom args, atom *result) {
+	if (len(args) == 1) {
+		atom a = car(args);
+		if (a.type != T_NUM) return ERROR_TYPE;
+		*result = make_number(trunc(a.value.number));
+		return ERROR_OK;
+	}
+	else return ERROR_ARGS;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1610,6 +1620,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("eval"), make_builtin(builtin_eval));
 	env_assign(env, make_sym("load"), make_builtin(builtin_load));
 	env_assign(env, make_sym("int"), make_builtin(builtin_int));
+	env_assign(env, make_sym("trunc"), make_builtin(builtin_trunc));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));

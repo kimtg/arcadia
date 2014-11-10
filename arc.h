@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.5.11"
+#define VERSION "0.5.12"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
