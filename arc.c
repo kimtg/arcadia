@@ -1098,6 +1098,36 @@ error builtin_trunc(atom args, atom *result) {
 	else return ERROR_ARGS;
 }
 
+error builtin_sin(atom args, atom *result) {
+	if (len(args) == 1) {
+		atom a = car(args);
+		if (a.type != T_NUM) return ERROR_TYPE;
+		*result = make_number(sin(a.value.number));
+		return ERROR_OK;
+	}
+	else return ERROR_ARGS;
+}
+
+error builtin_cos(atom args, atom *result) {
+	if (len(args) == 1) {
+		atom a = car(args);
+		if (a.type != T_NUM) return ERROR_TYPE;
+		*result = make_number(cos(a.value.number));
+		return ERROR_OK;
+	}
+	else return ERROR_ARGS;
+}
+
+error builtin_tan(atom args, atom *result) {
+	if (len(args) == 1) {
+		atom a = car(args);
+		if (a.type != T_NUM) return ERROR_TYPE;
+		*result = make_number(tan(a.value.number));
+		return ERROR_OK;
+	}
+	else return ERROR_ARGS;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1623,6 +1653,9 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("load"), make_builtin(builtin_load));
 	env_assign(env, make_sym("int"), make_builtin(builtin_int));
 	env_assign(env, make_sym("trunc"), make_builtin(builtin_trunc));
+	env_assign(env, make_sym("sin"), make_builtin(builtin_sin));
+	env_assign(env, make_sym("cos"), make_builtin(builtin_cos));
+	env_assign(env, make_sym("tan"), make_builtin(builtin_tan));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
