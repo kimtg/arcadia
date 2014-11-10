@@ -1,5 +1,5 @@
 BIN=arcadia
-CFLAGS=-Wall -Ofast -c
+CFLAGS=-Wall -O3 -c
 LDFLAGS=-s -lm
 
 $(BIN): arcadia.o arc.o
