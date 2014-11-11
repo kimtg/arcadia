@@ -223,3 +223,7 @@ barring the sign."
 (def multiple (x y)
   "Is 'x' a multiple of 'y'?"
   (is 0 (mod x y)))
+
+(def carif (x)
+  "Returns the first element of the given list 'x', or just 'x' if it isn't a list."
+  (if (is (type x) 'cons) (car x) x))
