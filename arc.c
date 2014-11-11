@@ -1309,7 +1309,14 @@ error macex(atom expr, atom *result) {
 			}
 
 			op.type = T_CLOSURE;
-			err = apply(op, args, result);
+			atom result2;
+			err = apply(op, args, &result2);
+			if (err) {
+				stack_restore(ss);
+				return err;
+			}
+			stack_add(result2);
+			err = macex(result2, result); /* recursive */
 			if (err) {
 				stack_restore(ss);
 				return err;
