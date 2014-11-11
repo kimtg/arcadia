@@ -20,7 +20,7 @@ OPTIONS:
 `* + - / < apply car cdr cons cos expt eval int is log macex mod pr readline scar scdr sqrt t type writeb quit rand read sin string sym system tan trunc`
 
 ## Library
-`++ -- <= = > >= abs and append caar cadr cddr def do do1 each for idfn isa isnt join len let list map map1 no nthcdr number or pair positive quasiquote reduce reverse rreduce sref uniq unless w/uniq when with withs`
+`++ -- <= = > >= abs and append caar cadr cddr def do do1 each even for idfn isa isnt join len let list map map1 no nthcdr number odd or pair positive quasiquote reduce reverse round rreduce sref uniq unless w/uniq when with withs`
 
 ## Features
 * Easy-to-understand garbage collection

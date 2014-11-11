@@ -186,3 +186,22 @@ For example, (withs (x 1 y (+ x 1))
 		 `(do ,@body)
 		 `(let ,(car parms) ,(cadr parms)
 			   (withs ,(cddr parms) ,@body))))
+
+(def even (n)
+"Is n even?"
+  (is (mod n 2) 0))
+
+(def odd (n)
+"Is n odd?"
+  (no (even n)))
+
+(def round (n)
+"Approximates a fractional value to the nearest even integer.
+Negative numbers are always treated exactly like their positive variants
+barring the sign."
+  (withs (base (trunc n) rem (abs (- n base)))
+    (if (> rem 0.5) ((if (> n 0) + -) base 1)
+        (< rem 0.5) base
+        (odd base)  ((if (> n 0) + -) base 1)
+		base)))
+

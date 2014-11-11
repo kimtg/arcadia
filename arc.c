@@ -888,7 +888,7 @@ error builtin_mod(atom args, atom *result) {
 	atom dividend = car(args);
 	atom divisor = car(cdr(args));
 	double r = fmod(dividend.value.number, divisor.value.number);
-	if (dividend.value.number * divisor.value.number < 0) r += divisor.value.number;
+	if (dividend.value.number * divisor.value.number < 0 && r != 0) r += divisor.value.number;
 	*result = make_number(r);
 	return ERROR_OK;
 }
