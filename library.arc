@@ -205,3 +205,9 @@ barring the sign."
         (odd base)  ((if (> n 0) + -) base 1)
 		base)))
 
+(def roundup (n)
+"Like [[round]] but halves are rounded up rather than down."
+  (withs (base (trunc n) rem (abs (- n base)))
+    (if (>= rem 0.5)
+      ((if (> n 0) + -) base 1)
+      base)))
