@@ -169,3 +169,20 @@
       (while (<= ,var ,g) ,@body (++ ,var)))))
 
 (def idfn (x) x)
+
+(def number (n)
+  "Is 'n' a number?"
+  (is (type n) 'num))
+
+(def positive (x)
+  (and (number x) (> x 0)))
+
+(mac withs (parms . body)
+	 "Like [[with]], but binding for a variable can refer to earlier variables.
+For example, (withs (x 1 y (+ x 1))
+               (+ x y))
+             => 3"
+	 (if (no parms)
+		 `(do ,@body)
+		 `(let ,(car parms) ,(cadr parms)
+			   (withs ,(cddr parms) ,@body))))
