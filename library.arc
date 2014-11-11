@@ -215,3 +215,11 @@ barring the sign."
 (def nearest (n quantum)
   "Like [[round]] but generalized to arbitrary units."
   (* (roundup (/ n quantum)) quantum))
+
+(def avg (ns)
+  "Returns the arithmetic mean of a list of numbers 'ns'."
+  (/ (apply + ns) (len ns)))
+
+(def multiple (x y)
+  "Is 'x' a multiple of 'y'?"
+  (is 0 (mod x y)))
