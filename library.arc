@@ -227,3 +227,23 @@ barring the sign."
 (def carif (x)
   "Returns the first element of the given list 'x', or just 'x' if it isn't a list."
   (if (is (type x) 'cons) (car x) x))
+
+(mac iflet (var expr . branches)
+"If 'expr' is not nil, binds 'var' to it before running the first branch.
+Can be given multiple alternating test expressions and branches. The first
+passing test expression is bound to 'var' before running its corresponding branch.
+
+For examples, see [[aif]]."
+  (if branches
+    (w/uniq gv
+      `(let ,gv ,expr
+         (if ,gv
+           (let ,var ,gv
+             ,(car branches))
+           ,(if (cdr branches)
+              `(iflet ,var ,@(cdr branches))))))
+    expr))
+
+(mac whenlet (var expr . body)
+	 "Like [[when]] but also puts the value of 'expr' in 'var' so 'body' can access it."
+	 `(iflet ,var ,expr (do ,@body)))
