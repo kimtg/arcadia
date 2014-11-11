@@ -247,3 +247,19 @@ For examples, see [[aif]]."
 (mac whenlet (var expr . body)
 	 "Like [[when]] but also puts the value of 'expr' in 'var' so 'body' can access it."
 	 `(iflet ,var ,expr (do ,@body)))
+
+(def best (f seq)
+  "Maximizes comparator function 'f' throughout seq."
+  (whenlet wins (carif seq)
+		   (each elt (cdr seq)
+				 (if (f elt wins)
+					 (= wins elt)))
+		   wins))
+
+(def max args
+  "Returns the greatest of 'args'."
+  (best > args))
+
+(def min args
+  "Returns the least of 'args'."
+  (best < args))
