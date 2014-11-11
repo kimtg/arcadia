@@ -211,3 +211,7 @@ barring the sign."
     (if (>= rem 0.5)
       ((if (> n 0) + -) base 1)
       base)))
+
+(def nearest (n quantum)
+  "Like [[round]] but generalized to arbitrary units."
+  (* (roundup (/ n quantum)) quantum))
