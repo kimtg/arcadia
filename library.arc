@@ -11,9 +11,6 @@
 (mac def (name args . body) (list '= name (cons 'fn (cons args body))))
 
 (def no (x) (is x nil))
-(def > (x y) (< y x))
-(def <= (x y) (no (> x y)))
-(def >= (x y) (no (< x y)))
 
 (def isa (x y)
 	(is (type x) y))
@@ -128,6 +125,20 @@
          `(let ,g ,(car args)
             (if ,g ,g
               (or ,@(cdr args)))))))
+
+(def <= args
+"Is each element of 'args' lesser than or equal to all following elements?"
+  (or (no args)
+      (no (cdr args))
+      (and (no (> (car args) (cadr args)))
+           (apply <= (cdr args)))))
+
+(def >= args
+"Is each element of 'args' greater than or equal to all following elements?"
+  (or (no args)
+      (no (cdr args))
+      (and (no (< (car args) (cadr args)))
+           (apply >= (cdr args)))))
 
 (mac ++ (place)
   (if (isa place 'cons)

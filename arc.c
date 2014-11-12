@@ -798,21 +798,76 @@ error builtin_divide(atom args, atom *result)
 
 error builtin_less(atom args, atom *result)
 {
-	atom a, b;
-	if (no(args) || no(cdr(args)) || !no(cdr(cdr(args)))) return ERROR_ARGS;
-	a = car(args);
-	b = car(cdr(args));
-	switch (a.type) {
-	case T_NUM:
-		*result = (a.value.number < b.value.number) ? sym_t : nil;
-		break;
-	case T_STRING:
-		*result = strcmp(a.value.str->value, b.value.str->value) < 0 ? sym_t : nil;
-		break;
-	default:
-		return ERROR_TYPE;
-	}
+  atom a, b;
+  if (no(args) || no(cdr(args))) {
+    *result = sym_t;
+    return ERROR_OK;
+  }
+  switch (car(args).type) {
+  case T_NUM:
+    while (!no(cdr(args))) {
+      a = car(args);
+      b = car(cdr(args));
+      if (a.value.number >= b.value.number) {
+	*result = nil;
 	return ERROR_OK;
+      }
+      args = cdr(args);
+    }
+    *result = sym_t;
+    return ERROR_OK;
+  case T_STRING:
+    while (!no(cdr(args))) {
+      a = car(args);
+      b = car(cdr(args));
+      if (strcmp(a.value.str->value, b.value.str->value) >= 0) {
+	*result = nil;
+	return ERROR_OK;
+      }
+      args = cdr(args);
+    }
+    *result = sym_t;
+    return ERROR_OK;
+  default:
+    return ERROR_TYPE;
+  }
+}
+
+error builtin_greater(atom args, atom *result)
+{
+  atom a, b;
+  if (no(args) || no(cdr(args))) {
+    *result = sym_t;
+    return ERROR_OK;
+  }
+  switch (car(args).type) {
+  case T_NUM:
+    while (!no(cdr(args))) {
+      a = car(args);
+      b = car(cdr(args));
+      if (a.value.number <= b.value.number) {
+	*result = nil;
+	return ERROR_OK;
+      }
+      args = cdr(args);
+    }
+    *result = sym_t;
+    return ERROR_OK;
+  case T_STRING:
+    while (!no(cdr(args))) {
+      a = car(args);
+      b = car(cdr(args));
+      if (strcmp(a.value.str->value, b.value.str->value) <= 0) {
+	*result = nil;
+	return ERROR_OK;
+      }
+      args = cdr(args);
+    }
+    *result = sym_t;
+    return ERROR_OK;
+  default:
+    return ERROR_TYPE;
+  }
 }
 
 error builtin_apply(atom args, atom *result)
@@ -1644,6 +1699,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("/"), make_builtin(builtin_divide));
 	env_assign(env, sym_t, sym_t);
 	env_assign(env, make_sym("<"), make_builtin(builtin_less));
+	env_assign(env, make_sym(">"), make_builtin(builtin_greater));
 	env_assign(env, make_sym("apply"), make_builtin(builtin_apply));
 	env_assign(env, make_sym("is"), make_builtin(builtin_is));
 	env_assign(env, make_sym("scar"), make_builtin(builtin_scar));
