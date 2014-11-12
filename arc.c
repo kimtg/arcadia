@@ -802,8 +802,16 @@ error builtin_less(atom args, atom *result)
 	if (no(args) || no(cdr(args)) || !no(cdr(cdr(args)))) return ERROR_ARGS;
 	a = car(args);
 	b = car(cdr(args));
-	if (a.type != T_NUM || b.type != T_NUM) return ERROR_TYPE;
-	*result = (a.value.number < b.value.number) ? sym_t : nil;
+	switch (a.type) {
+	case T_NUM:
+		*result = (a.value.number < b.value.number) ? sym_t : nil;
+		break;
+	case T_STRING:
+		*result = strcmp(a.value.str->value, b.value.str->value) < 0 ? sym_t : nil;
+		break;
+	default:
+		return ERROR_TYPE;
+	}
 	return ERROR_OK;
 }
 
