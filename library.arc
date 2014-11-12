@@ -269,3 +269,12 @@ For examples, see [[aif]]."
   (if (no n)            xs
       (and (> n 0) xs)  (cons (car xs) (firstn (- n 1) (cdr xs)))
 			nil))
+
+(mac rfn (name parms . body)
+"Like [[fn]] but permits the created function to call itself recursively as the given 'name'."
+  `(let ,name nil
+     (assign ,name (fn ,parms ,@body))))
+
+(mac afn (parms . body)
+"Like [[fn]] and [[rfn]] but the created function can call itself as 'self'"
+  `(rfn self ,parms ,@body))
