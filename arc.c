@@ -360,7 +360,7 @@ error parse_simple(const char *start, const char *end, atom *result)
 	}
 	else if (start[0] == '"') {
 		result->type = T_STRING;
-		char *s = (char*)malloc(end - start - 1);
+		char *s = (char*)malloc(end - start);
 		memcpy(s, start + 1, end - start);
 		s[end - start - 2] = 0;
 		*result = make_string(s);
