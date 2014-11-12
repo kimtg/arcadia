@@ -263,3 +263,9 @@ For examples, see [[aif]]."
 (def min args
   "Returns the least of 'args'."
   (best < args))
+
+(def firstn (n xs)
+	"Returns the first 'n' elements of 'xs'."
+  (if (no n)            xs
+      (and (> n 0) xs)  (cons (car xs) (firstn (- n 1) (cdr xs)))
+			nil))
