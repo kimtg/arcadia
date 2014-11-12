@@ -886,47 +886,49 @@ error builtin_apply(atom args, atom *result)
 	return apply(fn, args, result);
 }
 
+int is(atom a, atom b) {
+  if (a.type == b.type) {
+    switch (a.type) {
+    case T_NIL:
+      return 1;
+    case T_CONS:
+    case T_CLOSURE:
+    case T_MACRO:
+      return (a.value.pair == b.value.pair);
+    case T_SYMBOL:
+      return (a.value.symbol == b.value.symbol);
+    case T_NUM:
+      return (a.value.number == b.value.number);
+    case T_BUILTIN:
+      return (a.value.builtin == b.value.builtin);
+    case T_STRING:
+      return strcmp(a.value.str->value, b.value.str->value) == 0;
+    default:
+      /* impossible */
+      return 0;
+    }
+  }
+  return 0;
+}
+
 error builtin_is(atom args, atom *result)
 {
-	atom a, b;
-	int eq = 0;
-
-	if (no(args) || no(cdr(args)) || !no(cdr(cdr(args))))
-		return ERROR_ARGS;
-
-	a = car(args);
-	b = car(cdr(args));
-
-	if (a.type == b.type) {
-		switch (a.type) {
-		case T_NIL:
-			eq = 1;
-			break;
-		case T_CONS:
-		case T_CLOSURE:
-		case T_MACRO:
-			eq = (a.value.pair == b.value.pair);
-			break;
-		case T_SYMBOL:
-			eq = (a.value.symbol == b.value.symbol);
-			break;
-		case T_NUM:
-			eq = (a.value.number == b.value.number);
-			break;
-		case T_BUILTIN:
-			eq = (a.value.builtin == b.value.builtin);
-			break;
-		case T_STRING:
-			eq = strcmp(a.value.str->value, b.value.str->value) == 0;
-			break;
-		default:
-			/* impossible */
-			break;
-		}
-	}
-
-	*result = eq ? sym_t : nil;
-	return ERROR_OK;
+  atom a, b;
+  if (no(args) || no(cdr(args))) {
+    *result = sym_t;
+    return ERROR_OK;
+  }
+  while (!no(cdr(args))) {
+    a = car(args);
+    b = car(cdr(args));
+    if (!is(a, b)) {
+      *result = nil;
+      return ERROR_OK;
+    }
+    args = cdr(args);
+  }
+  *result = sym_t;
+  return ERROR_OK;
 }
 
 error builtin_scar(atom args, atom *result) {
