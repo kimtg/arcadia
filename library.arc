@@ -50,14 +50,14 @@
 (def cadr (x) (car (cdr x)))
 (def cddr (x) (cdr (cdr x)))
 
-(mac and (a b) (list 'if a b nil))
+(mac and2 (a b) (list 'if a b nil))
 (mac or (a b) (list 'if a t b))
 
 (mac quasiquote (x)
   (if (isa x 'cons)
       (if (is (car x) 'unquote)
           (cadr x)
-          (if (and (isa (car x) 'cons) (is (caar x) 'unquote-splicing))
+          (if (and2 (isa (car x) 'cons) (is (caar x) 'unquote-splicing))
               (list 'append
                     (cadr (car x))
                     (list 'quasiquote (cdr x)))
@@ -112,6 +112,22 @@
     `(with ,(apply join (map (fn (x) (list x '(uniq))) names))
        ,@body)
     `(let ,names (uniq) ,@body)))
+
+(mac and args
+"Stops at the first argument to fail (return nil). Returns the last argument before stopping."
+  (if args
+    (if (cdr args)
+      `(if ,(car args) (and ,@(cdr args)))
+      (car args))
+    t))
+
+(mac or args
+"Stops at the first argument to pass, and returns its result."
+  (and args
+       (w/uniq g
+         `(let ,g ,(car args)
+            (if ,g ,g
+              (or ,@(cdr args)))))))
 
 (mac ++ (place)
   (if (isa place 'cons)
@@ -278,3 +294,92 @@ For examples, see [[aif]]."
 (mac afn (parms . body)
 "Like [[fn]] and [[rfn]] but the created function can call itself as 'self'"
   `(rfn self ,parms ,@body))
+
+; Destructive stable merge-sort, adapted from slib and improved
+; by Eli Barzilay for MzLib; re-written in Arc.
+
+(def mergesort (less? lst)
+  (with (n (len lst))
+    (if (<= n 1) lst
+        ((rfn recur (n)
+           (if (> n 2)
+                ; needs to evaluate L->R
+                (withs (j (/ (if (even n) n (- n 1)) 2) ; faster than round
+                        a (recur j)
+                        b (recur (- n j)))
+                  (merge less? a b))
+               ; the following case just inlines the length 2 case,
+               ; it can be removed (and use the above case for n>1)
+               ; and the code still works, except a little slower
+               (is n 2)
+                (with (x (car lst) y (cadr lst) p lst)
+                  (= lst (cddr lst))
+                  (when (less? y x) (scar p y) (scar (cdr p) x))
+                  (scdr (cdr p) nil)
+                  p)
+               (is n 1)
+                (with (p lst)
+                  (= lst (cdr lst))
+                  (scdr p nil)
+                  p)
+               nil)) n))))
+
+; Also by Eli.
+
+(def merge (less? x y)
+  (if (no x) y
+      (no y) x
+      (let lup nil
+        (assign lup
+                (fn (r x y r-x?) ; r-x? for optimization -- is r connected to x?
+                  (if (less? (car y) (car x))
+                    (do (if r-x? (scdr r y))
+                        (if (cdr y) (lup y x (cdr y) nil) (scdr y x)))
+                    ; (car x) <= (car y)
+                    (do (if (no r-x?) (scdr r x))
+                        (if (cdr x) (lup x (cdr x) y t) (scdr x y))))))
+        (if (less? (car y) (car x))
+          (do (if (cdr y) (lup y x (cdr y) nil) (scdr y x))
+              y)
+          ; (car x) <= (car y)
+          (do (if (cdr x) (lup x (cdr x) y t) (scdr x y))
+              x)))))
+
+(def acons (x)
+"Is 'x' a non-nil list?"
+  (is (type x) 'cons))
+
+(def alist (x)
+"Is 'x' a (possibly empty) list?"
+(or (no x) (acons x)))
+
+(mac in (x . choices)
+"Does 'x' match one of the given 'choices'?"
+  (w/uniq g
+    `(let ,g ,x
+       (or ,@(map1 (fn (c) `(is ,g ,c))
+                   choices)))))
+
+(def atom (x)
+"Is 'x' a simple type? (i.e. not list, table or user-defined)"
+  (in (type x) 'int 'num 'sym 'char 'string))
+
+(def copy (x)
+"Creates a deep copy of 'x'. Future changes to any part of 'x' are guaranteed
+to be isolated from the copy."
+  (if (atom x)
+    x
+    (cons (copy (car x))
+          (copy (cdr x)))))
+
+; Use mergesort on assumption that mostly sorting mostly sorted lists
+(def sort (test seq)
+"Orders a list 'seq' by comparing its elements using 'test'."
+  (if (alist seq)
+    (mergesort test (copy seq))
+    (coerce (mergesort test (coerce seq 'cons)) (type seq))))
+
+(def med (ns . test)
+	"Returns the median of a list of numbers 'ns' according to the comparison 'test'."
+	(= test (if (no test) > (car test)))
+	((sort test ns) (round (/ (len ns) 2))))
