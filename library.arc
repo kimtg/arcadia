@@ -32,7 +32,7 @@ For example, this is always true:
              (cdr list))
       init))
 
-(def reverse (list)
+(def rev (list)
   (reduce (fn (a x) (cons x a)) nil list))
 
 (def map1 (proc list)
