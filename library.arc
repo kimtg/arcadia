@@ -393,9 +393,8 @@ to be isolated from the copy."
 (def med (ns . test)
 	"Returns the median of a list of numbers 'ns' according to the comparison 'test'. Takes the later element for an even-length list."
 	(= test (if (no test) > (car test)))
-	((sort test ns) (round (/ (len ns) 2))))
+	((sort test ns) (trunc (/ (len ns) 2))))
 
-(def median (ns . test)
-	"Returns the median of a list of numbers 'ns' according to the comparison 'test'. Takes the earlier element for an even-length list."
-	(= test (if (no test) > (car test)))
-	((sort test ns) (trunc (/ (- (len ns) 1) 2))))
+(def median (ns)
+	"Returns the median of the list (the element at the midpoint of the list when sorted highest-to-lowest). Takes the earlier element for an even-length list."
+	((sort < ns) (trunc (/ (len ns) 2))))
