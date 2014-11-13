@@ -28,6 +28,7 @@ OPTIONS:
 
 ## See also
 * [Arc Tutorial](http://old.ycombinator.com/arc/tut.txt)
+* [Arc Documentation](http://arclanguage.github.io/ref/index.html)
 * [Try Arc: Arc REPL In Your Web Browser](http://tryarc.org/)
 
 ## License ##
