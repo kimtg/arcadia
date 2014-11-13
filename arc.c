@@ -451,8 +451,7 @@ error read_bracket(const char *start, const char **end, atom *result)
 	cdr(p) = cons(cons(sym__, nil), nil);
 	p = cdr(p);
 
-	atom body = cons(nil, nil);
-	cdr(p) = cons(body, nil);
+	atom body = nil;
 
 	for (;;) {
 		const char *token;
@@ -466,8 +465,9 @@ error read_bracket(const char *start, const char **end, atom *result)
 		err = read_expr(token, end, &item);
 		if (err) return err;
 
-		if (no(body)) {
-		  car(body) = item;
+		if (no(body)) {		  
+		  body = cons(item, nil);
+		  cdr(p) = cons(body, nil);
 		  p = body;
 		} else {
 		  cdr(p) = cons(item, nil);
