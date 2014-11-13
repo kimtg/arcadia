@@ -20,7 +20,7 @@ OPTIONS:
 `* + - / < > apply car cdr cons cos expt eval int is log macex mod pr readline scar scdr sqrt t type writeb quit rand read sin string sym system tan trunc`
 
 ## Library
-`++ -- <= = >= abs acons afn alist and append atom avg best caar cadr carif cddr copy def do do1 each even firstn for idfn iflet in isa isnt join len let list map map1 max med merge mergesort min multiple nearest no nthcdr number odd or pair positive quasiquote reduce reverse rfn round roundup rreduce sort sref uniq unless w/uniq when whenlet with withs`
+`++ -- <= = >= abs acons afn alist and append atom avg best caar cadr carif cddr copy def do do1 each even firstn for idfn iflet in isa isnt join len let list map map1 max med median merge mergesort min multiple nearest no nthcdr number odd or pair positive quasiquote reduce reverse rfn round roundup rreduce sort sref uniq unless w/uniq when whenlet with withs`
 
 ## Features
 * Easy-to-understand garbage collection
