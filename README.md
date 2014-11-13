@@ -25,6 +25,7 @@ OPTIONS:
 ## Features
 * Easy-to-understand garbage collection
 * Implicit indexing
+* Syntax sugar (`[]`, `~`)
 
 ## See also
 * [Arc Tutorial](http://old.ycombinator.com/arc/tut.txt)
