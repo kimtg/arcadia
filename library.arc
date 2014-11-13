@@ -12,6 +12,12 @@
 
 (def no (x) (is x nil))
 
+(def complement (f)
+"Returns a function that behaves as if the result of calling 'f' was negated.
+For example, this is always true:
+  ((complement f) a b) <=> (no (f a b))"
+  (fn args (no (apply f args))))
+
 (def isa (x y)
 	(is (type x) y))
 
