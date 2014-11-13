@@ -11,7 +11,7 @@ atom sym_table = { T_NIL };
 const atom nil = { T_NIL };
 atom code_expr = { T_NIL };
 atom env; /* the global environment */
-atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num;
+atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__;
 
 void stack_add(atom a) {
 	if (!(a.type == T_CONS
@@ -314,8 +314,8 @@ void pr(atom atom)
 error lex(const char *str, const char **start, const char **end)
 {
 	const char *ws = " \t\r\n";
-	const char *delim = "() \t\r\n;";
-	const char *prefix = "()'`";
+	const char *delim = "()[] \t\r\n;";
+	const char *prefix = "()[]'`";
 start:
 	str += strspn(str, ws);
 
@@ -436,6 +436,46 @@ error read_list(const char *start, const char **end, atom *result)
 	}
 }
 
+/* [...] => (fn (_) (...)) */
+error read_bracket(const char *start, const char **end, atom *result)
+{
+	atom p;
+
+	*end = start;
+	p = *result = nil;
+
+	/* First item */
+	*result = cons(sym_fn, nil);
+	p = *result;
+
+	cdr(p) = cons(cons(sym__, nil), nil);
+	p = cdr(p);
+
+	atom body = cons(nil, nil);
+	cdr(p) = cons(body, nil);
+
+	for (;;) {
+		const char *token;
+		atom item;
+		error err;
+
+		err = lex(*end, &token, end);
+		if (err) return err;
+		if (token[0] == ']') return ERROR_OK;
+
+		err = read_expr(token, end, &item);
+		if (err) return err;
+
+		if (no(body)) {
+		  car(body) = item;
+		  p = body;
+		} else {
+		  cdr(p) = cons(item, nil);
+		  p = cdr(p);
+		}
+	}
+}
+
 error read_expr(const char *input, const char **end, atom *result)
 {
 	const char *token;
@@ -448,6 +488,10 @@ error read_expr(const char *input, const char **end, atom *result)
 	if (token[0] == '(')
 		return read_list(*end, end, result);
 	else if (token[0] == ')')
+		return ERROR_SYNTAX;
+	else if (token[0] == '[')
+		return read_bracket(*end, end, result);
+	else if (token[0] == ']')
 		return ERROR_SYNTAX;
 	else if (token[0] == '\'') {
 		*result = cons(make_sym("quote"), cons(nil, nil));
@@ -1691,6 +1735,7 @@ void arc_init(char *file_path) {
 	sym_sym = make_sym("sym");
 	sym_string = make_sym("string");
 	sym_num = make_sym("num");
+	sym__ = make_sym("_");
 
 	env_assign(env, make_sym("car"), make_builtin(builtin_car));
 	env_assign(env, make_sym("cdr"), make_builtin(builtin_cdr));
