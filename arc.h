@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.6.10"
+#define VERSION "0.6.11"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -27,7 +27,7 @@
 enum type {
 	T_NIL,
 	T_CONS,
-	T_SYMBOL,
+	T_SYM,
 	T_NUM,
 	T_BUILTIN,
 	T_CLOSURE,

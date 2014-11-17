@@ -153,7 +153,7 @@ atom make_sym(const char *s)
 		p = cdr(p);
 	}
 
-	a.type = T_SYMBOL;
+	a.type = T_SYM;
 	a.value.symbol = (char*)strdup(s);
 	sym_table = cons(a, sym_table);
 	return a;
@@ -177,10 +177,10 @@ error make_closure(atom env, atom args, atom body, atom *result)
 	/* Check argument names are all symbols */
 	p = args;
 	while (!no(p)) {
-		if (p.type == T_SYMBOL)
+		if (p.type == T_SYM)
 			break;
 		else if (p.type != T_CONS
-			|| car(p).type != T_SYMBOL)
+			|| car(p).type != T_SYM)
 			return ERROR_TYPE;
 		p = cdr(p);
 	}
@@ -232,7 +232,7 @@ void print_expr(atom atom)
 		}
 		putchar(')');
 		break;
-	case T_SYMBOL:
+	case T_SYM:
 		printf("%s", atom.value.symbol);
 		break;
 	case T_NUM:
@@ -284,7 +284,7 @@ void pr(atom atom)
 		}
 		putchar(')');
 		break;
-	case T_SYMBOL:
+	case T_SYM:
 		printf("%s", atom.value.symbol);
 		break;
 	case T_NUM:
@@ -664,7 +664,7 @@ error apply(atom fn, atom args, atom *result)
 
 		/* Bind the arguments */
 		while (!no(arg_names)) {
-			if (arg_names.type == T_SYMBOL) {
+			if (arg_names.type == T_SYM) {
 				env_assign(env, arg_names, args);
 				args = nil;
 				break;
@@ -944,7 +944,7 @@ int is(atom a, atom b) {
     case T_CLOSURE:
     case T_MACRO:
       return (a.value.pair == b.value.pair);
-    case T_SYMBOL:
+    case T_SYM:
       return (a.value.symbol == b.value.symbol);
     case T_NUM:
       return (a.value.number == b.value.number);
@@ -1011,7 +1011,7 @@ error builtin_type(atom args, atom *result) {
 	atom x = car(args);
 	switch (x.type) {
 	case T_CONS: *result = sym_cons; break;
-	case T_SYMBOL:
+	case T_SYM:
 	case T_NIL: *result = sym_sym; break;
 	case T_BUILTIN:
 	case T_CLOSURE: *result = sym_fn; break;
@@ -1188,7 +1188,7 @@ error builtin_int(atom args, atom *result) {
 		case T_STRING:
 			*result = make_number(round(atof(a.value.str->value)));
 			break;
-		case T_SYMBOL:
+		case T_SYM:
 			*result = make_number(round(atof(a.value.symbol)));
 			break;
 		case T_NUM:
@@ -1245,7 +1245,7 @@ error builtin_tan(atom args, atom *result) {
 error builtin_bound(atom args, atom *result) {
 	if (len(args) == 1) {
 		atom a = car(args);
-		if (a.type != T_SYMBOL) return ERROR_TYPE;
+		if (a.type != T_SYM) return ERROR_TYPE;
 		error err = env_get(env, a, result);
 		*result = (err ? nil : sym_t);
 		return ERROR_OK;
@@ -1293,7 +1293,7 @@ char *to_string(atom atom) {
 		}
 		strcat_alloc(&s, ")");
 		break;
-	case T_SYMBOL:
+	case T_SYM:
 		strcat_alloc(&s, atom.value.symbol);
 		break;
 	case T_STRING:
@@ -1359,7 +1359,7 @@ error macex(atom expr, atom *result) {
 	stack_add(expr);
 	stack_add(env);
 
-	if (expr.type == T_SYMBOL) {
+	if (expr.type == T_SYM) {
 		*result = expr;
 		stack_restore(ss);
 		stack_add(*result);
@@ -1381,7 +1381,7 @@ error macex(atom expr, atom *result) {
 		atom op = car(expr);
 		atom args = cdr(expr);
 
-		if (op.type == T_SYMBOL) {
+		if (op.type == T_SYM) {
 			/* Handle special forms */
 
 			if (op.value.symbol == sym_quote.value.symbol) {
@@ -1404,7 +1404,7 @@ error macex(atom expr, atom *result) {
 				}
 
 				name = car(args);
-				if (name.type != T_SYMBOL) {
+				if (name.type != T_SYM) {
 					stack_restore(ss);
 					return ERROR_TYPE;
 				}
@@ -1426,7 +1426,7 @@ error macex(atom expr, atom *result) {
 		}
 
 		/* Is it a macro? */
-		if (op.type == T_SYMBOL && !env_get(env, op, result) && result->type == T_MACRO) {
+		if (op.type == T_SYM && !env_get(env, op, result) && result->type == T_MACRO) {
 			/* Evaluate operator */
 			err = eval_expr(op, env, &op);
 			if (err) {
@@ -1532,7 +1532,7 @@ error eval_expr(atom expr, atom env, atom *result)
 	cur_expr = expr; /* for error reporting */
 	stack_add(expr);
 	stack_add(env);
-	if (expr.type == T_SYMBOL) {
+	if (expr.type == T_SYM) {
 		err = env_get(env, expr, result);
 		stack_restore(ss);
 		stack_add(*result);
@@ -1552,7 +1552,7 @@ error eval_expr(atom expr, atom env, atom *result)
 		atom op = car(expr);
 		atom args = cdr(expr);
 
-		if (op.type == T_SYMBOL) {
+		if (op.type == T_SYM) {
 			/* Handle special forms */
 
 			if (op.value.symbol == sym_quote.value.symbol) {
@@ -1574,7 +1574,7 @@ error eval_expr(atom expr, atom env, atom *result)
 				}
 
 				sym = car(args);
-				if (sym.type == T_SYMBOL) {
+				if (sym.type == T_SYM) {
 					atom val;
 					err = eval_expr(car(cdr(args)), env, &val);
 					if (err) {
@@ -1641,7 +1641,7 @@ error eval_expr(atom expr, atom env, atom *result)
 				}
 
 				name = car(args);
-				if (name.type != T_SYMBOL) {
+				if (name.type != T_SYM) {
 					stack_restore(ss);
 					return ERROR_TYPE;
 				}
