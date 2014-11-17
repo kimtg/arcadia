@@ -1241,6 +1241,17 @@ error builtin_tan(atom args, atom *result) {
 	else return ERROR_ARGS;
 }
 
+error builtin_bound(atom args, atom *result) {
+	if (len(args) == 1) {
+		atom a = car(args);
+		if (a.type != T_SYMBOL) return ERROR_TYPE;
+		error err = env_get(env, a, result);
+		*result = (err ? nil : sym_t);
+		return ERROR_OK;
+	}
+	else return ERROR_ARGS;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1780,6 +1791,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("sin"), make_builtin(builtin_sin));
 	env_assign(env, make_sym("cos"), make_builtin(builtin_cos));
 	env_assign(env, make_sym("tan"), make_builtin(builtin_tan));
+	env_assign(env, make_sym("bound"), make_builtin(builtin_bound));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
