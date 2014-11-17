@@ -12,6 +12,7 @@ const atom nil = { T_NIL };
 atom code_expr = { T_NIL };
 atom env; /* the global environment */
 atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__;
+atom cur_expr;
 
 void stack_add(atom a) {
 	if (!(a.type == T_CONS
@@ -1528,9 +1529,9 @@ error eval_expr(atom expr, atom env, atom *result)
 	error err = ERROR_OK;
 	int ss = stack_size; /* save stack point */
 
+	cur_expr = expr; /* for error reporting */
 	stack_add(expr);
 	stack_add(env);
-
 	if (expr.type == T_SYMBOL) {
 		err = env_get(env, expr, result);
 		stack_restore(ss);
@@ -1851,5 +1852,7 @@ char *get_dir_path(char *file_path) {
 }
 
 void print_error(error e) {
-	puts(error_string[e]);
+	printf("%s : ", error_string[e]);
+	print_expr(cur_expr);
+	puts("");
 }
