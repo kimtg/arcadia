@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.6.8"
+#define VERSION "0.6.9"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -83,6 +83,7 @@ error arc_load_file(const char *path);
 char *get_dir_path(char *file_path);
 void arc_init(char *file_path);
 void print_env();
+void print_env_sorted();
 #ifndef READLINE
 char *readline(char *prompt);
 #endif

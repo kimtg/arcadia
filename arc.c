@@ -1806,6 +1806,22 @@ void print_env() {
 	puts("");
 }
 
+void print_env_sorted() {
+	/* print the environment */
+	puts("Environment:");
+	atom a = cdr(env), result, expr;
+	char s[] = "(each x (sort < (map [string (car _)] _syms)) (pr \" \" x))";
+	const char *p = s;
+	error err;
+	err = env_assign(env, make_sym("_syms"), a);
+	if (err) {print_error(err); return;}
+	err = read_expr(p, &p, &expr);
+	if (err) {print_error(err); return;}
+	err = macex_eval(expr, &result);
+	if (err) {print_error(err); return;}
+	puts("");
+}
+
 char *get_dir_path(char *file_path) {
 	size_t len = strlen(file_path);
 	long i = len - 1;

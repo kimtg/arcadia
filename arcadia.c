@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 	if (argc == 1) { /* REPL */
 		print_logo();
 		arc_init(argv[0]);
-		print_env();
+		print_env_sorted();
 		repl();
 		puts("");
 		return 0;
