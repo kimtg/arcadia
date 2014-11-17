@@ -1282,6 +1282,8 @@ char *to_string(atom atom) {
 		strcat_alloc(&s, ")");
 		break;
 	case T_SYMBOL:
+		strcat_alloc(&s, atom.value.symbol);
+		break;
 	case T_STRING:
 		strcat_alloc(&s, atom.value.str->value);
 		break;
