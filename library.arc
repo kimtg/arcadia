@@ -134,6 +134,15 @@ For example, this is always true:
             (if ,g ,g
               (or ,@(cdr args)))))))
 
+(def iso (x y)
+"Are 'x' and 'y' equal-looking to each other? Non-atoms like lists and tables can contain
+the same elements (be *isomorphic*) without being identical."
+  (or (is x y)
+      (and (acons x)
+           (acons y)
+           (iso (car x) (car y))
+           (iso (cdr x) (cdr y)))))
+
 (def <= args
 "Is each element of 'args' lesser than or equal to all following elements?"
   (or (no args)
