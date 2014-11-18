@@ -412,9 +412,8 @@ to be isolated from the copy."
     (mergesort test (copy seq))
     (coerce (mergesort test (coerce seq 'cons)) (type seq))))
 
-(def med (ns . test)
+(def med (ns (o test >))
 	"Returns the median of a list of numbers 'ns' according to the comparison 'test'. Takes the later element for an even-length list."
-	(= test (if (no test) > (car test)))
 	((sort test ns) (trunc (/ (len ns) 2))))
 
 (def median (ns)

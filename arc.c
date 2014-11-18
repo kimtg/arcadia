@@ -11,7 +11,7 @@ atom sym_table = { T_NIL };
 const atom nil = { T_NIL };
 atom code_expr = { T_NIL };
 atom env; /* the global environment */
-atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__;
+atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__, sym_o;
 atom cur_expr;
 
 void stack_add(atom a) {
@@ -174,14 +174,16 @@ error make_closure(atom env, atom args, atom body, atom *result)
 	if (!listp(body))
 		return ERROR_SYNTAX;
 
-	/* Check argument names are all symbols */
+	/* Check argument names are all symbols or conses */
 	p = args;
 	while (!no(p)) {
 		if (p.type == T_SYM)
 			break;
-		else if (p.type != T_CONS
-			|| car(p).type != T_SYM)
+		else if (p.type != T_CONS	||
+						 (car(p).type != T_SYM && car(p).type != T_CONS))
 			return ERROR_TYPE;
+		if (car(p).type == T_CONS && !is(car(car(p)), sym_o))
+			return ERROR_SYNTAX;
 		p = cdr(p);
 	}
 
@@ -595,12 +597,29 @@ error apply(atom fn, atom args, atom *result)
 				args = nil;
 				break;
 			}
-
-			if (no(args))
-				return ERROR_ARGS;
-			env_assign(env, car(arg_names), car(args));
+			atom arg_name = car(arg_names);
+			if (arg_name.type == T_SYM) {
+				if (no(args)) /* missing argument */
+					return ERROR_ARGS;
+				env_assign(env, arg_name, car(args));
+				args = cdr(args);
+			}
+			else { /* (o ARG [DEFAULT]) */
+				atom val;
+				if (no(args)) { /* missing argument */
+					if (no(cdr(cdr(arg_name))))
+						val = nil;
+					else {
+						error err = eval_expr(car(cdr(cdr(arg_name))), env, &val);
+						if (err) return err;
+					}
+				} else {
+					val = car(args);
+					args = cdr(args);
+				}
+				env_assign(env, car(cdr(arg_name)), val);
+			}
 			arg_names = cdr(arg_names);
-			args = cdr(args);
 		}
 		if (!no(args))
 			return ERROR_ARGS;
@@ -1793,6 +1812,7 @@ void arc_init(char *file_path) {
 	sym_string = make_sym("string");
 	sym_num = make_sym("num");
 	sym__ = make_sym("_");
+	sym_o = make_sym("o");
 
 	env_assign(env, make_sym("car"), make_builtin(builtin_car));
 	env_assign(env, make_sym("cdr"), make_builtin(builtin_cdr));

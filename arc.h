@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.6.13"
+#define VERSION "0.6.14"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -94,6 +94,7 @@ char *readline(char *prompt);
 error read_expr(const char *input, const char **end, atom *result);
 void print_expr(atom atom);
 void print_error(error e);
+int is(atom a, atom b);
 /* end forward */
 
 #define car(p) ((p).value.pair->car)

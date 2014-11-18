@@ -17,3 +17,5 @@ run: $(BIN)
 	./$(BIN)
 clean:
 	rm -f $(BIN) *.o
+tag:
+	etags *.h *.c
