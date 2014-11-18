@@ -17,10 +17,10 @@ OPTIONS:
 `assign fn if mac quote while`
 
 ## Built-in
-`* + - / < > apply bound car cdr cons cos expt eval int is log macex mod pr readline scar scdr sqrt t type writeb quit rand read sin string sym system tan trunc`
+`* + - / < > apply bound car cdr close cons cos disp expt eval infile int is log macex mod outfile readline scar scdr sqrt sread stderr stdin stdout t type writeb quit rand read sin string sym system tan trunc write`
 
 ## Library
-`++ -- <= = >= abs acons afn alist and append atom avg best caar cadr carif cddr complement copy def do do1 each even firstn for idfn iflet in isa isnt join len let list map map1 max med median merge mergesort min multiple nearest no nthcdr number odd or pair positive quasiquote reduce rev rfn round roundup rreduce sort sref uniq unless w/uniq when whenlet with withs`
+`++ -- <= = >= abs acons afn alist and append atom avg best caar cadr carif cddr complement copy def do do1 each even firstn for idfn iflet in isa isnt join len let list map map1 max med median merge mergesort min multiple nearest no nthcdr number odd or pair positive pr prn quasiquote reduce rev rfn round roundup rreduce sort sref uniq unless w/uniq when whenlet with withs`
 
 ## Features
 * Easy-to-understand garbage collection

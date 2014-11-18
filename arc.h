@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.6.11"
+#define VERSION "0.6.13"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -25,14 +25,16 @@
 #endif
 
 enum type {
-	T_NIL,
+	T_NIL, 
 	T_CONS,
 	T_SYM,
 	T_NUM,
 	T_BUILTIN,
 	T_CLOSURE,
 	T_MACRO,
-	T_STRING
+	T_STRING,
+	T_INPUT,
+	T_OUTPUT
 };
 
 typedef enum {
@@ -51,6 +53,7 @@ struct atom {
 		char *symbol;
 		struct str *str;
 		builtin builtin;
+		FILE *fp;
 	} value;
 };
 
@@ -69,6 +72,7 @@ struct str {
 /* forward declarations */
 error apply(atom fn, atom args, atom *result);
 int listp(atom expr);
+char *slurp_fp(FILE *fp);
 char *slurp(const char *path);
 error eval_expr(atom expr, atom env, atom *result);
 void gc_mark(atom root);

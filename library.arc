@@ -35,10 +35,12 @@ For example, this is always true:
 (def rev (list)
   (reduce (fn (a x) (cons x a)) nil list))
 
-(def map1 (proc list)
-  (rreduce (fn (x rest) (cons (proc x) rest))
-         nil
-         list))
+(def map1 (f xs)
+"Returns a list containing the result of function 'f' applied to every element of 'xs'."
+  (if (no xs)
+    nil
+    (cons (f (car xs))
+          (map1 f (cdr xs)))))
 
 (def map (proc . arg-lists)
   (if (car arg-lists)
@@ -193,6 +195,11 @@ For example, this is always true:
   `(if (no ,test) (do ,@body)))
 
 (mac do1 xs `(let it ,(car xs) ,@(cdr xs) it))
+
+(def pr args
+	"Prints all its 'args' to screen. Returns the first arg."
+  (map1 disp args)
+  (car args))
 
 (def prn xs (do1 (apply pr xs) (writeb 10)))
 

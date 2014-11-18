@@ -208,108 +208,34 @@ atom make_string(char *x)
 	return a;
 }
 
+atom make_input(FILE *fp) {
+	atom a;
+	a.type = T_INPUT;
+	a.value.fp = fp;
+	return a;
+}
+
+atom make_output(FILE *fp) {
+	atom a;
+	a.type = T_OUTPUT;
+	a.value.fp = fp;
+	return a;
+}
+
 void print_expr(atom atom)
 {
-	switch (atom.type) {
-	case T_NIL:
-		printf("nil");
-		break;
-	case T_CONS:
-		putchar('(');
-		print_expr(car(atom));
-		atom = cdr(atom);
-		while (!no(atom)) {
-			if (atom.type == T_CONS) {
-				putchar(' ');
-				print_expr(car(atom));
-				atom = cdr(atom);
-			}
-			else {
-				printf(" . ");
-				print_expr(atom);
-				break;
-			}
-		}
-		putchar(')');
-		break;
-	case T_SYM:
-		printf("%s", atom.value.symbol);
-		break;
-	case T_NUM:
-		printf("%.16g", atom.value.number);
-		break;
-	case T_BUILTIN:
-		printf("#<builtin:%p>", atom.value.builtin);
-		break;
-	case T_CLOSURE:
-		printf("(closure ");
-		print_expr(cdr(atom));
-		putchar(')');
-		break;
-	case T_STRING:
-		printf("\"%s\"", atom.value.str->value);
-		break;
-	case T_MACRO:
-		printf("(macro ");
-		print_expr(cdr(atom));
-		putchar(')');
-		break;
-	default:
-		printf("(unknown type)");
-		break;
-	}
+	if (atom.type == T_STRING) putchar('"');
+	char *s = to_string(atom);
+	printf("%s", s);
+	if (atom.type == T_STRING) putchar('"');
+	free(s);
 }
 
 void pr(atom atom)
 {
-	switch (atom.type) {
-	case T_NIL:
-		printf("nil");
-		break;
-	case T_CONS:
-		putchar('(');
-		print_expr(car(atom));
-		atom = cdr(atom);
-		while (!no(atom)) {
-			if (atom.type == T_CONS) {
-				putchar(' ');
-				print_expr(car(atom));
-				atom = cdr(atom);
-			}
-			else {
-				printf(" . ");
-				print_expr(atom);
-				break;
-			}
-		}
-		putchar(')');
-		break;
-	case T_SYM:
-		printf("%s", atom.value.symbol);
-		break;
-	case T_NUM:
-		printf("%.16g", atom.value.number);
-		break;
-	case T_BUILTIN:
-		printf("#<builtin:%p>", atom.value.builtin);
-		break;
-	case T_CLOSURE:
-		printf("(closure ");
-		print_expr(cdr(atom));
-		putchar(')');
-		break;
-	case T_STRING:
-		printf("%s", atom.value.str->value);
-		break;
-	case T_MACRO:
-		printf("(macro ");
-		print_expr(cdr(atom));
-		putchar(')');
-		break;
-	default:
-		printf("(unknown type)");
-		break;
-	}
+	char *s = to_string(atom);
+	printf("%s", s);
+	free(s);
 }
 
 error lex(const char *str, const char **start, const char **end)
@@ -1035,16 +961,27 @@ error builtin_string_sref(atom args, atom *result) {
 	return ERROR_OK;
 }
 
-error builtin_pr(atom args, atom *result) {
-	if (no(args)) {
+/* disp [arg [output-port]] */
+error builtin_disp(atom args, atom *result) {
+	long l = len(args);
+	FILE *fp;
+	switch (l) {
+	case 0:
 		*result = nil;
 		return ERROR_OK;
+	case 1:
+		fp = stdout;
+		break;
+	case 2:
+		fp = car(cdr(args)).value.fp;
+		break;
+	default:
+		return ERROR_ARGS;
 	}
-	*result = car(args);
-	while (!no(args)) {
-		pr(car(args));
-		args = cdr(args);
-	}
+	char *s = to_string(car(args));
+	fprintf(fp, "%s", s);
+	free(s);
+	*result = nil;
 	return ERROR_OK;
 }
 
@@ -1253,6 +1190,99 @@ error builtin_bound(atom args, atom *result) {
 	else return ERROR_ARGS;
 }
 
+error builtin_infile(atom args, atom *result) {
+	if (len(args) == 1) {
+		atom a = car(args);
+		if (a.type != T_STRING) return ERROR_TYPE;
+		FILE *fp = fopen(a.value.str->value, "r");
+		*result = make_input(fp);
+		return ERROR_OK;
+	}
+	else return ERROR_ARGS;
+}
+
+error builtin_outfile(atom args, atom *result) {
+	if (len(args) == 1) {
+		atom a = car(args);
+		if (a.type != T_STRING) return ERROR_TYPE;
+		FILE *fp = fopen(a.value.str->value, "w");
+		*result = make_output(fp);
+		return ERROR_OK;
+	}
+	else return ERROR_ARGS;
+}
+
+error builtin_close(atom args, atom *result) {
+	if (len(args) == 1) {
+		atom a = car(args);
+		if (a.type != T_INPUT && a.type != T_OUTPUT) return ERROR_TYPE;
+		fclose(a.value.fp);
+		*result = nil;
+		return ERROR_OK;
+	}
+	else return ERROR_ARGS;
+}
+
+error builtin_readb(atom args, atom *result) {
+	long l = len(args);
+	FILE *fp;
+	switch (l) {
+	case 0:
+		fp = stdin;
+		break;
+	case 1:
+		fp = car(args).value.fp;
+		break;
+	default:
+		return ERROR_ARGS;
+	}
+	*result = make_number(fgetc(fp));
+	return ERROR_OK;
+}
+
+/* sread input-port eof */
+error builtin_sread(atom args, atom *result) {
+	if (len(args) != 2) return ERROR_ARGS;
+	FILE *fp = car(args).value.fp;
+	atom eof = car(cdr(args));
+	error err;
+	if (feof(fp)) {
+		*result = eof;
+		return ERROR_OK;
+	}
+	char *s = slurp_fp(fp);
+	const char *p = s;
+	err = read_expr(p, &p, result);
+	return err;
+}
+
+/* write [arg [output-port]] */
+error builtin_write(atom args, atom *result) {
+	long l = len(args);
+	FILE *fp;
+	switch (l) {
+	case 0:
+		*result = nil;
+		return ERROR_OK;
+	case 1:
+		fp = stdout;
+		break;
+	case 2:
+		fp = car(cdr(args)).value.fp;
+		break;
+	default:
+		return ERROR_ARGS;
+	}
+	atom a = car(args);
+	if (a.type == T_STRING) fputc('"', fp);
+	char *s = to_string(a);
+	fprintf(fp, "%s", s);
+	if (a.type == T_STRING) fputc('"', fp);
+	free(s);
+	*result = nil;
+	return ERROR_OK;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1308,47 +1338,56 @@ char *to_string(atom atom) {
 		strcat_alloc(&s, buf);
 		break;
 	case T_CLOSURE:
-		strcat_alloc(&s, "(closure ");
+		strcat_alloc(&s, "#<closure:");
 		strcat_alloc(&s, to_string(cdr(atom)));
-		strcat_alloc(&s, ")");
+		strcat_alloc(&s, ">");
 		break;
 	case T_MACRO:
-		strcat_alloc(&s, "(macro ");
+		strcat_alloc(&s, "#<macro:");
 		strcat_alloc(&s, to_string(cdr(atom)));
-		strcat_alloc(&s, ")");
+		strcat_alloc(&s, ">");
+		break;
+	case T_INPUT:
+		strcat_alloc(&s, "#<input>");
+		break;
+	case T_OUTPUT:
+		strcat_alloc(&s, "#<output>");
 		break;
 	default:
-		strcat_alloc(&s, "(unknown type)");
+		strcat_alloc(&s, "#<unknown type>");
 		break;
 	}
 	return s;
 }
 
-char *slurp(const char *path)
-{
-	FILE *file;
+char *slurp_fp(FILE *fp) {
 	char *buf;
 	long len;
 
-	file = fopen(path, "rb");
-	if (!file) {
-		/* printf("Reading %s failed.\n", path); */
-		return NULL;
-	}
-	fseek(file, 0, SEEK_END);
-	len = ftell(file);
+	fseek(fp, 0, SEEK_END);
+	len = ftell(fp);
 	if (len < 0) return NULL;
-	fseek(file, 0, SEEK_SET);
+	fseek(fp, 0, SEEK_SET);
 
 	buf = (char *)malloc(len + 1);
 	if (!buf)
 		return NULL;
 
-	fread(buf, 1, len, file);
+	fread(buf, 1, len, fp);
 	buf[len] = 0;
-	fclose(file);
+	fclose(fp);
 
 	return buf;
+}
+
+char *slurp(const char *path)
+{
+	FILE *fp = fopen(path, "rb");
+	if (!fp) {
+		/* printf("Reading %s failed.\n", path); */
+		return NULL;
+	}	
+	return slurp_fp(fp);
 }
 
 /* compile-time macro */
@@ -1772,7 +1811,6 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("mod"), make_builtin(builtin_mod));
 	env_assign(env, make_sym("type"), make_builtin(builtin_type));
 	env_assign(env, make_sym("string-sref"), make_builtin(builtin_string_sref));
-	env_assign(env, make_sym("pr"), make_builtin(builtin_pr));
 	env_assign(env, make_sym("writeb"), make_builtin(builtin_writeb));
 	env_assign(env, make_sym("expt"), make_builtin(builtin_expt));
 	env_assign(env, make_sym("log"), make_builtin(builtin_log));
@@ -1793,6 +1831,16 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("cos"), make_builtin(builtin_cos));
 	env_assign(env, make_sym("tan"), make_builtin(builtin_tan));
 	env_assign(env, make_sym("bound"), make_builtin(builtin_bound));
+	env_assign(env, make_sym("infile"), make_builtin(builtin_infile));
+	env_assign(env, make_sym("outfile"), make_builtin(builtin_outfile));
+	env_assign(env, make_sym("close"), make_builtin(builtin_close));
+	env_assign(env, make_sym("stdin"), make_input(stdin));
+	env_assign(env, make_sym("stdout"), make_output(stdout));
+	env_assign(env, make_sym("stderr"), make_output(stderr));
+	env_assign(env, make_sym("disp"), make_builtin(builtin_disp));
+	env_assign(env, make_sym("readb"), make_builtin(builtin_readb));
+	env_assign(env, make_sym("sread"), make_builtin(builtin_sread));
+	env_assign(env, make_sym("write"), make_builtin(builtin_write));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
