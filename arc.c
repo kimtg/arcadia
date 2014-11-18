@@ -1005,8 +1005,19 @@ error builtin_disp(atom args, atom *result) {
 }
 
 error builtin_writeb(atom args, atom *result) {
-	if (len(args) != 1) return ERROR_ARGS;
-	putchar((int)car(args).value.number);
+	long l = len(args);
+	FILE *fp;
+	switch (l) {
+	case 0: return ERROR_ARGS;
+	case 1:
+		fp = stdout;
+		break;
+	case 2:
+		fp = car(cdr(args)).value.fp;
+		break;
+	default: return ERROR_ARGS;
+	}
+	fputc((int)car(args).value.number, fp);
 	*result = nil;
 	return ERROR_OK;
 }
