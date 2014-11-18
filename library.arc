@@ -423,3 +423,18 @@ to be isolated from the copy."
 (def testify (x)
 "Turns an arbitrary value 'x' into a predicate function to compare with 'x'."
   (if (isa x 'fn) x [iso _ x]))
+
+(def reclist (f xs)
+"Calls function 'f' with successive [[cdr]]s of 'xs' until one of the calls passes."
+  (and xs (or (f xs) (if (acons xs) (reclist f (cdr xs))))))
+
+(mac check (x test (o alt))
+"Returns `x' if it satisfies `test', otherwise returns 'alt' (nil if it's not provided)."
+  (w/uniq gx
+    `(let ,gx ,x
+       (if (,test ,gx) ,gx ,alt))))
+
+(def find (test seq)
+"Returns the first element of 'seq' that satisfies `test'."
+  (let f (testify test)
+    (reclist [check (carif _) f] seq)))
