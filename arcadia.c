@@ -66,8 +66,10 @@ int main(int argc, char **argv)
 	/* execute files */
 	arc_init(argv[0]);
 	int i;
+	error err;
 	for (i = 1; i < argc; i++) {
-		if (!arc_load_file(argv[i])) {
+		err = arc_load_file(argv[i]);
+		if (err) {
 			fprintf(stderr, "Cannot open file: %s\n", argv[i]);
 		}
 	}
