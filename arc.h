@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.6.14"
+#define VERSION "0.6.15"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -91,6 +91,7 @@ void print_env_sorted();
 #ifndef READLINE
 char *readline(char *prompt);
 #endif
+char *readline_fp(char *prompt, FILE *fp);
 error read_expr(const char *input, const char **end, atom *result);
 void print_expr(atom atom);
 void print_error(error e);

@@ -468,6 +468,28 @@ char *readline(char *prompt) {
 }
 #endif /* READLINE */
 
+char *readline_fp(char *prompt, FILE *fp) {
+	size_t size = 80;
+	/* The size is extended by the input with the value of the provisional */
+	char *str;
+	int ch;
+	size_t len = 0;
+	printf(prompt);
+	str = malloc(sizeof(char)* size); /* size is start size */
+	if (!str) return NULL;
+	while (EOF != (ch = fgetc(fp)) && ch != '\n') {
+		str[len++] = ch;
+		if (len == size){
+			str = realloc(str, sizeof(char)*(size *= 2));
+			if (!str) return NULL;
+		}
+	}
+	if (ch == EOF && len == 0) return NULL;
+	str[len++] = '\0';
+
+	return realloc(str, sizeof(char)*len);
+}
+
 atom env_create(atom parent)
 {
 	return cons(parent, nil);
@@ -1048,8 +1070,17 @@ error builtin_sqrt(atom args, atom *result) {
 }
 
 error builtin_readline(atom args, atom *result) {
-	if (len(args) != 0) return ERROR_ARGS;
-	char *str = readline("");
+	long l = len(args);
+	char *str;
+	if (l == 0) {
+		str = readline("");
+	}
+	else if (l == 1) {
+		str = readline_fp("", car(args).value.fp);
+	}
+	else {
+		return ERROR_ARGS;
+	}
 	if (str == NULL) *result = nil; else *result = make_string(str);
 	return ERROR_OK;
 }
