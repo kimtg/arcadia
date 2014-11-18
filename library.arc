@@ -419,3 +419,7 @@ to be isolated from the copy."
 (def median (ns)
 	"Returns the median of the list (the element at the midpoint of the list when sorted highest-to-lowest). Takes the earlier element for an even-length list."
 	((sort < ns) (trunc (/ (len ns) 2))))
+
+(def testify (x)
+"Turns an arbitrary value 'x' into a predicate function to compare with 'x'."
+  (if (isa x 'fn) x [iso _ x]))
