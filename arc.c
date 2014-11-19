@@ -1344,6 +1344,29 @@ error builtin_write(atom args, atom *result) {
 	return ERROR_OK;
 }
 
+/* newstring length [char] */
+error builtin_newstring(atom args, atom *result) {
+	long arg_len = len(args);
+	long length = car(args).value.number;
+	char c = 0;
+	char *s;
+	switch (arg_len) {
+	case 1: break;
+	case 2:
+		c = car(cdr(args)).value.number;
+		break;
+	default:
+		return ERROR_ARGS;
+	}
+	s = malloc((length + 1) * sizeof(char));
+	int i;
+	for (i = 0; i < length; i++)
+		s[i] = (char) c;
+	s[length] = 0; /* end of string */
+	*result = make_string(s);
+	return ERROR_OK;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1903,6 +1926,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("readb"), make_builtin(builtin_readb));
 	env_assign(env, make_sym("sread"), make_builtin(builtin_sread));
 	env_assign(env, make_sym("write"), make_builtin(builtin_write));
+	env_assign(env, make_sym("newstring"), make_builtin(builtin_newstring));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
