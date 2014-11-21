@@ -25,7 +25,7 @@ OPTIONS:
 ## Features
 * Easy-to-understand garbage collection
 * Implicit indexing
-* [Syntax sugar (`[]`, `~`, `.`, `!`, `:`)](http://arclanguage.github.io/ref/evaluation.html)
+* [Syntax sugar](http://arclanguage.github.io/ref/evaluation.html) (`[]`, `~`, `.`, `!`, `:`)
 
 ## See also
 * [Arc Tutorial](http://old.ycombinator.com/arc/tut.txt)
