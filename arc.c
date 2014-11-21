@@ -1879,6 +1879,8 @@ void arc_init(char *file_path) {
 	sym__ = make_sym("_");
 	sym_o = make_sym("o");
 
+	env_assign(env, sym_t, sym_t);
+	env_assign(env, make_sym("nil"), nil);
 	env_assign(env, make_sym("car"), make_builtin(builtin_car));
 	env_assign(env, make_sym("cdr"), make_builtin(builtin_cdr));
 	env_assign(env, make_sym("cons"), make_builtin(builtin_cons));
@@ -1886,7 +1888,6 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("-"), make_builtin(builtin_subtract));
 	env_assign(env, make_sym("*"), make_builtin(builtin_multiply));
 	env_assign(env, make_sym("/"), make_builtin(builtin_divide));
-	env_assign(env, sym_t, sym_t);
 	env_assign(env, make_sym("<"), make_builtin(builtin_less));
 	env_assign(env, make_sym(">"), make_builtin(builtin_greater));
 	env_assign(env, make_sym("apply"), make_builtin(builtin_apply));
