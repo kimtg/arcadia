@@ -438,3 +438,8 @@ to be isolated from the copy."
 "Returns the first element of 'seq' that satisfies `test'."
   (let f (testify test)
     (reclist [check (carif _) f] seq)))
+
+(def get (i)
+	"Returns a function to pass 'i' to its input.
+Useful in higher-order functions, or to index into lists, strings, tables, etc."
+	[_ i])
