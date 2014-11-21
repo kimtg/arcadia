@@ -1393,13 +1393,13 @@ error builtin_write(atom args, atom *result) {
 /* newstring length [char] */
 error builtin_newstring(atom args, atom *result) {
 	long arg_len = len(args);
-	long length = car(args).value.number;
+	long length = (long) car(args).value.number;
 	char c = 0;
 	char *s;
 	switch (arg_len) {
 	case 1: break;
 	case 2:
-		c = car(cdr(args)).value.number;
+		c = (char) car(cdr(args)).value.number;
 		break;
 	default:
 		return ERROR_ARGS;
