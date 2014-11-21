@@ -456,3 +456,5 @@ to be isolated from the copy."
 	"Returns a function to pass 'i' to its input.
 Useful in higher-order functions, or to index into lists, strings, tables, etc."
 	[_ i])
+
+(mac ssexpand (symbol) `(eval (quote ,symbol)))

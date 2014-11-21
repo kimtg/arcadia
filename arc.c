@@ -242,7 +242,7 @@ error lex(const char *str, const char **start, const char **end)
 {
 	const char *ws = " \t\r\n";
 	const char *delim = "()[] \t\r\n;";
-	const char *prefix = "()[]'`~";
+	const char *prefix = "()[]'`";
 start:
 	str += strspn(str, ws);
 
@@ -348,7 +348,13 @@ error parse_simple(const char *start, const char *end, atom *result)
 				return ERROR_OK;
 			}
 		}
-			
+		if (length >= 2 && buf[0] == '~') { /* ~a => (complement a) */
+			atom a1;
+			error err = parse_simple(buf + 1, buf + length, &a1);
+			if (err) return ERROR_SYNTAX;
+			*result = cons(make_sym("complement"), cons(a1, nil));
+			return ERROR_OK;
+		}
 		*result = make_sym(buf);
 	}
 
@@ -480,10 +486,6 @@ error read_expr(const char *input, const char **end, atom *result)
 		*result = cons(make_sym(
 			token[1] == '@' ? "unquote-splicing" : "unquote"),
 			cons(nil, nil));
-		return read_expr(*end, end, &car(cdr(*result)));
-	}
-	else if (token[0] == '~') {
-		*result = cons(make_sym("complement"), cons(nil, nil));
 		return read_expr(*end, end, &car(cdr(*result)));
 	}
 	else
