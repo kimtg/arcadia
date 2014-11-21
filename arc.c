@@ -226,16 +226,14 @@ atom make_output(FILE *fp) {
 
 void print_expr(atom atom)
 {
-	if (atom.type == T_STRING) putchar('"');
-	char *s = to_string(atom);
+	char *s = to_string(atom, 1);
 	printf("%s", s);
-	if (atom.type == T_STRING) putchar('"');
 	free(s);
 }
 
 void pr(atom atom)
 {
-	char *s = to_string(atom);
+	char *s = to_string(atom, 0);
 	printf("%s", s);
 	free(s);
 }
@@ -280,7 +278,7 @@ error parse_simple(const char *start, const char *end, atom *result)
 {
 	char *buf, *p;
 
-	/* Is it an integer? */
+	/* Is it a number? */
 	double val = strtod(start, &p);
 	if (p == end) {
 		result->type = T_NUM;
@@ -303,8 +301,56 @@ error parse_simple(const char *start, const char *end, atom *result)
 
 	if (strcmp(buf, "nil") == 0)
 		*result = nil;
-	else
+	else if (strcmp(buf, ".") == 0)
 		*result = make_sym(buf);
+	else {
+		atom a1, a2;
+		long length = end - start, i;
+		for (i = length - 1; i >= 0; i--) { /* left-associative */
+			if (buf[i] == '.') { /* a.b => (a b) */
+				if (i == 0 || i == length - 1) {
+					free(buf);
+					return ERROR_SYNTAX;
+				}
+				error err;
+				err = parse_simple(buf, buf + i, &a1);
+				if (err) return ERROR_SYNTAX;
+				err = parse_simple(buf + i + 1, buf + length, &a2);
+				if (err) return ERROR_SYNTAX;
+				free(buf);
+				*result = cons(a1, cons(a2, nil));
+				return ERROR_OK;
+			} else if (buf[i] == '!') { /* a!b => (a 'b) */
+				if (i == 0 || i == length - 1) {
+					free(buf);
+					return ERROR_SYNTAX;
+				}
+				error err;
+				err = parse_simple(buf, buf + i, &a1);
+				if (err) return ERROR_SYNTAX;
+				err = parse_simple(buf + i + 1, buf + length, &a2);
+				if (err) return ERROR_SYNTAX;
+				free(buf);
+				*result = cons(a1, cons(cons(sym_quote, cons(a2, nil)), nil));
+				return ERROR_OK;
+			} else if (buf[i] == ':') { /* a:b => (compose a b) */
+				if (i == 0 || i == length - 1) {
+					free(buf);
+					return ERROR_SYNTAX;
+				}
+				error err;
+				err = parse_simple(buf, buf + i, &a1);
+				if (err) return ERROR_SYNTAX;
+				err = parse_simple(buf + i + 1, buf + length, &a2);
+				if (err) return ERROR_SYNTAX;
+				free(buf);
+				*result = cons(make_sym("compose"), cons(a1, cons(a2, nil)));
+				return ERROR_OK;
+			}
+		}
+			
+		*result = make_sym(buf);
+	}
 
 	free(buf);
 
@@ -1019,7 +1065,7 @@ error builtin_disp(atom args, atom *result) {
 	default:
 		return ERROR_ARGS;
 	}
-	char *s = to_string(car(args));
+	char *s = to_string(car(args), 0);
 	fprintf(fp, "%s", s);
 	free(s);
 	*result = nil;
@@ -1135,7 +1181,7 @@ error builtin_macex(atom args, atom *result) {
 error builtin_string(atom args, atom *result) {
 	char *s = str_new();
 	while (!no(args)) {
-		char *a = to_string(car(args));
+		char *a = to_string(car(args), 0);
 		strcat_alloc(&s, a);
 		free(a);
 		args = cdr(args);
@@ -1147,7 +1193,7 @@ error builtin_string(atom args, atom *result) {
 error builtin_sym(atom args, atom *result) {
 	long alen = len(args);
 	if (alen == 1) {
-		*result = make_sym(to_string(car(args)));
+		*result = make_sym(to_string(car(args), 0));
 		return ERROR_OK;
 	}
 	else return ERROR_ARGS;
@@ -1336,7 +1382,7 @@ error builtin_write(atom args, atom *result) {
 	}
 	atom a = car(args);
 	if (a.type == T_STRING) fputc('"', fp);
-	char *s = to_string(a);
+	char *s = to_string(a, 1);
 	fprintf(fp, "%s", s);
 	if (a.type == T_STRING) fputc('"', fp);
 	free(s);
@@ -1382,7 +1428,7 @@ char *str_new() {
 	return s;
 }
 
-char *to_string(atom atom) {
+char *to_string(atom atom, int write) {
 	char *s = str_new();
 	char buf[80];
 	switch (atom.type) {
@@ -1391,17 +1437,17 @@ char *to_string(atom atom) {
 		break;
 	case T_CONS:
 		strcat_alloc(&s, "(");
-		strcat_alloc(&s, to_string(car(atom)));
+		strcat_alloc(&s, to_string(car(atom), write));
 		atom = cdr(atom);
 		while (!no(atom)) {
 			if (atom.type == T_CONS) {
 				strcat_alloc(&s, " ");
-				strcat_alloc(&s, to_string(car(atom)));
+				strcat_alloc(&s, to_string(car(atom), write));
 				atom = cdr(atom);
 			}
 			else {
 				strcat_alloc(&s, " . ");
-				strcat_alloc(&s, to_string(atom));
+				strcat_alloc(&s, to_string(atom, write));
 				break;
 			}
 		}
@@ -1411,7 +1457,9 @@ char *to_string(atom atom) {
 		strcat_alloc(&s, atom.value.symbol);
 		break;
 	case T_STRING:
+		if (write) strcat_alloc(&s, "\"");
 		strcat_alloc(&s, atom.value.str->value);
+		if (write) strcat_alloc(&s, "\"");
 		break;
 	case T_NUM:
 		sprintf(buf, "%.16g", atom.value.number);
@@ -1423,12 +1471,12 @@ char *to_string(atom atom) {
 		break;
 	case T_CLOSURE:
 		strcat_alloc(&s, "#<closure:");
-		strcat_alloc(&s, to_string(cdr(atom)));
+		strcat_alloc(&s, to_string(cdr(atom), write));
 		strcat_alloc(&s, ">");
 		break;
 	case T_MACRO:
 		strcat_alloc(&s, "#<macro:");
-		strcat_alloc(&s, to_string(cdr(atom)));
+		strcat_alloc(&s, to_string(cdr(atom), write));
 		strcat_alloc(&s, ">");
 		break;
 	case T_INPUT:

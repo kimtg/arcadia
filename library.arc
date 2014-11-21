@@ -12,6 +12,19 @@
 
 (def no (x) (is x nil))
 
+(mac compose args
+"Takes a list of functions and returns a function that behaves as if all its
+'args' were called in sequence.
+For example, this is always true:
+  ((compose f g h) a b c) <=> (f (g (h a b c))).
+Be wary of passing macros to compose."
+  (w/uniq g
+    `(fn ,g
+       ,((afn (fs)
+          (if cdr.fs
+            (list car.fs (self cdr.fs))
+            `(apply ,(if car.fs car.fs 'idfn) ,g))) args))))
+
 (def complement (f)
 "Returns a function that behaves as if the result of calling 'f' was negated.
 For example, this is always true:
