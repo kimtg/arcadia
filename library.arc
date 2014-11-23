@@ -457,4 +457,5 @@ to be isolated from the copy."
 Useful in higher-order functions, or to index into lists, strings, tables, etc."
 	[_ i])
 
-(mac ssexpand (symbol) `(eval (quote ,symbol)))
+; Syntax expansion is done by reader.
+(def ssexpand (symbol) symbol)
