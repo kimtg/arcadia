@@ -1459,7 +1459,7 @@ error builtin_newstring(atom args, atom *result) {
 error builtin_table(atom args, atom *result) {
 	long arg_len = len(args);
 	if (arg_len != 0) return ERROR_ARGS;
-	*result = make_table();
+	*result = make_table(16);
 	return ERROR_OK;
 }
 
@@ -1640,9 +1640,8 @@ int hash_code(atom a) {
 	}
 }
 
-atom make_table() {
+atom make_table(int capacity) {
 	atom a;
-	int capacity = 16; /* initial capacity */
 	struct table *s;
 	alloc_count++;
 	consider_gc();
@@ -1689,9 +1688,24 @@ int table_set(struct table *tbl, atom k, atom v) {
 }
 
 void table_add(struct table *tbl, atom k, atom v) {
-	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
-	*p = cons(cons(k, v), *p);
-	tbl->size++;
+  atom *p = &tbl->data[hash_code(k) % tbl->capacity];
+  *p = cons(cons(k, v), *p);
+  tbl->size++;
+  if (tbl->size > 0.75 * tbl->capacity) { /* rehash */
+    atom h = make_table(tbl->capacity * 2);
+    int i;
+    for (i = 0; i < tbl->capacity; i++) {
+      atom p = tbl->data[i];
+      while (!no(p)) {
+	atom pair1 = car(p);
+	atom k1 = car(pair1);
+	atom v1 = cdr(pair1);
+	table_add(h.value.table, k1, v1);
+	p = cdr(p);
+      }
+    }
+    *tbl = *h.value.table;
+  }
 }
 
 /* return pair. return NULL if not found */
