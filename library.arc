@@ -198,8 +198,9 @@ the same elements (be *isomorphic*) without being identical."
 	pair)
 
 (def sref (object value index)
-	(if (isa object 'cons) (scar (nthcdr index object) value)
-		(string-sref object value index)))
+  (let type- (type object)
+    (if (is type- 'cons) (scar (nthcdr index object) value)
+	((if (is type- 'string) string-sref table-sref) object value index))))
 
 (mac = (place value)
   (if (isa place 'cons)
