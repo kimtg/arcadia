@@ -8,11 +8,11 @@ struct pair *pair_head = NULL;
 struct str *str_head = NULL;
 struct table *table_head = NULL;
 int alloc_count = 0;
-atom sym_table = { T_NIL };
+atom symbol_table = { T_NIL };
 const atom nil = { T_NIL };
 atom code_expr = { T_NIL };
 atom env; /* the global environment */
-atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__, sym_o;
+atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__, sym_o, sym_table;
 atom cur_expr;
 
 void stack_add(atom a) {
@@ -105,7 +105,7 @@ void gc()
 	struct str *as, **ps;
 	struct table *at, **pt;
 
-	gc_mark(sym_table);
+	gc_mark(symbol_table);
 	gc_mark(code_expr);
 
 	/* mark atoms in the stack */
@@ -172,7 +172,7 @@ atom make_sym(const char *s)
 {
 	atom a, p;
 
-	p = sym_table;
+	p = symbol_table;
 	while (!no(p)) {
 		a = car(p);
 		if (strcmp(a.value.symbol, s) == 0)
@@ -182,7 +182,7 @@ atom make_sym(const char *s)
 
 	a.type = T_SYM;
 	a.value.symbol = (char*)strdup(s);
-	sym_table = cons(a, sym_table);
+	symbol_table = cons(a, symbol_table);
 	return a;
 }
 
@@ -1072,6 +1072,7 @@ error builtin_type(atom args, atom *result) {
 	case T_STRING: *result = sym_string; break;
 	case T_NUM: *result = sym_num; break;
 	case T_MACRO: *result = sym_mac; break;
+	case T_TABLE: *result = sym_table; break;
 	default: *result = nil; break; /* impossible */
 	}
 	return ERROR_OK;
@@ -2140,6 +2141,7 @@ void arc_init(char *file_path) {
 	sym_num = make_sym("num");
 	sym__ = make_sym("_");
 	sym_o = make_sym("o");
+	sym_table = make_sym("table");
 
 	env_assign(env, sym_t, sym_t);
 	env_assign(env, make_sym("nil"), nil);
