@@ -520,3 +520,33 @@ Matches 'expr' to the first satisfying 'test' and runs the corresponding 'then' 
   (w/table tbl
     (each key keys
       (= tbl.key val))))
+
+(def pos (test seq (o start 0))
+  "Returns the index of the first element of 'seq' matching 'test', starting
+from index 'start' (0 by default)."
+  (let f testify.test
+    ((afn (seq n)
+	  (if (no seq)
+	      nil
+	      (f car.seq)
+	      n
+	      (self cdr.seq (+ n 1)))) (nthcdr start seq) start)))
+
+(def trues (f xs)
+"Returns (map f xs) dropping any nils."
+  (and xs
+       (iflet fx (f car.xs)
+         (cons fx (trues f cdr.xs))
+         (trues f cdr.xs))))
+
+(def rem (test seq)
+  "Returns all elements of 'seq' except those satisfying 'test'."
+  (let f (testify test)
+    ((afn (s)
+      (if (no s)        nil
+          (f car.s)     (self cdr.s)
+          'else         (cons car.s (self cdr.s)))) seq)))
+
+(def keep (test seq)
+  "Returns all elements of 'seq' for which 'test' passes."
+  (rem (complement (testify test)) seq))
