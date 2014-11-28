@@ -550,3 +550,13 @@ from index 'start' (0 by default)."
 (def keep (test seq)
   "Returns all elements of 'seq' for which 'test' passes."
   (rem (complement (testify test)) seq))
+
+(def assoc (key al)
+  "Finds a (key value) pair in an association list 'al' of such pairs."
+  (if (no acons.al) nil
+      (and (acons (car al)) (is (caar al) key)) (car al)
+      (assoc key (cdr al))))
+
+(def alref (al key)
+  "Returns the value of 'key' in an association list 'al' of (key value) pairs"
+  (cadr (assoc key al)))
