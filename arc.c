@@ -6,6 +6,7 @@ int stack_size = 0;
 atom *stack = NULL;
 struct pair *pair_head = NULL;
 struct str *str_head = NULL;
+struct table *table_head = NULL;
 int alloc_count = 0;
 atom sym_table = { T_NIL };
 const atom nil = { T_NIL };
@@ -67,6 +68,7 @@ void gc_mark(atom root)
 {
 	struct pair *a;
 	struct str *as;
+	struct table *at;
 
 	switch (root.type) {
 	case T_CONS:
@@ -83,6 +85,15 @@ void gc_mark(atom root)
 		if (as->mark) return;
 		as->mark = 1;
 		break;
+	case T_TABLE: {
+		at = root.value.table;
+		if (at->mark) return;
+		at->mark = 1;
+		int i;
+		for (i = 0; i < at->capacity; i++) {
+			gc_mark(at->data[i]);
+		}
+		break; }
 	default:
 		return;
 	}
@@ -92,6 +103,7 @@ void gc()
 {
 	struct pair *a, **p;
 	struct str *as, **ps;
+	struct table *at, **pt;
 
 	gc_mark(sym_table);
 	gc_mark(code_expr);
@@ -128,6 +140,21 @@ void gc()
 		else {
 			ps = &as->next;
 			as->mark = 0; /* clear mark */
+		}
+	}
+
+	/* Free unmarked table allocations */
+	pt = &table_head;
+	while (*pt != NULL) {
+		at = *pt;
+		if (!at->mark) {
+			*pt = at->next;
+			free(at->data);
+			free(at);
+		}
+		else {
+			pt = &at->next;
+			at->mark = 0; /* clear mark */
 		}
 	}
 }
@@ -725,6 +752,18 @@ error apply(atom fn, atom args, atom *result)
 		*result = car(a);
 		return ERROR_OK;
 	}
+	else if (fn.type == T_TABLE) { /* implicit indexing for table */
+		if (len(args) != 1) return ERROR_ARGS;
+		atom *pkey = &car(args);
+		atom *ppair = table_get(fn.value.table, *pkey);
+		if (ppair) {
+			*result = cdr(*ppair);
+		}
+		else {
+			*result = nil;
+		}
+		return ERROR_OK;
+	}
 	else {
 		return ERROR_TYPE;
 	}
@@ -1038,6 +1077,7 @@ error builtin_type(atom args, atom *result) {
 	return ERROR_OK;
 }
 
+/* string-sref obj value index */
 error builtin_string_sref(atom args, atom *result) {
 	atom index, obj, value;
 	if (len(args) != 3) return ERROR_ARGS;
@@ -1415,6 +1455,48 @@ error builtin_newstring(atom args, atom *result) {
 	return ERROR_OK;
 }
 
+error builtin_table(atom args, atom *result) {
+	long arg_len = len(args);
+	if (arg_len != 0) return ERROR_ARGS;
+	*result = make_table();
+	return ERROR_OK;
+}
+
+/* maptable proc table */
+error builtin_maptable(atom args, atom *result) {
+	long arg_len = len(args);
+	if (arg_len != 2) return ERROR_ARGS;
+	atom *proc = &car(args);
+	atom *tbl = &car(cdr(args));
+	if (proc->type != T_BUILTIN && proc->type != T_CLOSURE) return ERROR_TYPE;
+	if (tbl->type != T_TABLE) return ERROR_TYPE;
+	int i;
+	for (i = 0; i < tbl->value.table->capacity; i++) {
+		atom *p = &tbl->value.table->data[i];
+		while (!no(*p)) {
+			atom *pair = &car(*p);
+			error err = apply(*proc, cons(car(*pair), cons(cdr(*pair), nil)), result);
+			if (err) return err;
+			p = &cdr(*p);
+		}
+	}
+	*result = *tbl;
+	return ERROR_OK;
+}
+
+/* table-sref obj value index */
+error builtin_table_sref(atom args, atom *result) {
+	atom index, obj, value;
+	if (len(args) != 3) return ERROR_ARGS;
+	index = car(cdr(cdr(args)));
+	obj = car(args);
+	if (obj.type != T_TABLE) return ERROR_TYPE;
+	value = car(cdr(args));
+	table_set(obj.value.table, index, value);	
+	*result = value;
+	return ERROR_OK;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1487,11 +1569,141 @@ char *to_string(atom atom, int write) {
 	case T_OUTPUT:
 		strcat_alloc(&s, "#<output>");
 		break;
+	case T_TABLE: {
+		strcat_alloc(&s, "#<table:");
+		int i;
+		for (i = 0; i < atom.value.table->capacity; i++) {
+			struct atom *data = &atom.value.table->data[i];
+			if (!no(*data)) {
+				char *s2 = to_string(*data, write);
+				strcat_alloc(&s, s2);
+				free(s2);
+			}
+		}
+		strcat_alloc(&s, ">");
+		break;}
 	default:
 		strcat_alloc(&s, "#<unknown type>");
 		break;
 	}
 	return s;
+}
+
+int hash_code(atom a) {
+	union hash_int {
+		int v_int;
+		double v_double;
+	};
+	int r = 0;
+	switch (a.type) {
+	case T_NIL:
+		return 0;
+	case T_CONS:		
+		while (!no(a)) {
+			r *= 31;
+			if (a.type == T_CONS) {
+				r += hash_code(car(a));
+				a = cdr(a);
+			}
+			else {
+				r += hash_code(a);
+				break;
+			}
+		}
+		return r;
+	case T_SYM:
+		return (int)a.value.symbol;
+	case T_STRING: {
+		char *v = a.value.str->value;
+		for (; v != 0; v++) {
+			r *= 31;
+			r += *v;
+		}
+		return r; }
+	case T_NUM: {
+		union hash_int h;
+		h.v_double = a.value.number;
+		return h.v_int; }
+	case T_BUILTIN:
+		return (int)a.value.builtin;
+	case T_CLOSURE:
+		return hash_code(cdr(a));
+	case T_MACRO:
+		return hash_code(cdr(a));
+	case T_INPUT:
+		return (int)a.value.fp;
+	case T_OUTPUT:
+		return (int)a.value.fp;
+	default:
+		return 0;
+	}
+}
+
+atom make_table() {
+	atom a;
+	int capacity = 16; /* initial capacity */
+	struct table *s;
+	alloc_count++;
+	consider_gc();
+	s = a.value.table = malloc(sizeof(struct table));
+	s->capacity = capacity;
+	s->size = 0;
+	s->data = malloc(capacity * sizeof(atom));
+	int i;
+	for (i = 0; i < capacity; i++) {
+		s->data[i] = nil;
+	}
+	s->mark = 0;
+	s->next = table_head;
+	table_head = s;
+	a.value.table = s;
+	a.type = T_TABLE;
+	stack_add(a);
+	return a;
+}
+
+/* return 1 if found */
+int table_update(struct table *tbl, atom k, atom v) {
+	atom *p = table_get(tbl, k);
+	if (p) {
+		p->value.pair->cdr = v;
+		return 1;
+	}
+	else
+		return 0;
+}
+
+/* return 1 if found */
+int table_set(struct table *tbl, atom k, atom v) {
+	atom *p = table_get(tbl, k);
+	if (p) {
+		p->value.pair->cdr = v;
+		return 1;
+	}
+	else {
+		p = &tbl->data[hash_code(k) % tbl->capacity];
+		*p = cons(cons(k, v), *p);
+		return 0;
+	}
+}
+
+void table_add(struct table *tbl, atom k, atom v) {
+	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
+	*p = cons(cons(k, v), *p);
+	tbl->size++;
+}
+
+/* return pair. return NULL if not found */
+atom *table_get(struct table *tbl, atom k) {
+	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
+	while (!no(*p)) {
+		atom *ppair = &car(*p);
+		if (is(car(*ppair), k)) {
+			return ppair;
+		}
+		p = &cdr(*p);
+	}
+	return NULL;
 }
 
 char *slurp_fp(FILE *fp) {
@@ -1978,6 +2190,9 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("sread"), make_builtin(builtin_sread));
 	env_assign(env, make_sym("write"), make_builtin(builtin_write));
 	env_assign(env, make_sym("newstring"), make_builtin(builtin_newstring));
+	env_assign(env, make_sym("table"), make_builtin(builtin_table));
+	env_assign(env, make_sym("maptable"), make_builtin(builtin_maptable));
+	env_assign(env, make_sym("table-sref"), make_builtin(builtin_table_sref));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));

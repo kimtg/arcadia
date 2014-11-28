@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.6.18"
+#define VERSION "0.6.19"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -34,7 +34,8 @@ enum type {
 	T_MACRO,
 	T_STRING,
 	T_INPUT,
-	T_OUTPUT
+	T_OUTPUT,
+	T_TABLE
 };
 
 typedef enum {
@@ -54,6 +55,7 @@ struct atom {
 		struct str *str;
 		builtin builtin;
 		FILE *fp;
+		struct table *table;
 	} value;
 };
 
@@ -67,6 +69,14 @@ struct str {
 	char *value;
 	char mark;
 	struct str *next;
+};
+
+struct table {
+	int capacity;
+	int size;
+	atom *data;
+	char mark;
+	struct table *next;
 };
 
 /* forward declarations */
@@ -96,6 +106,12 @@ error read_expr(const char *input, const char **end, atom *result);
 void print_expr(atom atom);
 void print_error(error e);
 int is(atom a, atom b);
+int hash_code(atom a);
+atom make_table();
+int table_update(struct table *tbl, atom k, atom v);
+void table_add(struct table *tbl, atom k, atom v);
+atom *table_get(struct table *tbl, atom k);
+int table_set(struct table *tbl, atom k, atom v);
 /* end forward */
 
 #define car(p) ((p).value.pair->car)
