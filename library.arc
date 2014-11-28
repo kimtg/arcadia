@@ -495,3 +495,18 @@ Useful in higher-order functions, or to index into lists, strings, tables, etc."
   `(listtab (list ,@(map (fn (p) (with (k (car p) v (cadr p))
 				   `(list ',k ,v)))
                          (pair args)))))
+
+(mac caselet (var expr . args)
+"Like [[case]], but 'expr' is also bound to 'var' and available inside the 'args'."
+  `(let ,var ,expr
+     ,((afn (args)
+        (if (no cdr.args)
+          car.args
+          `(if (is ,var ',car.args)
+             ,cadr.args
+             ,(self cddr.args)))) args)))
+
+(mac case (expr . args)
+"Usage: (case expr test1 then1 test2 then2 ...)
+Matches 'expr' to the first satisfying 'test' and runs the corresponding 'then' branch."
+  `(caselet ,(uniq) ,expr ,@args))
