@@ -1683,7 +1683,6 @@ int table_set(struct table *tbl, atom k, atom v) {
 	}
 	else {
 		p = &tbl->data[hash_code(k) % tbl->capacity];
-		printf("%d\n", hash_code(k) % tbl->capacity);
 		*p = cons(cons(k, v), *p);
 		return 0;
 	}
