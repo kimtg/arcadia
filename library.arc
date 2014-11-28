@@ -460,3 +460,38 @@ Useful in higher-order functions, or to index into lists, strings, tables, etc."
 
 ; Syntax expansion is done by reader.
 (def ssexpand (symbol) symbol)
+
+(def fill-table (table data)
+"Populates 'table' with alternating keys and values in 'data'."
+  (do1 table
+       (each p pair.data
+	     (with (k (car p) v (cadr p))
+	       (= table.k v)))))
+
+(def keys (h)
+  "Returns list of keys in table 'h'."
+  (let r nil
+    (maptable (fn (k v) (= r (cons k r))) h) r))
+
+(def vals (h)
+  "Returns list of values in table 'h'."
+  (let r nil
+    (maptable (fn (k v) (= r (cons v r))) h) r))
+
+(def tablist (h)
+  "Converts table 'h' into an association list of (key value) pairs. Reverse of [[listtab]]."
+  (let r nil
+    (maptable (fn p (= r (cons p r))) h) r))
+
+(def listtab (al)
+  "Converts association list 'al' of (key value) pairs into a table. Reverse of [[tablist]]."
+  (let h (table)
+    (map (fn (p) (with (k (car p) v (cadr p)) (= (h k) v)))
+         al)
+    h))
+
+(mac obj args
+"Creates a table out of a list of alternating keys and values."
+  `(listtab (list ,@(map (fn (p) (with (k (car p) v (cadr p))
+				   `(list ',k ,v)))
+                         (pair args)))))

@@ -1611,30 +1611,30 @@ int hash_code(atom a) {
 				break;
 			}
 		}
-		return r;
+		return abs(r);
 	case T_SYM:
-		return (int)a.value.symbol;
+	  return abs((int)a.value.symbol);
 	case T_STRING: {
 		char *v = a.value.str->value;
 		for (; v != 0; v++) {
 			r *= 31;
 			r += *v;
 		}
-		return r; }
+		return abs(r); }
 	case T_NUM: {
 		union hash_int h;
 		h.v_double = a.value.number;
-		return h.v_int; }
+		return abs(h.v_int); }
 	case T_BUILTIN:
-		return (int)a.value.builtin;
+	  return abs((int)a.value.builtin);
 	case T_CLOSURE:
 		return hash_code(cdr(a));
 	case T_MACRO:
 		return hash_code(cdr(a));
 	case T_INPUT:
-		return (int)a.value.fp;
+	  return abs((int)a.value.fp);
 	case T_OUTPUT:
-		return (int)a.value.fp;
+	  return abs((int)a.value.fp);
 	default:
 		return 0;
 	}
@@ -1683,6 +1683,7 @@ int table_set(struct table *tbl, atom k, atom v) {
 	}
 	else {
 		p = &tbl->data[hash_code(k) % tbl->capacity];
+		printf("%d\n", hash_code(k) % tbl->capacity);
 		*p = cons(cons(k, v), *p);
 		return 0;
 	}
