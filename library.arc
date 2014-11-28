@@ -510,3 +510,13 @@ Useful in higher-order functions, or to index into lists, strings, tables, etc."
 "Usage: (case expr test1 then1 test2 then2 ...)
 Matches 'expr' to the first satisfying 'test' and runs the corresponding 'then' branch."
   `(caselet ,(uniq) ,expr ,@args))
+
+(mac w/table (var . body)
+     "Runs 'body' to add to table 'var' and finally return it."
+     `(let ,var (table) ,@body ,var))
+
+(def memtable ((o keys nil) (o val t))
+  "Turns a list into a table indicating membership of all elements."
+  (w/table tbl
+    (each key keys
+      (= tbl.key val))))
