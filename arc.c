@@ -574,21 +574,22 @@ atom env_create(atom parent)
 
 error env_get(atom env, atom symbol, atom *result)
 {
-	atom parent = car(env);
+	while (1) {
+		atom parent = car(env);
 
-	struct table *ptbl = cdr(env).value.table;
-	atom a = table_get(ptbl, symbol);
-	if (!no(a)) {
-		*result = cdr(a);
-		return ERROR_OK;
+		struct table *ptbl = cdr(env).value.table;
+		atom a = table_get(ptbl, symbol);
+		if (!no(a)) {
+			*result = cdr(a);
+			return ERROR_OK;
+		}
+
+		if (no(parent)) {
+			/*printf("%s: ", symbol.value.symbol);*/
+			return ERROR_UNBOUND;
+		}
+		env = parent;
 	}
-
-	if (no(parent)) {
-		/*printf("%s: ", symbol.value.symbol);*/
-		return ERROR_UNBOUND;
-	}
-
-	return env_get(parent, symbol, result);
 }
 
 error env_assign(atom env, atom symbol, atom value) {
@@ -605,7 +606,6 @@ error env_assign_eq(atom env, atom symbol, atom value) {
 		cdr(a) = value;
 		return ERROR_OK;
 	}
-
 	return env_assign(env_origin, symbol, value);
 }
 
