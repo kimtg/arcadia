@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.6.20"
+#define VERSION "0.7"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -96,8 +96,6 @@ error macex_eval(atom expr, atom *result);
 error arc_load_file(const char *path);
 char *get_dir_path(char *file_path);
 void arc_init(char *file_path);
-void print_env();
-void print_env_sorted();
 #ifndef READLINE
 char *readline(char *prompt);
 #endif
@@ -108,9 +106,8 @@ void print_error(error e);
 int is(atom a, atom b);
 int hash_code(atom a);
 atom make_table();
-int table_update(struct table *tbl, atom k, atom v);
 void table_add(struct table *tbl, atom k, atom v);
-atom *table_get(struct table *tbl, atom k);
+atom table_get(struct table *tbl, atom k);
 int table_set(struct table *tbl, atom k, atom v);
 /* end forward */
 

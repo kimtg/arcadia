@@ -19,7 +19,9 @@ void stack_add(atom a) {
 	if (!(a.type == T_CONS
 		|| a.type == T_CLOSURE
 		|| a.type == T_MACRO
-		|| a.type == T_STRING))
+		|| a.type == T_STRING
+		|| a.type == T_TABLE
+		))
 		return;
 	stack_size++;
 	if (stack_size > stack_capacity) {
@@ -114,7 +116,7 @@ void gc()
 		gc_mark(stack[i]);
 	}
 
-	/* Free unmarked allocations */
+	/* Free unmarked "cons" allocations */
 	p = &pair_head;
 	while (*p != NULL) {
 		a = *p;
@@ -128,7 +130,7 @@ void gc()
 		}
 	}
 
-	/* Free unmarked string allocations */
+	/* Free unmarked "string" allocations */
 	ps = &str_head;
 	while (*ps != NULL) {
 		as = *ps;
@@ -143,7 +145,7 @@ void gc()
 		}
 	}
 
-	/* Free unmarked table allocations */
+	/* Free unmarked "table" allocations */
 	pt = &table_head;
 	while (*pt != NULL) {
 		at = *pt;
@@ -567,21 +569,18 @@ char *readline_fp(char *prompt, FILE *fp) {
 
 atom env_create(atom parent)
 {
-	return cons(parent, nil);
+	return cons(parent, make_table(16));
 }
 
 error env_get(atom env, atom symbol, atom *result)
 {
 	atom parent = car(env);
-	atom bs = cdr(env);
 
-	while (!no(bs)) {
-		atom b = car(bs);
-		if (car(b).value.symbol == symbol.value.symbol) {
-			*result = cdr(b);
-			return ERROR_OK;
-		}
-		bs = cdr(bs);
+	struct table *ptbl = cdr(env).value.table;
+	atom a = table_get(ptbl, symbol);
+	if (!no(a)) {
+		*result = cdr(a);
+		return ERROR_OK;
 	}
 
 	if (no(parent)) {
@@ -592,40 +591,19 @@ error env_get(atom env, atom symbol, atom *result)
 	return env_get(parent, symbol, result);
 }
 
-error env_assign(atom env, atom symbol, atom value)
-{
-	atom bs = cdr(env);
-	atom b = nil;
-
-	while (!no(bs)) {
-		b = car(bs);
-		if (car(b).value.symbol == symbol.value.symbol) {
-			cdr(b) = value;
-			return ERROR_OK;
-		}
-		bs = cdr(bs);
-	}
-
-	b = cons(symbol, value);
-	cdr(env) = cons(b, cdr(env));
-
+error env_assign(atom env, atom symbol, atom value) {
+	struct table *ptbl = cdr(env).value.table;
+	table_set(ptbl, symbol, value);
 	return ERROR_OK;
 }
 
 error env_assign_eq(atom env, atom symbol, atom value) {
 	atom env_origin = env;
-	while (!no(env)) {
-		atom bs = cdr(env);
-
-		while (!no(bs)) {
-			atom b = car(bs);
-			if (car(b).value.symbol == symbol.value.symbol) {
-				cdr(b) = value;
-				return ERROR_OK;
-			}
-			bs = cdr(bs);
-		}
-		env = car(env);
+	struct table *ptbl = cdr(env).value.table;
+	atom a = table_get(ptbl, symbol);
+	if (!no(a)) {
+		cdr(a) = value;
+		return ERROR_OK;
 	}
 
 	return env_assign(env_origin, symbol, value);
@@ -755,9 +733,9 @@ error apply(atom fn, atom args, atom *result)
 	else if (fn.type == T_TABLE) { /* implicit indexing for table */
 		if (len(args) != 1) return ERROR_ARGS;
 		atom *pkey = &car(args);
-		atom *ppair = table_get(fn.value.table, *pkey);
-		if (ppair) {
-			*result = cdr(*ppair);
+		atom pair = table_get(fn.value.table, *pkey);
+		if (!no(pair)) {
+			*result = cdr(pair);
 		}
 		else {
 			*result = nil;
@@ -1663,62 +1641,57 @@ atom make_table(int capacity) {
 }
 
 /* return 1 if found */
-int table_update(struct table *tbl, atom k, atom v) {
-	atom *p = table_get(tbl, k);
-	if (p) {
-		p->value.pair->cdr = v;
-		return 1;
-	}
-	else
-		return 0;
-}
-
-/* return 1 if found */
 int table_set(struct table *tbl, atom k, atom v) {
-	atom *p = table_get(tbl, k);
-	if (p) {
-		p->value.pair->cdr = v;
+	atom p = table_get(tbl, k);
+	if (!no(p)) {
+		cdr(p) = v;
 		return 1;
 	}
 	else {
-		p = &tbl->data[hash_code(k) % tbl->capacity];
-		*p = cons(cons(k, v), *p);
+		table_add(tbl, k, v);
 		return 0;
 	}
 }
 
 void table_add(struct table *tbl, atom k, atom v) {
-  atom *p = &tbl->data[hash_code(k) % tbl->capacity];
-  *p = cons(cons(k, v), *p);
-  tbl->size++;
-  if (tbl->size > 0.75 * tbl->capacity) { /* rehash */
-    atom h = make_table(tbl->capacity * 2);
-    int i;
-    for (i = 0; i < tbl->capacity; i++) {
-      atom p = tbl->data[i];
-      while (!no(p)) {
-	atom pair1 = car(p);
-	atom k1 = car(pair1);
-	atom v1 = cdr(pair1);
-	table_add(h.value.table, k1, v1);
-	p = cdr(p);
-      }
-    }
-    *tbl = *h.value.table;
-  }
+	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
+	*p = cons(cons(k, v), *p);
+	tbl->size++;
+	if (tbl->size > 0.75 * tbl->capacity) { /* rehash */
+		int new_capacity = tbl->capacity * 2;
+		struct atom *data2 = malloc(new_capacity * sizeof(struct atom));
+		int i;
+		for (i = 0; i < new_capacity; i++) {
+			data2[i] = nil;
+		}
+		for (i = 0; i < tbl->capacity; i++) {
+			atom p = tbl->data[i];
+			while (!no(p)) {
+				atom pair1 = car(p);
+				atom k1 = car(pair1);
+				atom *p2 = &data2[hash_code(k1) % new_capacity];
+				*p2 = cons(pair1, *p2);
+				p = cdr(p);
+			}
+		}
+		free(tbl->data);
+		tbl->data = data2;
+		tbl->capacity = new_capacity;		
+	}
 }
 
-/* return pair. return NULL if not found */
-atom *table_get(struct table *tbl, atom k) {
-	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
-	while (!no(*p)) {
-		atom *ppair = &car(*p);
-		if (is(car(*ppair), k)) {
-			return ppair;
+/* return pair. return nil if not found */
+atom table_get(struct table *tbl, atom k) {
+	int pos = hash_code(k) % tbl->capacity;
+	atom p = tbl->data[pos];
+	while (!no(p)) {
+		atom pair = car(p);
+		if (is(car(pair), k)) {
+			return pair;
 		}
-		p = &cdr(*p);
+		p = cdr(p);
 	}
-	return NULL;
+	return nil;
 }
 
 char *slurp_fp(FILE *fp) {
@@ -1756,6 +1729,7 @@ error macex(atom expr, atom *result) {
 	error err = ERROR_OK;
 	int ss = stack_size; /* save stack point */
 
+	cur_expr = expr; /* for error reporting */
 	stack_add(expr);
 	stack_add(env);
 
@@ -2221,34 +2195,6 @@ void arc_init(char *file_path) {
 	}
 	free(lib);
 	free(dir_path);
-}
-
-void print_env() {
-	/* print the environment */
-	puts("Environment:");
-	atom a = cdr(env);
-	while (!no(a)) {
-		atom env_pair = car(a);
-		printf(" %s", car(env_pair).value.symbol);
-		a = cdr(a);
-	}
-	puts("");
-}
-
-void print_env_sorted() {
-	/* print the environment */
-	puts("Environment:");
-	atom a = cdr(env), result, expr;
-	char s[] = "(each x (sort < (map [string (car _)] _syms)) (pr \" \" x))";
-	const char *p = s;
-	error err;
-	err = env_assign(env, make_sym("_syms"), a);
-	if (err) {print_error(err); return;}
-	err = read_expr(p, &p, &expr);
-	if (err) {print_error(err); return;}
-	err = macex_eval(expr, &result);
-	if (err) {print_error(err); return;}
-	puts("");
 }
 
 char *get_dir_path(char *file_path) {
