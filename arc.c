@@ -289,6 +289,7 @@ start:
 	else if (str[0] == '"') {
 		str++;
 		while (*str != '"' && *str != 0) {
+			if (*str == '\\') str++;
 			str++;
 		}
 		*end = str + 1;
@@ -314,12 +315,39 @@ error parse_simple(const char *start, const char *end, atom *result)
 		result->value.number = val;
 		return ERROR_OK;
 	}
-	else if (start[0] == '"') {
+	else if (start[0] == '"') { /* "string" */
 		result->type = T_STRING;
-		char *s = (char*)malloc(end - start);
-		memcpy(s, start + 1, end - start);
-		s[end - start - 2] = 0;
-		*result = make_string(s);
+		size_t length = end - start - 2;
+		char *buf = (char*)malloc(length + 1);
+		const char *ps = start + 1;
+		char *pt = buf;
+		while (ps < end - 1) {
+			if (*ps == '\\') {
+				char c_next = *(ps + 1);
+				switch (c_next) {
+				case 'r':
+					*pt = '\r';
+					break;
+				case 'n':
+					*pt = '\n';
+					break;
+				case 't':
+					*pt = '\t';
+					break;
+				default:
+					*pt = c_next;
+				}
+				ps++;
+			}
+			else {
+				*pt = *ps;
+			}
+			ps++;
+			pt++;
+		}
+		*pt = 0;
+		buf = realloc(buf, pt - buf + 1);
+		*result = make_string(buf);
 		return ERROR_OK;
 	}
 
