@@ -604,14 +604,12 @@ error env_get(atom env, atom symbol, atom *result)
 {
 	while (1) {
 		atom parent = car(env);
-
 		struct table *ptbl = cdr(env).value.table;
 		atom a = table_get(ptbl, symbol);
 		if (!no(a)) {
 			*result = cdr(a);
 			return ERROR_OK;
 		}
-
 		if (no(parent)) {
 			/*printf("%s: ", symbol.value.symbol);*/
 			return ERROR_UNBOUND;
@@ -628,13 +626,19 @@ error env_assign(atom env, atom symbol, atom value) {
 
 error env_assign_eq(atom env, atom symbol, atom value) {
 	atom env_origin = env;
-	struct table *ptbl = cdr(env).value.table;
-	atom a = table_get(ptbl, symbol);
-	if (!no(a)) {
-		cdr(a) = value;
-		return ERROR_OK;
+	while (1) {
+		atom parent = car(env);
+		struct table *ptbl = cdr(env).value.table;
+		atom a = table_get(ptbl, symbol);
+		if (!no(a)) {
+			cdr(a) = value;
+			return ERROR_OK;
+		}
+		if (no(parent)) {
+			return env_assign(env_origin, symbol, value);
+		}
+		env = parent;
 	}
-	return env_assign(env_origin, symbol, value);
 }
 
 int listp(atom expr)
