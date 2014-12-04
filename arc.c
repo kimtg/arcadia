@@ -625,7 +625,6 @@ error env_assign(atom env, atom symbol, atom value) {
 }
 
 error env_assign_eq(atom env, atom symbol, atom value) {
-	atom env_origin = env;
 	while (1) {
 		atom parent = car(env);
 		struct table *ptbl = cdr(env).value.table;
@@ -635,7 +634,7 @@ error env_assign_eq(atom env, atom symbol, atom value) {
 			return ERROR_OK;
 		}
 		if (no(parent)) {
-			return env_assign(env_origin, symbol, value);
+			return env_assign(env, symbol, value);
 		}
 		env = parent;
 	}

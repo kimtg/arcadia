@@ -560,3 +560,11 @@ from index 'start' (0 by default)."
 (def alref (al key)
   "Returns the value of 'key' in an association list 'al' of (key value) pairs"
   (cadr (assoc key al)))
+
+(mac wipe args
+"Sets each place in 'args' to nil."
+  `(do ,@(map (fn (a) `(= ,a nil)) args)))
+
+(mac set args
+"Sets each place in 'args' to t."
+  `(do ,@(map (fn (a) `(= ,a t)) args)))
