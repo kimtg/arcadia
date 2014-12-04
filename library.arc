@@ -170,25 +170,25 @@ the same elements (be *isomorphic*) without being identical."
       (and (no (< (car args) (cadr args)))
            (apply >= (cdr args)))))
 
-(mac ++ (place)
+(mac ++ (place (o i 1))
   (if (isa place 'cons)
     (w/uniq (a head index)
-      (if (is (car place) 'car) `(let ,a ,(cadr place) (scar ,a (+ (car ,a) 1)))
-        (if (is (car place) 'cdr) `(let ,a ,(cadr place) (scdr ,a (+ (cdr ,a) 1)))
+      (if (is (car place) 'car) `(let ,a ,(cadr place) (scar ,a (+ (car ,a) ,i)))
+        (if (is (car place) 'cdr) `(let ,a ,(cadr place) (scdr ,a (+ (cdr ,a) ,i)))
           `(with (,head ,(car place)
             ,index ,(cadr place))
-            (sref ,head (+ (,head ,index) 1) ,index)))))
-    `(assign ,place (+ ,place 1))))
+            (sref ,head (+ (,head ,index) ,i) ,index)))))
+    `(assign ,place (+ ,place ,i))))
 
-(mac -- (place)
+(mac -- (place (o i 1))
   (if (isa place 'cons)
     (w/uniq (a head index)
-      (if (is (car place) 'car) `(let ,a ,(cadr place) (scar ,a (- (car ,a) 1)))
-        (if (is (car place) 'cdr) `(let ,a ,(cadr place) (scdr ,a (- (cdr ,a) 1)))
+      (if (is (car place) 'car) `(let ,a ,(cadr place) (scar ,a (- (car ,a) ,i)))
+        (if (is (car place) 'cdr) `(let ,a ,(cadr place) (scdr ,a (- (cdr ,a) ,i)))
           `(with (,head ,(car place)
             ,index ,(cadr place))
-            (sref ,head (- (,head ,index) 1) ,index)))))
-    `(assign ,place (- ,place 1))))
+            (sref ,head (- (,head ,index) ,i) ,index)))))
+    `(assign ,place (- ,place ,i))))
 
 (def nthcdr (n pair)
 	(let i 0
@@ -568,3 +568,42 @@ from index 'start' (0 by default)."
 (mac set args
 "Sets each place in 'args' to t."
   `(do ,@(map (fn (a) `(= ,a t)) args)))
+
+(mac swap (place1 place2)
+  "Exchanges the values of 'place1' and 'place2'."
+  (w/uniq g
+    `(let ,g ,place1 (= ,place1 ,place2) (= ,place2 ,g))))
+
+(mac zap (op place . args)
+  "Replaces 'place' with (op place args...)"
+  `(= ,place (,op ,place ,@args)))
+
+(mac push (x place)
+  "Adds 'x' to the start of the sequence at 'place'."
+  `(= ,place (cons ,x ,place)))
+
+(mac pop (place)
+  "Opposite of [[push]]: removes the first element of the sequence at 'place' and returns it."
+  `(= ,place (cdr ,place)))
+
+(mac pull (test place)
+  "Removes all elements from 'place' that satisfy 'test'."
+	`(= ,place (rem ,test ,place)))
+
+(def some (test seq)
+  "Does at least one element of 'seq' satisfy 'test'?"
+  (let f testify.test
+    (reclist f:carif seq)))
+
+(def all (test seq)
+  "Does every element of 'seq' satisfy 'test'?"
+  (~some (complement (testify test)) seq))
+
+(def adjoin (x xs)
+  (if (some x xs)
+    xs
+    (cons x xs)))
+
+(mac pushnew (x place)
+  "Like [[push]] but first checks if 'x' is already present in 'place'."
+	`(= ,place (adjoin ,x ,place)))

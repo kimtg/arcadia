@@ -20,7 +20,7 @@ OPTIONS:
 `* + - / < > apply bound car cdr close cons cos disp expt eval infile int is log macex maptable mod newstring outfile quit rand read readline scar scdr sin sqrt sread stderr stdin stdout string sym system t table tan trunc type write writeb`
 
 ## Library
-`++ -- <= = >= abs acons afn alist alref and append assoc atom avg best caar cadr carif case caselet cddr check complement compose copy def do do1 each even fill-table find firstn for get idfn iflet in isa isnt iso join keep keys len let list listtab map map1 max med median memtable merge mergesort min multiple nearest no nthcdr number obj odd or pair pos positive pr prn quasiquote reclist reduce rem rev rfn round roundup rreduce set sort sref tablist testify trues uniq unless vals w/table w/uniq when whenlet wipe with withs`
+`++ -- <= = >= abs acons adjoin afn alist all alref and append assoc atom avg best caar cadr carif case caselet cddr check complement compose copy def do do1 each even fill-table find firstn for get idfn iflet in isa isnt iso join keep keys len let list listtab map map1 max med median memtable merge mergesort min multiple nearest no nthcdr number obj odd or pair pop pos positive pr prn pull push pushnew quasiquote reclist reduce rem rev rfn round roundup rreduce set some sort sref swap tablist testify trues uniq unless vals w/table w/uniq when whenlet wipe with withs zap`
 
 ## Features
 * Easy-to-understand garbage collection
