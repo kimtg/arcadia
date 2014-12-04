@@ -566,13 +566,27 @@ from index 'start' (0 by default)."
   `(do ,@(map (fn (a) `(= ,a nil)) args)))
 
 (mac set args
-"Sets each place in 'args' to t."
+  "Sets each place in 'args' to t."
   `(do ,@(map (fn (a) `(= ,a t)) args)))
+
+(mac aif (expr . branches)
+"Like [[if]], but also puts the value of 'expr' in variable 'it'."
+  `(iflet it ,expr ,@branches))
 
 (mac swap (place1 place2)
   "Exchanges the values of 'place1' and 'place2'."
   (w/uniq g
     `(let ,g ,place1 (= ,place1 ,place2) (= ,place2 ,g))))
+
+(mac rotate places
+		 "Like [[swap]] but for more than two places.
+For example, after (rotate place1 place2 place3), place3 is moved to place2,
+place2 to place1, and place1 to place3."
+		 (if (no places) nil
+				 (w/uniq g
+				 (let binds* nil
+					 ((afn (x) (when x (push (list = (car x) (aif (cdr x) (car it) g)) binds*) (self (cdr x)))) places)
+					 `(let ,g ,(car places) ,@(rev binds*))))))
 
 (mac zap (op place . args)
   "Replaces 'place' with (op place args...)"
