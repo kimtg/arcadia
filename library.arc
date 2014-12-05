@@ -95,8 +95,9 @@ For example, this is always true:
 (mac each (var expr . body)
   (w/uniq (seq i)
     `(let ,seq ,expr
-      (if (isa ,seq 'cons) (while ,seq (= ,var (car ,seq)) ,@body (= ,seq (cdr ,seq)))
-        (let ,i 0 (while (isnt (,seq ,i) 0) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
+					(if (isa ,seq 'cons) (while ,seq (= ,var (car ,seq)) ,@body (= ,seq (cdr ,seq)))
+							(isa ,seq 'table) (maptable (fn ,var ,@body) ,seq)
+							'else (let ,i 0 (while (isnt (,seq ,i) 0) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
 
 (mac do body
 	`((fn () ,@body)))
