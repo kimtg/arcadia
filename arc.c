@@ -1625,7 +1625,7 @@ int hash_code(atom a) {
 	  return abs((int)a.value.symbol);
 	case T_STRING: {
 		char *v = a.value.str->value;
-		for (; v != 0; v++) {
+		for (; *v != 0; v++) {
 			r *= 31;
 			r += *v;
 		}
