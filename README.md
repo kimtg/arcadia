@@ -4,6 +4,18 @@
 
 Arc is a dialect of Lisp.
 
+## Build
+```
+make
+```
+
+With readline support,
+```
+make readline
+```
+
+For Visual C++, use .sln file.
+
 ## Run
 ```
 Usage: arcadia [OPTIONS...] [FILES...]
