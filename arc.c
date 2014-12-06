@@ -12,7 +12,7 @@ atom symbol_table = { T_NIL };
 const atom nil = { T_NIL };
 atom code_expr = { T_NIL };
 atom env; /* the global environment */
-atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__, sym_o, sym_table;
+atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char;
 atom cur_expr;
 
 void stack_add(atom a) {
@@ -1547,6 +1547,88 @@ error builtin_table_sref(atom args, atom *result) {
 	return ERROR_OK;
 }
 
+/* coerce obj type */
+/*
+Coerces object to a new type.
+A char can be coerced to int, num, string, or sym.
+A number can be coerced to int, char, or string.
+A string can be coerced to sym, cons (char list), num, or int.
+A list of characters can be coerced to a string.
+A symbol can be coerced to a string.
+*/
+error builtin_coerce(atom args, atom *result) {
+	atom obj, type;
+	if (len(args) != 2) return ERROR_ARGS;
+	obj = car(args);
+	type = car(cdr(args));
+	switch (obj.type) {
+	case T_CHAR:
+		if (is(type, sym_int) || is(type, sym_num)) *result = make_number(obj.value.ch);
+		else if (is(type, sym_string)) {
+			char *buf = malloc(2);
+			buf[0] = obj.value.ch;
+			buf[1] = '\0';
+			*result = make_string(buf);
+		}
+		else if (is(type, sym_sym)) {
+			char buf[2];
+			buf[0] = obj.value.ch;
+			buf[1] = '\0';
+			*result = make_sym(buf);
+		}
+		else
+			return ERROR_TYPE;
+		break;
+	case T_NUM:
+		if (is(type, sym_int)) *result = make_number(floor(obj.value.number));
+		else if (is(type, sym_char)) *result = make_char((char)obj.value.number);
+		else if (is(type, sym_string)) {
+			*result = make_string(to_string(obj, 0));
+		}
+		else
+			return ERROR_TYPE;
+		break;
+	case T_STRING:
+		if (is(type, sym_sym)) *result = make_sym(obj.value.str->value);
+		else if(is(type, sym_cons)) {
+			*result = nil;
+			int i;
+			for (i = strlen(obj.value.str->value) - 1; i >= 0; i--) {
+				*result = cons(make_char(obj.value.str->value[i]), *result);
+			}
+		}
+		else if(is(type, sym_num)) *result = make_number(atof(obj.value.str->value));
+		else if(is(type, sym_int)) *result = make_number(atoi(obj.value.str->value));
+		else
+			return ERROR_TYPE;
+		break;
+	case T_CONS:
+		if (is(type, sym_string)) {
+			char *s = str_new();
+			atom p;
+			char buf[2];
+			buf[1] = 0;
+			for (p = obj; !no(p); p = cdr(p)) {
+				buf[0] = car(p).value.ch;
+				strcat_alloc(&s, buf);
+			}
+			*result = make_string(s);
+		}
+		else
+			return ERROR_TYPE;
+		break;
+	case T_SYM:
+		if (is(type, sym_string)) {
+			*result = make_string(strdup(obj.value.symbol));
+		}
+		break;
+	default:
+		*result = obj;
+	}
+	return ERROR_OK;
+}
+
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -2221,6 +2303,8 @@ void arc_init(char *file_path) {
 	sym__ = make_sym("_");
 	sym_o = make_sym("o");
 	sym_table = make_sym("table");
+	sym_int = make_sym("int");
+	sym_char = make_sym("char");
 
 	env_assign(env, sym_t, sym_t);
 	env_assign(env, make_sym("nil"), nil);
@@ -2274,6 +2358,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("table"), make_builtin(builtin_table));
 	env_assign(env, make_sym("maptable"), make_builtin(builtin_maptable));
 	env_assign(env, make_sym("table-sref"), make_builtin(builtin_table_sref));
+	env_assign(env, make_sym("coerce"), make_builtin(builtin_coerce));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));

@@ -542,11 +542,12 @@ from index 'start' (0 by default)."
 
 (def rem (test seq)
   "Returns all elements of 'seq' except those satisfying 'test'."
-  (let f (testify test)
-    ((afn (s)
-      (if (no s)        nil
-          (f car.s)     (self cdr.s)
-          'else         (cons car.s (self cdr.s)))) seq)))
+  (with (f (testify test) type* (type seq))
+    (coerce
+     ((afn (s)
+	   (if (no s)        nil
+	       (f car.s)     (self cdr.s)
+	       'else         (cons car.s (self cdr.s)))) (coerce seq 'cons)) type*)))
 
 (def keep (test seq)
   "Returns all elements of 'seq' for which 'test' passes."
