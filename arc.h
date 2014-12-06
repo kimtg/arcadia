@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.7.5"
+#define VERSION "0.8"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -35,7 +35,8 @@ enum type {
 	T_STRING,
 	T_INPUT,
 	T_OUTPUT,
-	T_TABLE
+	T_TABLE,
+	T_CHAR
 };
 
 typedef enum {
@@ -56,6 +57,7 @@ struct atom {
 		builtin builtin;
 		FILE *fp;
 		struct table *table;
+		char ch;
 	} value;
 };
 

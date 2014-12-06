@@ -253,6 +253,13 @@ atom make_output(FILE *fp) {
 	return a;
 }
 
+atom make_char(char c) {
+	atom a;
+	a.type = T_CHAR;
+	a.value.ch = c;
+	return a;
+}
+
 void print_expr(atom atom)
 {
 	char *s = to_string(atom, 1);
@@ -349,6 +356,37 @@ error parse_simple(const char *start, const char *end, atom *result)
 		buf = realloc(buf, pt - buf + 1);
 		*result = make_string(buf);
 		return ERROR_OK;
+	}
+	else if (start[0] == '#') { /* #\char */
+		buf = malloc(end - start + 1);
+		memcpy(buf, start, end - start);
+		buf[end - start] = 0;
+		size_t length = strlen(buf);
+		if (length == 3 && buf[1] == '\\') { /* plain character e.g. #\a */
+			*result = make_char(buf[2]);
+			free(buf);
+			return ERROR_OK;
+		}
+		else {
+			char c;
+			if (strcmp(buf, "#\\nul") == 0)
+				c = '\0';
+			else if (strcmp(buf, "#\\return") == 0)
+				c = '\r';
+			else if (strcmp(buf, "#\\newline") == 0)
+				c = '\n';
+			else if (strcmp(buf, "#\\tab") == 0)
+				c = '\t';
+			else if (strcmp(buf, "#\\space") == 0)
+				c = ' ';
+			else {
+				free(buf);
+				return ERROR_SYNTAX;
+			}
+			free(buf);
+			*result = make_char(c);
+			return ERROR_OK;
+		}
 	}
 
 	/* NIL or symbol */
@@ -743,7 +781,7 @@ error apply(atom fn, atom args, atom *result)
 	else if (fn.type == T_STRING) { /* implicit indexing for string */
 		if (len(args) != 1) return ERROR_ARGS;
 		long index = (long)(car(args)).value.number;
-		*result = make_number(fn.value.str->value[index]);
+		*result = make_char(fn.value.str->value[index]);
 		return ERROR_OK;
 	}
 	else if (fn.type == T_CONS && listp(fn)) { /* implicit indexing for list */
@@ -1592,6 +1630,26 @@ char *to_string(atom atom, int write) {
 		}
 		strcat_alloc(&s, ">");
 		break;}
+	case T_CHAR:
+		if (write) {
+			strcat_alloc(&s, "#\\");
+			switch (atom.value.ch) {
+			case '\0': strcat_alloc(&s, "nul"); break;
+			case '\r': strcat_alloc(&s, "return"); break;
+			case '\n': strcat_alloc(&s, "newline"); break;
+			case '\t': strcat_alloc(&s, "tab"); break;
+			case ' ': strcat_alloc(&s, "space"); break;
+			default:
+				buf[0] = atom.value.ch;
+				buf[1] = '\0';
+				strcat_alloc(&s, buf);
+			}
+		}
+		else {
+			s[0] = atom.value.ch;
+			s[1] = '\0';
+		}
+		break;
 	default:
 		strcat_alloc(&s, "#<unknown type>");
 		break;
