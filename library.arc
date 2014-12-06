@@ -90,7 +90,7 @@ For example, this is always true:
 (def len (seq)
   (let i 0
     (if (isa seq 'cons) (do (while seq (++ i) (= seq (cdr seq))) i)
-      (do (while (isnt (seq i) 0) (++ i)) i))))
+      (do (while (isnt (seq i) #\nul) (++ i)) i))))
 
 (mac each (var expr . body)
   (w/uniq (seq i)

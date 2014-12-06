@@ -1053,6 +1053,8 @@ int is(atom a, atom b) {
       return (a.value.builtin == b.value.builtin);
     case T_STRING:
       return strcmp(a.value.str->value, b.value.str->value) == 0;
+    case T_CHAR:
+      return (a.value.ch == b.value.ch);
     default:
       /* impossible */
       return 0;
