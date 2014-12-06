@@ -1150,8 +1150,8 @@ error builtin_string_sref(atom args, atom *result) {
 	obj = car(args);
 	if (obj.type != T_STRING) return ERROR_TYPE;
 	value = car(cdr(args));
-	obj.value.str->value[(long)index.value.number] = (char)value.value.number;
-	*result = make_number(value.value.number);
+	obj.value.str->value[(long)index.value.number] = (char)value.value.ch;
+	*result = make_char(value.value.ch);
 	return ERROR_OK;
 }
 
