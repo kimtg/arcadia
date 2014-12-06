@@ -1491,7 +1491,7 @@ error builtin_newstring(atom args, atom *result) {
 	switch (arg_len) {
 	case 1: break;
 	case 2:
-		c = (char) car(cdr(args)).value.number;
+		c = car(cdr(args)).value.ch;
 		break;
 	default:
 		return ERROR_ARGS;
