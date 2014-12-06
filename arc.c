@@ -1499,7 +1499,7 @@ error builtin_newstring(atom args, atom *result) {
 	s = malloc((length + 1) * sizeof(char));
 	int i;
 	for (i = 0; i < length; i++)
-		s[i] = (char) c;
+		s[i] = c;
 	s[length] = 0; /* end of string */
 	*result = make_string(s);
 	return ERROR_OK;
