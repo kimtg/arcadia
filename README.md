@@ -9,7 +9,7 @@ Arc is a dialect of Lisp.
 make
 ```
 
-With readline support,
+With [readline](http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html) support,
 ```
 make readline
 ```
