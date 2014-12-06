@@ -8,6 +8,8 @@ void repl() {
 	char *input;
 
 	while ((input = readline("> ")) != NULL) {
+	  read_start:
+		arc_reader_unclosed = 0;
 #ifdef READLINE
 		if (input && *input)
 			add_history(input);
@@ -20,6 +22,13 @@ void repl() {
 		atom result;
 
 		err = read_expr(p, &p, &code_expr);
+		if (arc_reader_unclosed > 0) { /* read more lines */
+			char *line = readline("  ");
+			if (!line) break;
+			input = strcat_alloc(&input, "\n");
+			input = strcat_alloc(&input, line);
+			goto read_start;
+		}
 
 		while (!no(code_expr)) {
 			if (!err)

@@ -14,6 +14,7 @@ atom code_expr = { T_NIL };
 atom env; /* the global environment */
 atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char;
 atom cur_expr;
+int arc_reader_unclosed = 0;
 
 void stack_add(atom a) {
 	if (!(a.type == T_CONS
@@ -294,9 +295,14 @@ start:
 	else if (str[0] == ',')
 		*end = str + (str[1] == '@' ? 2 : 1);
 	else if (str[0] == '"') {
+		arc_reader_unclosed++;
 		str++;
-		while (*str != '"' && *str != 0) {
+		while (*str != 0) {
 			if (*str == '\\') str++;
+			else if (*str == '"') {
+				arc_reader_unclosed--;
+				break;
+			}
 			str++;
 		}
 		*end = str + 1;
@@ -474,8 +480,10 @@ error read_list(const char *start, const char **end, atom *result)
 		if (err)
 			return err;
 
-		if (token[0] == ')')
+		if (token[0] == ')') {
+			arc_reader_unclosed--;
 			return ERROR_OK;
+		}
 
 		if (token[0] == '.' && *end - token == 1) {
 			/* Improper list */
@@ -536,7 +544,10 @@ error read_bracket(const char *start, const char **end, atom *result)
 
 		err = lex(*end, &token, end);
 		if (err) return err;
-		if (token[0] == ']') return ERROR_OK;
+		if (token[0] == ']') {
+			arc_reader_unclosed--;
+			return ERROR_OK;
+		}
 
 		err = read_expr(token, end, &item);
 		if (err) return err;
@@ -561,12 +572,16 @@ error read_expr(const char *input, const char **end, atom *result)
 	if (err)
 		return err;
 
-	if (token[0] == '(')
+	if (token[0] == '(') {
+		arc_reader_unclosed++;
 		return read_list(*end, end, result);
+	}
 	else if (token[0] == ')')
 		return ERROR_SYNTAX;
-	else if (token[0] == '[')
+	else if (token[0] == '[') {
+		arc_reader_unclosed++;
 		return read_bracket(*end, end, result);
+	}
 	else if (token[0] == ']')
 		return ERROR_SYNTAX;
 	else if (token[0] == '\'') {

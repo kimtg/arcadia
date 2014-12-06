@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.8.1"
+#define VERSION "0.8.2"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -120,5 +120,6 @@ int table_set(struct table *tbl, atom k, atom v);
 /* symbols for faster execution */
 extern atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym_table;
 extern atom code_expr;
+extern int arc_reader_unclosed;
 
 #endif
