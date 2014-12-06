@@ -1576,6 +1576,8 @@ error builtin_coerce(atom args, atom *result) {
 			buf[1] = '\0';
 			*result = make_sym(buf);
 		}
+		else if (is(type, sym_char))
+			*result = obj;
 		else
 			return ERROR_TYPE;
 		break;
@@ -1585,6 +1587,8 @@ error builtin_coerce(atom args, atom *result) {
 		else if (is(type, sym_string)) {
 			*result = make_string(to_string(obj, 0));
 		}
+		else if (is(type, sym_num))
+			*result = obj;
 		else
 			return ERROR_TYPE;
 		break;
@@ -1599,6 +1603,8 @@ error builtin_coerce(atom args, atom *result) {
 		}
 		else if(is(type, sym_num)) *result = make_number(atof(obj.value.str->value));
 		else if(is(type, sym_int)) *result = make_number(atoi(obj.value.str->value));
+		else if (is(type, sym_string))
+			*result = obj;
 		else
 			return ERROR_TYPE;
 		break;
@@ -1614,6 +1620,8 @@ error builtin_coerce(atom args, atom *result) {
 			}
 			*result = make_string(s);
 		}
+		else if (is(type, sym_cons))
+			*result = obj;
 		else
 			return ERROR_TYPE;
 		break;
@@ -1621,6 +1629,10 @@ error builtin_coerce(atom args, atom *result) {
 		if (is(type, sym_string)) {
 			*result = make_string(strdup(obj.value.symbol));
 		}
+		else if (is(type, sym_sym))
+			*result = obj;
+		else
+			return ERROR_TYPE;
 		break;
 	default:
 		*result = obj;
