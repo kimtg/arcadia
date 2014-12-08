@@ -784,6 +784,7 @@ error apply(atom fn, atom args, atom *result)
 			return ERROR_ARGS;
 
 		/* Evaluate the body */
+		*result = nil;
 		while (!no(body)) {
 			error err = eval_expr(car(body), env, result);
 			if (err)
@@ -2186,7 +2187,7 @@ error eval_expr(atom expr, atom env, atom *result)
 				}
 			}
 			else if (op.value.symbol == sym_fn.value.symbol) {
-				if (no(args) || no(cdr(args))) {
+				if (no(args)) {
 					stack_restore(ss);
 					return ERROR_ARGS;
 				}
