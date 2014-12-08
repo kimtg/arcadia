@@ -90,14 +90,16 @@ For example, this is always true:
 (def len (seq)
   (let i 0
     (if (isa seq 'cons) (do (while seq (++ i) (= seq (cdr seq))) i)
-      (do (while (isnt (seq i) #\nul) (++ i)) i))))
+	(isa seq 'string) (do (while (isnt (seq i) #\nul) (++ i)) i)
+	(isa seq 'table) (do (maptable (fn (k v) (++ i)) seq) i)
+	'else (err "Wrong type"))))
 
 (mac each (var expr . body)
-  (w/uniq (seq i)
-    `(let ,seq ,expr
-					(if (isa ,seq 'cons) (while ,seq (= ,var (car ,seq)) ,@body (= ,seq (cdr ,seq)))
-							(isa ,seq 'table) (maptable (fn ,var ,@body) ,seq)
-							'else (let ,i 0 (while (isnt (,seq ,i) #\nul) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
+     (w/uniq (seq i)
+	     `(let ,seq ,expr
+		   (if (isa ,seq 'cons) (while ,seq (= ,var (car ,seq)) ,@body (= ,seq (cdr ,seq)))
+		       (isa ,seq 'table) (maptable (fn ,var ,@body) ,seq)
+		       'else (let ,i 0 (while (isnt (,seq ,i) #\nul) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
 
 (mac do body
 	`((fn () ,@body)))
@@ -688,3 +690,17 @@ a list of the results."
          ,@body)
        (prn)
        (flushout))))
+
+(mac on (var s . body)
+"Like [[each]], but also maintains a variable calles 'index' counting the iterations."
+  (if (is var 'index)
+    (err "Can't use index as first arg to on.")
+    (w/uniq gs
+      `(let ,gs ,s
+         (forlen index ,gs
+           (let ,var (,gs index)
+             ,@body))))))
+
+(mac ontable (k v tab . body)
+     "Iterates over the table tab, assigning k and v each key and value."
+     `(maptable (fn (,k ,v) ,@body) ,tab))

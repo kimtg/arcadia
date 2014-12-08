@@ -1,6 +1,6 @@
 #include "arc.h"
 
-char *error_string[] = { "", "Syntax error", "Symbol not bound", "Wrong number of arguments", "Wrong type", "File error" };
+char *error_string[] = { "", "Syntax error", "Symbol not bound", "Wrong number of arguments", "Wrong type", "File error", "" };
 int stack_capacity = 0;
 int stack_size = 0;
 atom *stack = NULL;
@@ -1661,6 +1661,18 @@ error builtin_flushout(atom args, atom *result) {
   return ERROR_OK;
 }
 
+error builtin_err(atom args, atom *result) {
+  if (len(args) == 0) return ERROR_ARGS;
+  cur_expr = nil;
+  atom p = args;
+  for (; !no(p); p = cdr(p)) {
+    char *s = to_string(car(p), 0);
+    puts(s);
+    free(s);
+  }
+  return ERROR_USER;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -2392,6 +2404,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("table-sref"), make_builtin(builtin_table_sref));
 	env_assign(env, make_sym("coerce"), make_builtin(builtin_coerce));
 	env_assign(env, make_sym("flushout"), make_builtin(builtin_flushout));
+	env_assign(env, make_sym("err"), make_builtin(builtin_err));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
@@ -2423,7 +2436,9 @@ char *get_dir_path(char *file_path) {
 }
 
 void print_error(error e) {
+  if (e != ERROR_USER) {
 	printf("%s : ", error_string[e]);
 	print_expr(cur_expr);
 	puts("");
+  }
 }
