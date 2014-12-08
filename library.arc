@@ -97,7 +97,7 @@ For example, this is always true:
     `(let ,seq ,expr
 					(if (isa ,seq 'cons) (while ,seq (= ,var (car ,seq)) ,@body (= ,seq (cdr ,seq)))
 							(isa ,seq 'table) (maptable (fn ,var ,@body) ,seq)
-							'else (let ,i 0 (while (isnt (,seq ,i) 0) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
+							'else (let ,i 0 (while (isnt (,seq ,i) #\nul) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
 
 (mac do body
 	`((fn () ,@body)))
@@ -675,3 +675,16 @@ a list of the results."
 (mac forlen (var s . body)
      "Loops through the length of sequence 's', binding each element to 'var'."
      `(for ,var 0 (- (len ,s) 1) ,@body))
+
+(mac noisy-each (n var val . body)
+"Like [[each]] but print a progress indicator every 'n' iterations."
+  (w/uniq (gn gc)
+    `(with (,gn ,n ,gc 0)
+       (each ,var ,val
+         (when (multiple (++ ,gc) ,gn)
+           (pr ".")
+           (flushout)
+           )
+         ,@body)
+       (prn)
+       (flushout))))

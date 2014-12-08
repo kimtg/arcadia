@@ -1655,6 +1655,11 @@ error builtin_coerce(atom args, atom *result) {
 	return ERROR_OK;
 }
 
+error builtin_flushout(atom args, atom *result) {
+  if (len(args) != 0) return ERROR_ARGS;
+  *result = sym_t;
+  return ERROR_OK;
+}
 
 /* end builtin */
 
@@ -2386,6 +2391,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("maptable"), make_builtin(builtin_maptable));
 	env_assign(env, make_sym("table-sref"), make_builtin(builtin_table_sref));
 	env_assign(env, make_sym("coerce"), make_builtin(builtin_coerce));
+	env_assign(env, make_sym("flushout"), make_builtin(builtin_flushout));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
