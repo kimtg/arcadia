@@ -623,3 +623,55 @@ place2 to place1, and place1 to place3."
 (mac pushnew (x place)
   "Like [[push]] but first checks if 'x' is already present in 'place'."
 	`(= ,place (adjoin ,x ,place)))
+
+(mac nor args
+  "Computes args until one of them passes, then returns nil.
+Returns t if none of the args passes."
+  `(no (or ,@args)))
+
+(mac until (test . body)
+"Like [[while]], but negates 'test'; loops through 'body' as long as 'test' fails."
+  `(while (no ,test) ,@body))
+
+(mac whilet (var test . body)
+  "Like [[while]], but successive values of 'test' are bound to 'var'."
+  `(let ,var nil
+	(while (= ,var ,test) ,@body)))
+
+(mac whiler (var expr end . body)
+"Repeatedly binds 'var' to 'expr' and runs 'body' until 'var' matches 'end'."
+  (w/uniq gendf
+    `(withs (,var nil ,gendf (testify ,end))
+       (while (no (,gendf (= ,var ,expr)))
+         ,@body))))
+
+(mac loop (start test update . body)
+     "Executes start, then executes body repeatedly, checking test before each iteration and executing update afterward."
+     `(do ,start
+	  (while ,test ,@body ,update)))
+
+(mac accum (accfn . body)
+"Runs 'body' (usually containing a loop) and then returns in order all the
+values that were called with 'accfn' in the process.
+Can be cleaner than map for complex anonymous functions."
+  (w/uniq gacc
+    `(withs (,gacc nil ,accfn [push _ ,gacc])
+       ,@body
+       (rev ,gacc))))
+
+(mac drain (expr (o eos nil))
+"Repeatedly evaluates 'expr' until it returns 'eos' (nil by default). Returns
+a list of the results."
+  (w/uniq (gacc gres)
+    `(accum ,gacc
+       (whiler ,gres ,expr ,eos
+         (,gacc ,gres)))))
+
+(mac repeat (n . body)
+     "Runs 'body' expression by expression 'n' times."
+     (w/uniq g
+	     `(for ,g 1 ,n ,@body)))
+
+(mac forlen (var s . body)
+     "Loops through the length of sequence 's', binding each element to 'var'."
+     `(for ,var 0 (- (len ,s) 1) ,@body))
