@@ -92,7 +92,7 @@ For example, this is always true:
     (if (isa seq 'cons) (do (while seq (++ i) (= seq (cdr seq))) i)
 	(isa seq 'string) (do (while (isnt (seq i) #\nul) (++ i)) i)
 	(isa seq 'table) (do (maptable (fn (k v) (++ i)) seq) i)
-	'else (err "Wrong type"))))
+	'else 0)))
 
 (mac each (var expr . body)
      (w/uniq (seq i)
@@ -704,3 +704,7 @@ a list of the results."
 (mac ontable (k v tab . body)
      "Iterates over the table tab, assigning k and v each key and value."
      `(maptable (fn (,k ,v) ,@body) ,tab))
+
+(def empty (seq)
+  "Is 'seq' an empty container? Usually checks 'seq's [[len]]."
+  (iso 0 len.seq))
