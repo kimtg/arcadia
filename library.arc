@@ -708,3 +708,43 @@ a list of the results."
 (def empty (seq)
   "Is 'seq' an empty container? Usually checks 'seq's [[len]]."
   (iso 0 len.seq))
+
+(def orf fns
+"Returns a function which calls all the functions in 'fns' on its args, and
+[[or]]s the results. ((orf f g) x y) <=> (or (f x y) (g x y))"
+  (fn args
+    ((afn ((o fs fns))
+      (and fs
+           (or (apply car.fs args)
+               (self cdr.fs)))))))
+
+(def andf fns
+"Returns a function which calls all the functions in 'fns' on its args, and
+[[and]]s the results. For example, ((andf f g) x y) <=> (and (f x y) (g x y)).
+Simple syntax: f&g <=> (andf f g)"
+  (fn args
+    ((afn ((o fs fns))
+      (if no.fs          t
+          (no cdr.fs)    (apply car.fs args)
+          'else          (and (apply car.fs args)
+                              (self cdr.fs)))))))
+
+(def atend (i s)
+"Is index 'i' at or past the end of sequence 's'?"
+  (>= i (- len.s 1)))
+
+(mac aand args
+"Like [[and]], but each expression in 'args' can access the result of the
+previous one in variable 'it'."
+  (if (no args)
+       t
+      (no (cdr args))
+       (car args)
+      `(let it ,(car args) (and it (aand ,@(cdr args))))))
+
+(def dotted (x)
+"Is 'x' an _improper_ list terminating in something other than nil?
+Name comes from (cons 1 2) being printed with a dot: (1 . 1)."
+  (aand acons.x
+        cdr.x
+        ((orf ~acons dotted) it)))

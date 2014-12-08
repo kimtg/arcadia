@@ -487,20 +487,19 @@ error read_list(const char *start, const char **end, atom *result)
 
 		if (token[0] == '.' && *end - token == 1) {
 			/* Improper list */
-			if (no(p))
-				return ERROR_SYNTAX;
+			if (no(p)) return ERROR_SYNTAX;
 
 			err = read_expr(*end, end, &item);
-			if (err)
-				return err;
+			if (err) return err;
 
 			cdr(p) = item;
 
 			/* Read the closing ')' */
 			err = lex(*end, &token, end);
-			if (!err && token[0] != ')')
+			if (!err && token[0] != ')') {
 				err = ERROR_SYNTAX;
-
+			}
+			arc_reader_unclosed--;
 			return err;
 		}
 
