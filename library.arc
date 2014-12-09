@@ -748,3 +748,29 @@ Name comes from (cons 1 2) being printed with a dot: (1 . 1)."
   (aand acons.x
         cdr.x
         ((orf ~acons dotted) it)))
+
+(mac conswhen (f x y)
+"Adds 'x' to the front of 'y' if 'x' satisfies test 'f'."
+  (w/uniq (gf gx)
+   `(with (,gf ,f  ,gx ,x)
+      (if (,gf ,gx) (cons ,gx ,y) ,y))))
+
+(def consif (x xs)
+  "Like [[cons]] on 'x' and 'xs' unless 'x' is nil."
+  (if x (cons x xs) xs))
+
+(def last (xs)
+  "Returns the last element of 'xs'."
+  (if (cdr xs)
+    (last (cdr xs))
+    (car xs)))
+
+(def flat x
+  "Flattens a list of lists."
+  ((afn ((o x x) (o acc nil))
+    (if no.x        acc
+        (~acons x)  (cons x acc)
+        'else       (self car.x (self cdr.x acc))))))
+
+(def caris (x val)
+  (and (acons x) (is (car x) val)))
