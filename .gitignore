@@ -153,3 +153,6 @@ $RECYCLE.BIN/
 
 # etags
 TAGS
+
+# emacs crap
+\#*\#
