@@ -799,3 +799,11 @@ negative to count backwards from the end."
 (def split (seq pos)
   "Partitions 'seq' at index 'pos'."
 	(list (cut seq 0 pos) (cut seq pos)))
+
+; Generalization of pair: (tuples x) = (pair x)
+(def tuples (xs (o n 2))
+"Splits 'xs' up into lists of size 'n'. Generalization of [[pair]]."
+  (if (no xs)
+    nil
+    (cons (firstn n xs)
+          (tuples (nthcdr n xs) n))))
