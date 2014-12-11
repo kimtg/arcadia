@@ -883,3 +883,12 @@ comparator between elements."
 This is the most reliable way to check for presence, even when searching for nil."
   (let f (testify test)
     (reclist [if (f:carif _) _] seq)))
+
+(def insert-sorted (test elt seq)
+"Inserts 'elt' into a sequence 'seq' that is assumed to be sorted by 'test'."
+  (if (no seq)
+       (list elt)
+      (test elt car.seq)
+       (cons elt seq)
+      'else
+      (cons car.seq (insert-sorted test elt cdr.seq))))
