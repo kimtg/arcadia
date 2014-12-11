@@ -544,7 +544,7 @@ Matches 'expr' to the first satisfying 'test' and runs the corresponding 'then' 
 (def pos (test seq (o start 0))
   "Returns the index of the first element of 'seq' matching 'test', starting
 from index 'start' (0 by default)."
-  (let f testify.test
+  (with (f testify.test seq (coerce seq 'cons))
     ((afn (seq n)
 	  (if (no seq)
 	      nil
