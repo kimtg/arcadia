@@ -62,8 +62,6 @@ For example, this is always true:
                              (map1 cdr arg-lists))))
       nil))
 
-(def append (a b) (rreduce cons b a))
-
 (def caar (x) (car (car x)))
 (def cadr (x) (car (cdr x)))
 (def cddr (x) (cdr (cdr x)))
@@ -76,7 +74,7 @@ For example, this is always true:
       (if (is (car x) 'unquote)
           (cadr x)
           (if (and2 (isa (car x) 'cons) (is (caar x) 'unquote-splicing))
-              (list 'append
+              (list '+
                     (cadr (car x))
                     (list 'quasiquote (cdr x)))
               (list 'cons
@@ -774,3 +772,8 @@ Name comes from (cons 1 2) being printed with a dot: (1 . 1)."
 
 (def caris (x val)
   (and (acons x) (is (car x) val)))
+
+; common uses of map
+(def mappend (f . args)
+"Like [[map]] followed by append."
+  (apply + (apply + (map [map f _] args))))

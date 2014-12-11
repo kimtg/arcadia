@@ -871,18 +871,61 @@ error builtin_cons(atom args, atom *result)
 	return ERROR_OK;
 }
 
+/* appends two lists */
+atom append(atom a, atom b) {
+	atom a1 = copy_list(a),
+		b1 = copy_list(b);
+	atom p = a1;
+	if (no(p)) return b1;
+	while (1) {
+		if (no(cdr(p))) {
+			cdr(p) = b1;
+			return a1;
+		}
+		p = cdr(p);
+	}
+	return nil;
+}
+
+/*
++ args
+Addition. This operator also performs string and list concatenation.
+*/
 error builtin_add(atom args, atom *result)
 {
 	atom acc = make_number(0);
 	atom a, a2;
 	if (!listp(args)) return ERROR_ARGS;
-
-	a = args;
-	while (!no(a)) {
+	if (!no(args)) {
+		a = args;
 		a2 = car(a);
-		if (a2.type != T_NUM) return ERROR_TYPE;
-		acc.value.number += a2.value.number;
-		a = cdr(a);
+		if (a2.type == T_NUM) {
+			while (!no(a)) {
+				a2 = car(a);
+				if (a2.type != T_NUM) return ERROR_TYPE;
+				acc.value.number += a2.value.number;
+				a = cdr(a);
+			}
+		}
+		else if (a2.type == T_STRING) {
+			char *buf = str_new();
+			while (!no(a)) {
+				a2 = car(a);
+				char *s = to_string(a2, 0);
+				strcat_alloc(&buf, s);
+				free(s);
+				a = cdr(a);
+			}
+			acc = make_string(buf);
+		}
+		else if (a2.type == T_CONS || a2.type == T_NIL) {
+			acc = nil;
+			while (!no(a)) {
+				a2 = car(a);
+				acc = append(acc, a2);
+				a = cdr(a);
+			}
+		}
 	}
 	*result = acc;
 	return ERROR_OK;
