@@ -861,3 +861,12 @@ in 'seq'."
       (or no.xs (<= n 0))    nil
       (f car.xs)             (cons car.xs (retrieve (- n 1) f cdr.xs))
                              (retrieve n f cdr.xs)))
+(def most (f seq)
+"Like [[best]], but function 'f' is a scorer for each element rather than a
+comparator between elements."
+  (if seq
+    (withs (wins (car seq) topscore (f wins))
+      (each elt (cdr seq)
+        (let score (f elt)
+          (if (> score topscore) (= wins elt topscore score))))
+      wins)))
