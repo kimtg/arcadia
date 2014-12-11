@@ -102,13 +102,15 @@ For example, this is always true:
 (mac do body
 	`((fn () ,@body)))
 
-(def pair (xs)
+(def pair (xs (o f list))
+  "Splits the elements of 'xs' into buckets of two, and optionally applies the
+function 'f' to them."
   (if (no xs)
        nil
-      (no (cdr xs))
-       (list (list (car xs)))
-      (cons (list (car xs) (cadr xs))
-            (pair (cddr xs)))))
+      (no cdr.xs)
+       (list (list car.xs))
+      (cons (f car.xs cadr.xs)
+            (pair cddr.xs f))))
 
 (mac with (parms . body)
   `((fn ,(map1 car (pair parms))
