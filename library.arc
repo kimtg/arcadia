@@ -834,3 +834,15 @@ negative to count backwards from the end."
     (each x seq
 	  (++ (ans x 0)))
     ans))
+
+(def compare (comparer scorer)
+  "Creates a function to score two args using 'scorer' and compare them using
+'comparer'. Often passed to [[sort]]."
+  (fn (x y) (comparer scorer.x scorer.y)))
+
+(def commonest (seq)
+  "Returns the most common element of 'seq' and the number of times it occurred
+in 'seq'."
+  (withs (counts* (counts seq)
+          best* (best (compare > counts*) seq)) 
+    (list best* (counts* best* 0))))
