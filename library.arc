@@ -870,3 +870,9 @@ comparator between elements."
         (let score (f elt)
           (if (> score topscore) (= wins elt topscore score))))
       wins)))
+
+(def mem (test seq)
+"Returns suffix of 'seq' after the first element to satisfy 'test'.
+This is the most reliable way to check for presence, even when searching for nil."
+  (let f (testify test)
+    (reclist [if (f:carif _) _] seq)))
