@@ -896,3 +896,21 @@ This is the most reliable way to check for presence, even when searching for nil
 (mac insort (test elt seq)
   "Like [[insert-sorted]] but modifies 'seq' in place'."
   `(zap [insert-sorted ,test ,elt _] ,seq))
+
+(def reinsert-sorted (test elt seq)
+  (if (no seq)
+       (list elt)
+      (is elt car.seq)
+       (reinsert-sorted test elt cdr.seq)
+      (test elt car.seq)
+       (cons elt (rem elt seq))
+      'else
+       (cons car.seq (reinsert-sorted test elt cdr.seq))))
+
+(mac insortnew (test elt seq)
+  "Like [[insort]], but only inserts 'elt' if it doesn't exist."
+  `(zap [reinsert-sorted ,test ,elt _] ,seq))
+
+(def bestn (n f seq)
+  "Returns a list of the top 'n' elements of 'seq' ordered by 'f'."
+  (firstn n (sort f seq)))
