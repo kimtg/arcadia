@@ -846,3 +846,10 @@ in 'seq'."
   (withs (counts* (counts seq)
           best* (best (compare > counts*) seq)) 
     (list best* (counts* best* 0))))
+
+(def retrieve (n f xs)
+"Returns the first 'n' elements of 'xs' that satisfy 'f'."
+  (if (no n)                 (keep f xs)
+      (or no.xs (<= n 0))    nil
+      (f car.xs)             (cons car.xs (retrieve (- n 1) f cdr.xs))
+                             (retrieve n f cdr.xs)))
