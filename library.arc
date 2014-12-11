@@ -818,3 +818,10 @@ negative to count backwards from the end."
   (if (> start end)
     nil
     (cons start (range (inc start) end))))
+
+(mac n-of (n expr)
+  "Runs 'expr' 'n' times, and returns a list of the results."
+  (w/uniq ga
+    `(let ,ga nil
+       (repeat ,n (push ,expr ,ga))
+       (rev ,ga))))
