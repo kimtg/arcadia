@@ -1,12 +1,10 @@
-(mac = args (cons 'assign args))
-
-(= rreduce (fn (proc init list)
+(assign rreduce (fn (proc init list)
   (if list
       (proc (car list)
             (rreduce proc init (cdr list)))
       init)))
 
-(= list (fn args args))
+(assign list (fn args args))
 
 (mac def (name args . body) (list '= name (cons 'fn (cons args body))))
 
@@ -87,7 +85,7 @@ For example, this is always true:
 
 (def len (seq)
   (let i 0
-    (if (isa seq 'cons) (do (while seq (++ i) (= seq (cdr seq))) i)
+    (if (isa seq 'cons) (do (while seq (++ i) (assign seq (cdr seq))) i)
 	(isa seq 'string) (do (while (isnt (seq i) #\nul) (++ i)) i)
 	(isa seq 'table) (do (maptable (fn (k v) (++ i)) seq) i)
 	'else 0)))
@@ -95,9 +93,9 @@ For example, this is always true:
 (mac each (var expr . body)
      (w/uniq (seq i)
 	     `(let ,seq ,expr
-		   (if (isa ,seq 'cons) (while ,seq (= ,var (car ,seq)) ,@body (= ,seq (cdr ,seq)))
+		   (if (isa ,seq 'cons) (while ,seq (assign ,var (car ,seq)) ,@body (assign ,seq (cdr ,seq)))
 		       (isa ,seq 'table) (maptable (fn ,var ,@body) ,seq)
-		       'else (let ,i 0 (while (isnt (,seq ,i) #\nul) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
+		       'else (let ,i 0 (while (isnt (,seq ,i) #\nul) (assign ,var (,seq ,i)) ,@body (++ ,i)))))))
 
 (mac do body
 	`((fn () ,@body)))
@@ -125,8 +123,8 @@ function 'f' to them."
         (apply join (cdr args))
         (cons (car a) (apply join (cons (cdr a) (cdr args))))))))
 
-(= uniq (let uniq-count 0
-  (fn () (sym (string "_uniq" (= uniq-count (+ uniq-count 1)))))))
+(assign uniq (let uniq-count 0
+  (fn () (sym (string "_uniq" (assign uniq-count (+ uniq-count 1)))))))
 
 (mac w/uniq (names . body)
   (if (isa names 'cons)
@@ -203,7 +201,7 @@ the same elements (be *isomorphic*) without being identical."
 (def nthcdr (n pair)
 	(let i 0
 		(while (and (< i n) pair)
-			(= pair (cdr pair))
+			(assign pair (cdr pair))
 			(++ i)))
 	pair)
 
@@ -212,17 +210,22 @@ the same elements (be *isomorphic*) without being identical."
     (if (is type- 'cons) (scar (nthcdr index object) value)
 	((if (is type- 'string) string-sref table-sref) object value index))))
 
-; = place value ...
+; mac place value ...
 (mac = args
-     (cons 'do (map (fn (p) (with (place (car p) value (cadr p))
-			      (if (isa place 'cons)
-				  (if (is (car place) 'car)
-				      (list 'scar (cadr place) value)
-				      (if (is (car place) 'cdr)
-					  (list 'scdr (cadr place) value)
-					  (list 'sref (car place) value (cadr place))))
-				  (list 'assign place value))))
-		    (pair args))))
+     (let r nil
+       (while args
+	      (with (place (car args) value (cadr args))
+		(if (isa place 'cons)
+		    (if (is (car place) 'car)
+			(assign r (+ r (list (list 'scar (cadr place) value))))
+			(if (is (car place) 'cdr)
+			    (assign r (+ r (list (list 'scdr (cadr place) value))))
+			    (assign r (+ r (list (list 'sref (car place) value (cadr place)))))))
+		    (assign r (+ r (list (list 'assign place value))))))
+	      (assign args (cdr args)))
+       (cons 'do r)))
+
+
 
 (mac when (test . body)
 	 (list 'if test (cons 'do body)))
@@ -241,7 +244,7 @@ the same elements (be *isomorphic*) without being identical."
 
 (mac for (var init max . body)
   (w/uniq g
-  `(let ,g ,max (= ,var ,init)
+  `(let ,g ,max (assign ,var ,init)
       (while (<= ,var ,g) ,@body (++ ,var)))))
 
 (def idfn (x) x)
