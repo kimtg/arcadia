@@ -777,3 +777,23 @@ Name comes from (cons 1 2) being printed with a dot: (1 . 1)."
 (def mappend (f . args)
 "Like [[map]] followed by append."
   (apply + (apply + (map [map f _] args))))
+
+(def range-bounce (i max)
+"Munges index 'i' in slices of a sequence of length 'max'. First element starts
+ at index 0. Negative indices count from the end. A nil index denotes the end."
+  (if (no i)  max
+      (< i 0)  (+ max i)
+      (>= i max) max
+      'else  i))
+
+(def cut (seq start (o end))
+"Extract a chunk of 'seq' from index 'start' (inclusive) to 'end' (exclusive). 'end'
+can be left out or nil to indicate everything from 'start', and can be
+negative to count backwards from the end."
+  (firstn (- (range-bounce end len.seq)
+             start)
+          (nthcdr start seq)))
+
+(def split (seq pos)
+  "Partitions 'seq' at index 'pos'."
+	(list (cut seq 0 pos) (cut seq pos)))
