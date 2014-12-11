@@ -892,3 +892,7 @@ This is the most reliable way to check for presence, even when searching for nil
        (cons elt seq)
       'else
       (cons car.seq (insert-sorted test elt cdr.seq))))
+
+(mac insort (test elt seq)
+  "Like [[insert-sorted]] but modifies 'seq' in place'."
+  `(zap [insert-sorted ,test ,elt _] ,seq))
