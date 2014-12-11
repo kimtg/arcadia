@@ -815,14 +815,18 @@ error apply(atom fn, atom args, atom *result)
 		return ERROR_OK;
 	}
 	else if (fn.type == T_TABLE) { /* implicit indexing for table */
-		if (len(args) != 1) return ERROR_ARGS;
+		long len1 = len(args);
+		if (len1 != 1 && len1 != 2) return ERROR_ARGS;
 		atom *pkey = &car(args);
 		atom pair = table_get(fn.value.table, *pkey);
 		if (!no(pair)) {
 			*result = cdr(pair);
 		}
 		else {
-			*result = nil;
+			if (len1 == 2) /* default value is specified */
+				*result = car(cdr(args));
+			else
+				*result = nil;
 		}
 		return ERROR_OK;
 	}

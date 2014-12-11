@@ -175,12 +175,14 @@ the same elements (be *isomorphic*) without being identical."
 
 (mac ++ (place (o i 1))
   (if (isa place 'cons)
-    (w/uniq (a head index)
+    (w/uniq (a head index default)
       (if (is (car place) 'car) `(let ,a ,(cadr place) (scar ,a (+ (car ,a) ,i)))
         (if (is (car place) 'cdr) `(let ,a ,(cadr place) (scdr ,a (+ (cdr ,a) ,i)))
           `(with (,head ,(car place)
-            ,index ,(cadr place))
-            (sref ,head (+ (,head ,index) ,i) ,index)))))
+                  ,index ,(cadr place)
+                  ,default ,(cadr (cdr place)))
+	     (sref ,head (+ (,head ,index ,default) ,i) ,index))
+	  )))
     `(assign ,place (+ ,place ,i))))
 
 (mac -- (place (o i 1))
@@ -825,3 +827,10 @@ negative to count backwards from the end."
     `(let ,ga nil
        (repeat ,n (push ,expr ,ga))
        (rev ,ga))))
+
+(def counts (seq (o tbl (table)))
+"Returns a table with counts of each unique element in 'seq'."
+  (let ans tbl
+    (each x seq
+	  (++ (ans x 0)))
+    ans))
