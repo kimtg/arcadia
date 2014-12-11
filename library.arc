@@ -807,3 +807,14 @@ negative to count backwards from the end."
     nil
     (cons (firstn n xs)
           (tuples (nthcdr n xs) n))))
+
+(def copylist (x) x)
+
+(def inc (x (o n 1))
+  (coerce (+ (coerce x 'int) n) (type x)))
+
+(def range (start end)
+"Returns the list of integers from 'start' to 'end' (both inclusive)."
+  (if (> start end)
+    nil
+    (cons start (range (inc start) end))))
