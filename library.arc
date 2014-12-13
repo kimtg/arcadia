@@ -984,3 +984,22 @@ not preserved."
     (each x xs
 	  (++ n f.x))
     n))
+
+(mac rand-choice exprs
+"Runs one of the given 'exprs' at random and returns the result."
+  `(case (rand ,(len exprs))
+     ,@(let key -1
+         (mappend [list (++ key) _]
+                  exprs))))
+
+(def only (f)
+"Transforms a function 'f' info a variant that runs only if its first arg is
+non-nil."
+  (fn args (if (car args) (apply f args))))
+
+(mac summing (sumfn . body)
+  "Sums the number of times sumfn is called with a true argument in body. The sum is returned. The sumfn argument specifies the name under which the summing function is available to the body."
+  (w/uniq gacc
+    `(withs (,gacc 0 ,sumfn [if _ (++ ,gacc)])
+       ,@body
+       ,gacc)))
