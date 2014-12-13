@@ -955,3 +955,8 @@ not preserved."
 "Does 'x' lie before 'y' in 'seq' (optionally starting from index 'i')?"
   (aand (pos (orf testify.x testify.y) seq i)
         (iso x seq.it)))
+
+(def rand-elt (seq)
+"Returns a random element of 'seq'. See also [[rand-choice]]."
+  (seq (rand (len seq))))
+
