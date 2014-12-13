@@ -1720,6 +1720,27 @@ error builtin_err(atom args, atom *result) {
   return ERROR_USER;
 }
 
+error builtin_len(atom args, atom *result) {
+  if (len(args) != 1) return ERROR_ARGS;
+  atom a = car(args);
+  if (a.type == T_CONS) {
+    int len1 = 0;
+    atom p;
+    for (p = a; !no(p); p = cdr(p)) len1++;
+    *result = make_number(len1);
+  }
+  else if (a.type == T_STRING) {
+    *result = make_number(strlen(a.value.str->value));
+  }
+  else if (a.type == T_TABLE) {
+    *result = make_number(a.value.table->size);
+  }
+  else {
+    *result = make_number(0);
+  }
+  return ERROR_OK;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -2452,6 +2473,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("coerce"), make_builtin(builtin_coerce));
 	env_assign(env, make_sym("flushout"), make_builtin(builtin_flushout));
 	env_assign(env, make_sym("err"), make_builtin(builtin_err));
+	env_assign(env, make_sym("len"), make_builtin(builtin_len));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));

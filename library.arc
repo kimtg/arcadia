@@ -85,13 +85,6 @@ For example, this is always true:
 (mac let (sym def . body)
 	`((fn (,sym) ,@body) ,def))
 
-(def len (seq)
-  (let i 0
-    (if (isa seq 'cons) (do (while seq (++ i) (= seq (cdr seq))) i)
-	(isa seq 'string) (do (while (isnt (seq i) #\nul) (++ i)) i)
-	(isa seq 'table) (do (maptable (fn (k v) (++ i)) seq) i)
-	'else 0)))
-
 (mac each (var expr . body)
      (w/uniq (seq i)
 	     `(let ,seq ,expr
