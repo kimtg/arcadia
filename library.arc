@@ -946,3 +946,7 @@ not preserved."
         (unless h.x
           (yield x)
           (set h.x))))))
+
+(def single (x)
+"Is 'x' a list with just one element?"
+  (and acons.x (no cdr.x)))
