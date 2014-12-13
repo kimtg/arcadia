@@ -1400,6 +1400,9 @@ error builtin_int(atom args, atom *result) {
 		case T_NUM:
 			*result = make_number(round(a.value.number));
 			break;
+		case T_CHAR:
+			*result = make_number(a.value.ch);
+			break;
 		default:
 			return ERROR_TYPE;
 		}

@@ -977,3 +977,10 @@ not preserved."
     (on c s1
       (when (isnt c (s2 index))
         (throw index)))))
+
+(def sum (f xs)
+"Returns total of all elements in (map f xs)."
+  (let n 0
+    (each x xs
+	  (++ n f.x))
+    n))
