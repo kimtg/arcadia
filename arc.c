@@ -15,6 +15,7 @@ atom env; /* the global environment */
 atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char;
 atom cur_expr;
 int arc_reader_unclosed = 0;
+atom thrown;
 
 void stack_add(atom a) {
 	if (!(a.type == T_CONS
@@ -793,6 +794,11 @@ error apply(atom fn, atom args, atom *result)
 
 		return ERROR_OK;
 	}
+	else if (fn.type == T_CONTINUATION) {
+		if (len(args) != 1) return ERROR_ARGS;
+		thrown = car(args);
+		longjmp(*fn.value.jb, 1);
+	}
 	else if (fn.type == T_STRING) { /* implicit indexing for string */
 		if (len(args) != 1) return ERROR_ARGS;
 		long index = (long)(car(args)).value.number;
@@ -1179,7 +1185,9 @@ error builtin_type(atom args, atom *result) {
 	case T_SYM:
 	case T_NIL: *result = sym_sym; break;
 	case T_BUILTIN:
-	case T_CLOSURE: *result = sym_fn; break;
+	case T_CLOSURE:
+	case T_CONTINUATION:
+		*result = sym_fn; break;
 	case T_STRING: *result = sym_string; break;
 	case T_NUM: *result = sym_num; break;
 	case T_MACRO: *result = sym_mac; break;
@@ -1741,6 +1749,26 @@ error builtin_len(atom args, atom *result) {
   return ERROR_OK;
 }
 
+atom make_continuation(jmp_buf *jb) {
+  atom a;
+  a.type = T_CONTINUATION;
+  a.value.jb = jb;
+  return a;
+}
+
+error builtin_ccc(atom args, atom *result) {
+  if (len(args) != 1) return ERROR_ARGS;
+  atom a = car(args);
+  if (a.type != T_BUILTIN && a.type != T_CLOSURE) return ERROR_TYPE;
+  jmp_buf jb;
+  int val = setjmp(jb);
+  if (val) {
+    *result = thrown;
+    return ERROR_OK;
+  }
+  return apply(a, cons(make_continuation(&jb), nil), result);
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1845,6 +1873,9 @@ char *to_string(atom atom, int write) {
 			s[0] = atom.value.ch;
 			s[1] = '\0';
 		}
+		break;
+	case T_CONTINUATION:
+		strcat_alloc(&s, "#<continuation>");
 		break;
 	default:
 		strcat_alloc(&s, "#<unknown type>");
@@ -2474,6 +2505,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("flushout"), make_builtin(builtin_flushout));
 	env_assign(env, make_sym("err"), make_builtin(builtin_err));
 	env_assign(env, make_sym("len"), make_builtin(builtin_len));
+	env_assign(env, make_sym("ccc"), make_builtin(builtin_ccc));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));

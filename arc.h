@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.8.10"
+#define VERSION "0.9"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -14,6 +14,7 @@
 #include <stddef.h>
 #include <math.h>
 #include <time.h>
+#include <setjmp.h>
 
 #ifdef READLINE
 #include <readline/readline.h>
@@ -36,7 +37,8 @@ enum type {
 	T_INPUT,
 	T_OUTPUT,
 	T_TABLE,
-	T_CHAR
+	T_CHAR,
+	T_CONTINUATION
 };
 
 typedef enum {
@@ -58,6 +60,7 @@ struct atom {
 		FILE *fp;
 		struct table *table;
 		char ch;
+		jmp_buf *jb;
 	} value;
 };
 

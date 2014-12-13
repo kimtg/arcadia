@@ -960,3 +960,20 @@ not preserved."
 "Returns a random element of 'seq'. See also [[rand-choice]]."
   (seq (rand (len seq))))
 
+(mac point (name . body)
+"Like [[do]], but may be exited by calling 'name' from within 'body'."
+  (w/uniq (g p)
+    `(ccc (fn (,g)
+            (let ,name (fn ((o ,p)) (,g ,p))
+              ,@body)))))
+
+(mac catch body
+"Runs 'body', but any call to (throw x) immediately returns x."
+  `(point throw ,@body))
+
+(def mismatch (s1 s2)
+"Returns the first index where 's1' and 's2' do not match."
+  (catch
+    (on c s1
+      (when (isnt c (s2 index))
+        (throw index)))))
