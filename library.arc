@@ -929,3 +929,11 @@ This is the most reliable way to check for presence, even when searching for nil
 not preserved."
   (+ xs (rem (fn (y) (some [f _ y] xs))
              ys)))
+
+(def len< (x n)
+  "Is [[len]] of 'x' less than 'n'?"
+  (< len.x n))
+
+(def len> (x n)
+  "Is [[len]] of 'x' greater than 'n'?"
+  (> len.x n))
