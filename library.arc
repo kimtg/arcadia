@@ -950,3 +950,8 @@ not preserved."
 (def single (x)
 "Is 'x' a list with just one element?"
   (and acons.x (no cdr.x)))
+
+(def before (x y seq (o i 0))
+"Does 'x' lie before 'y' in 'seq' (optionally starting from index 'i')?"
+  (aand (pos (orf testify.x testify.y) seq i)
+        (iso x seq.it)))
