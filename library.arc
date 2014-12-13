@@ -625,10 +625,19 @@ place2 to place1, and place1 to place3."
   "Removes all elements from 'place' that satisfy 'test'."
 	`(= ,place (rem ,test ,place)))
 
+(def recstring (test s (o start 0))
+"Calls function 'test' with successive characters in string 's' until one of the calls passes."
+  ((afn ((o i start))
+    (and (< i len.s)
+         (or test.i
+             (self (+ i 1)))))))
+
 (def some (test seq)
   "Does at least one element of 'seq' satisfy 'test'?"
   (let f testify.test
-    (reclist f:carif seq)))
+    (if (isa seq 'string)
+	(recstring f:seq seq)
+	(reclist f:carif seq))))
 
 (def all (test seq)
   "Does every element of 'seq' satisfy 'test'?"
@@ -914,3 +923,16 @@ This is the most reliable way to check for presence, even when searching for nil
 (def bestn (n f seq)
   "Returns a list of the top 'n' elements of 'seq' ordered by 'f'."
   (firstn n (sort f seq)))
+
+(def count (test x)
+"Returns the number of elements of 'x' that pass 'test'."
+  (with (n 0 testf testify.test)
+    (each elt x
+      (if testf.elt ++.n))
+    n))
+
+(def union (f xs ys)
+"Merges 'xs' and 'ys', while filtering out duplicates using 'f'. Ordering is
+not preserved."
+  (+ xs (rem (fn (y) (some [f _ y] xs))
+             ys)))
