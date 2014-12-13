@@ -937,3 +937,12 @@ not preserved."
 (def len> (x n)
   "Is [[len]] of 'x' greater than 'n'?"
   (> len.x n))
+
+(def dedup (xs)
+"Returns list of elements in 'xs' with duplicates dropped."
+  (let h (table)
+    (accum yield
+      (each x xs
+        (unless h.x
+          (yield x)
+          (set h.x))))))
