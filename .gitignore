@@ -16,6 +16,7 @@ build/
 [Oo]bj/
 *.exe
 *.o
+*.res
 arcadia
 
 # MSTest test Results

@@ -92,6 +92,12 @@
   <ItemGroup>
     <ClInclude Include="arc.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="arc.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="arc.ico" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
