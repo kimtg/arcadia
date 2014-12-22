@@ -14,6 +14,11 @@ With [readline](http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html) support
 make readline
 ```
 
+With [MinGW](http://www.mingw.org/),
+```
+mingw32-make mingw
+```
+
 For Visual C++, use .sln file.
 
 ## Run
