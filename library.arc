@@ -962,10 +962,7 @@ not preserved."
 
 (mac point (name . body)
 "Like [[do]], but may be exited by calling 'name' from within 'body'."
-  (w/uniq (g p)
-    `(ccc (fn (,g)
-            (let ,name (fn ((o ,p)) (,g ,p))
-              ,@body)))))
+  `(ccc (fn (,name) ,@body)))
 
 (mac catch body
 "Runs 'body', but any call to (throw x) immediately returns x."
