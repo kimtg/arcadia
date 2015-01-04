@@ -1887,12 +1887,12 @@ char *to_string(atom atom, int write) {
 	return s;
 }
 
-int hash_code(atom a) {
-	union hash_int {
-		int v_int;
+unsigned int hash_code(atom a) {
+	union hash_uint {
+		unsigned int v_uint;
 		double v_double;
 	};
-	int r = 0;
+	unsigned int r = 0;
 	switch (a.type) {
 	case T_NIL:
 		return 0;
@@ -1908,30 +1908,30 @@ int hash_code(atom a) {
 				break;
 			}
 		}
-		return abs(r);
+		return r;
 	case T_SYM:
-	  return abs((int)a.value.symbol);
+	  return (unsigned int)a.value.symbol;
 	case T_STRING: {
 		char *v = a.value.str->value;
 		for (; *v != 0; v++) {
 			r *= 31;
 			r += *v;
 		}
-		return abs(r); }
+		return r; }
 	case T_NUM: {
-		union hash_int h;
+		union hash_uint h;
 		h.v_double = a.value.number;
-		return abs(h.v_int); }
+		return h.v_uint; }
 	case T_BUILTIN:
-	  return abs((int)a.value.builtin);
+	  return (unsigned int)a.value.builtin;
 	case T_CLOSURE:
 		return hash_code(cdr(a));
 	case T_MACRO:
 		return hash_code(cdr(a));
 	case T_INPUT:
-	  return abs((int)a.value.fp);
+		return (unsigned int)a.value.fp;
 	case T_OUTPUT:
-	  return abs((int)a.value.fp);
+		return (unsigned int)a.value.fp;
 	default:
 		return 0;
 	}

@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.9"
+#define VERSION "0.9.1"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -109,7 +109,7 @@ error read_expr(const char *input, const char **end, atom *result);
 void print_expr(atom atom);
 void print_error(error e);
 int is(atom a, atom b);
-int hash_code(atom a);
+unsigned int hash_code(atom a);
 atom make_table();
 void table_add(struct table *tbl, atom k, atom v);
 atom table_get(struct table *tbl, atom k);
