@@ -34,7 +34,7 @@ void stack_add(atom a) {
 }
 
 void consider_gc() {
-	if (alloc_count > 10000) {
+	if (alloc_count > 100000) {
 		gc();
 		alloc_count = 0;
 	}
