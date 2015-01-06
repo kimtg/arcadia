@@ -18,13 +18,16 @@ int arc_reader_unclosed = 0;
 atom thrown;
 
 void stack_add(atom a) {
-	if (!(a.type == T_CONS
-		|| a.type == T_CLOSURE
-		|| a.type == T_MACRO
-		|| a.type == T_STRING
-		|| a.type == T_TABLE
-		))
+	switch (a.type) {
+	case T_CONS:
+	case T_CLOSURE:
+	case T_MACRO:
+	case T_STRING:
+	case T_TABLE:
+		break;
+	default:
 		return;
+	}
 	stack_size++;
 	if (stack_size > stack_capacity) {
 		stack_capacity = stack_size * 2;
