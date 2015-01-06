@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.9.1"
+#define VERSION "0.9.2"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -94,7 +94,7 @@ void gc_mark(atom root);
 void gc();
 void stack_restore(int saved_size);
 error macex(atom expr, atom *result);
-char *to_string(atom atom, int write);
+char *to_string(atom a, int write);
 char *strcat_alloc(char **dst, char *src);
 char *str_new();
 error macex_eval(atom expr, atom *result);
@@ -106,7 +106,7 @@ char *readline(char *prompt);
 #endif
 char *readline_fp(char *prompt, FILE *fp);
 error read_expr(const char *input, const char **end, atom *result);
-void print_expr(atom atom);
+void print_expr(atom a);
 void print_error(error e);
 int is(atom a, atom b);
 unsigned int hash_code(atom a);

@@ -262,16 +262,16 @@ atom make_char(char c) {
 	return a;
 }
 
-void print_expr(atom atom)
+void print_expr(atom a)
 {
-	char *s = to_string(atom, 1);
+	char *s = to_string(a, 1);
 	printf("%s", s);
 	free(s);
 }
 
-void pr(atom atom)
+void pr(atom a)
 {
-	char *s = to_string(atom, 0);
+	char *s = to_string(a, 0);
 	printf("%s", s);
 	free(s);
 }
@@ -1787,55 +1787,56 @@ char *str_new() {
 	return s;
 }
 
-char *to_string(atom atom, int write) {
+char *to_string(atom a, int write) {
 	char *s = str_new();
 	char buf[80];
-	switch (atom.type) {
+	switch (a.type) {
 	case T_NIL:
 		strcat_alloc(&s, "nil");
 		break;
 	case T_CONS:
 		strcat_alloc(&s, "(");
-		strcat_alloc(&s, to_string(car(atom), write));
-		atom = cdr(atom);
-		while (!no(atom)) {
-			if (atom.type == T_CONS) {
+		strcat_alloc(&s, to_string(car(a), write));
+		a = cdr(a);
+		while (!no(a)) {
+			if (a.type == T_CONS) {
 				strcat_alloc(&s, " ");
-				strcat_alloc(&s, to_string(car(atom), write));
-				atom = cdr(atom);
+				strcat_alloc(&s, to_string(car(a), write));
+				a = cdr(a);
 			}
 			else {
 				strcat_alloc(&s, " . ");
-				strcat_alloc(&s, to_string(atom, write));
+				strcat_alloc(&s, to_string(a, write));
 				break;
 			}
 		}
 		strcat_alloc(&s, ")");
 		break;
 	case T_SYM:
-		strcat_alloc(&s, atom.value.symbol);
+		strcat_alloc(&s, a.value.symbol);
 		break;
 	case T_STRING:
 		if (write) strcat_alloc(&s, "\"");
-		strcat_alloc(&s, atom.value.str->value);
+		strcat_alloc(&s, a.value.str->value);
 		if (write) strcat_alloc(&s, "\"");
 		break;
 	case T_NUM:
-		sprintf(buf, "%.16g", atom.value.number);
+		sprintf(buf, "%.16g", a.value.number);
 		strcat_alloc(&s, buf);
 		break;
 	case T_BUILTIN:
-		sprintf(buf, "#<builtin:%p>", atom.value.builtin);
+		sprintf(buf, "#<builtin:%p>", a.value.builtin);
 		strcat_alloc(&s, buf);
 		break;
 	case T_CLOSURE:
-		strcat_alloc(&s, "#<closure:");
-		strcat_alloc(&s, to_string(cdr(atom), write));
-		strcat_alloc(&s, ">");
+	{
+		atom a2 = cons(sym_fn, cdr(a));
+		strcat_alloc(&s, to_string(a2, write));
 		break;
+	}
 	case T_MACRO:
 		strcat_alloc(&s, "#<macro:");
-		strcat_alloc(&s, to_string(cdr(atom), write));
+		strcat_alloc(&s, to_string(cdr(a), write));
 		strcat_alloc(&s, ">");
 		break;
 	case T_INPUT:
@@ -1847,8 +1848,8 @@ char *to_string(atom atom, int write) {
 	case T_TABLE: {
 		strcat_alloc(&s, "#<table:");
 		int i;
-		for (i = 0; i < atom.value.table->capacity; i++) {
-			struct atom *data = &atom.value.table->data[i];
+		for (i = 0; i < a.value.table->capacity; i++) {
+			atom *data = &a.value.table->data[i];
 			if (!no(*data)) {
 				char *s2 = to_string(*data, write);
 				strcat_alloc(&s, s2);
@@ -1860,20 +1861,20 @@ char *to_string(atom atom, int write) {
 	case T_CHAR:
 		if (write) {
 			strcat_alloc(&s, "#\\");
-			switch (atom.value.ch) {
+			switch (a.value.ch) {
 			case '\0': strcat_alloc(&s, "nul"); break;
 			case '\r': strcat_alloc(&s, "return"); break;
 			case '\n': strcat_alloc(&s, "newline"); break;
 			case '\t': strcat_alloc(&s, "tab"); break;
 			case ' ': strcat_alloc(&s, "space"); break;
 			default:
-				buf[0] = atom.value.ch;
+				buf[0] = a.value.ch;
 				buf[1] = '\0';
 				strcat_alloc(&s, buf);
 			}
 		}
 		else {
-			s[0] = atom.value.ch;
+			s[0] = a.value.ch;
 			s[1] = '\0';
 		}
 		break;
