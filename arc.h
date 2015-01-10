@@ -110,7 +110,7 @@ void print_expr(atom a);
 void print_error(error e);
 int is(atom a, atom b);
 unsigned int hash_code(atom a);
-atom make_table();
+atom make_table(int capacity);
 void table_add(struct table *tbl, atom k, atom v);
 atom table_get(struct table *tbl, atom k);
 int table_set(struct table *tbl, atom k, atom v);
