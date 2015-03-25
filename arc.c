@@ -489,7 +489,7 @@ error read_list(const char *start, const char **end, atom *result)
 			return ERROR_OK;
 		}
 
-		if (token[0] == '.' && *end - token == 1) {
+		if (!no(p) && token[0] == '.' && *end - token == 1) {
 			/* Improper list */
 			if (no(p)) return ERROR_SYNTAX;
 
