@@ -110,7 +110,7 @@ void print_expr(atom a);
 void print_error(error e);
 int is(atom a, atom b);
 unsigned int hash_code(atom a);
-atom make_table();
+atom make_table(int capacity);
 void table_add(struct table *tbl, atom k, atom v);
 atom table_get(struct table *tbl, atom k);
 int table_set(struct table *tbl, atom k, atom v);
@@ -121,7 +121,7 @@ int table_set(struct table *tbl, atom k, atom v);
 #define no(atom) ((atom).type == T_NIL)
 
 /* symbols for faster execution */
-extern atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_fn, sym_string, sym_num, sym_table;
+extern atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_string, sym_num, sym_table;
 extern atom code_expr;
 extern int arc_reader_unclosed;
 
