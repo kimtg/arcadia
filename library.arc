@@ -1,14 +1,14 @@
 (mac = args (cons 'assign args))
 
-(= rreduce (fn (proc init list)
-  (if list
-      (proc (car list)
-            (rreduce proc init (cdr list)))
-      init)))
-
 (= list (fn args args))
 
 (mac def (name args . body) (list '= name (cons 'fn (cons args body))))
+
+(def rreduce (f xs)
+"Like [[reduce]] but accumulates elements of 'xs' in reverse order."
+  (if (cddr xs)
+    (f (car xs) (rreduce f (cdr xs)))
+    (apply f xs)))
 
 (def no (x) (is x nil))
 
@@ -38,12 +38,12 @@ For example, this is always true:
 
 (def abs (x) (if (< x 0) (- 0 x) x))
 
-(def reduce (proc init list)
-  (if list
-      (reduce proc
-             (proc init (car list))
-             (cdr list))
-      init))
+(def reduce (f xs)
+"Accumulates elements of 'xs' using binary function 'f'."
+  (if (cddr xs)
+    (reduce f (cons (f car.xs cadr.xs)
+                    cddr.xs))
+    (apply f xs)))
 
 (def rev (list)
   (reduce (fn (a x) (cons x a)) nil list))
