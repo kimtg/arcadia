@@ -1320,6 +1320,17 @@ error builtin_read(atom args, atom *result) {
 		s = readline("");
 		const char *buf = s;
 		error err = read_expr(buf, &buf, result);
+
+		/* bring back remaining expressions so that "(read) (read)" works */
+		if (buf) {
+			if (*buf) ungetc('\n', stdin);
+			char *b0 = buf;
+			for (; *buf; buf++) {
+			}
+			for (buf--; buf >= b0; buf--) {
+				ungetc(*buf, stdin);
+			}
+		}
 		free(s);
 		return err;
 	}
