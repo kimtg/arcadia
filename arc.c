@@ -1324,7 +1324,7 @@ error builtin_read(atom args, atom *result) {
 		/* bring back remaining expressions so that "(read) (read)" works */
 		if (buf) {
 			if (*buf) ungetc('\n', stdin);
-			char *b0 = buf;
+			const char *b0 = buf;
 			for (; *buf; buf++) {
 			}
 			for (buf--; buf >= b0; buf--) {
