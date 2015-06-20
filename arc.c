@@ -704,12 +704,13 @@ int listp(atom expr)
 }
 
 long len(atom xs) {
-	atom a = xs;
+	atom *p = &xs;
 	long ret = 0;
-	if (!listp(xs)) return 0;
-	while (!no(a)) {
+	while (!no(*p)) {
+		if (p->type != T_CONS)
+			return 0;
+		p = &cdr(*p);
 		ret++;
-		a = cdr(a);
 	}
 	return ret;
 }
@@ -1747,10 +1748,7 @@ error builtin_len(atom args, atom *result) {
   if (len(args) != 1) return ERROR_ARGS;
   atom a = car(args);
   if (a.type == T_CONS) {
-    int len1 = 0;
-    atom p;
-    for (p = a; !no(p); p = cdr(p)) len1++;
-    *result = make_number(len1);
+	*result = make_number(len(a));
   }
   else if (a.type == T_STRING) {
     *result = make_number(strlen(a.value.str->value));
