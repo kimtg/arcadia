@@ -2289,23 +2289,24 @@ error eval_expr(atom expr, atom env, atom *result)
 			}
 			else if (op.value.symbol == sym_if.value.symbol) {
 				atom cond;
-				while (!no(args)) {
-					err = eval_expr(car(args), env, &cond);
+				atom *p = &args;
+				while (!no(*p)) {
+					err = eval_expr(car(*p), env, &cond);
 					if (err) {
 						stack_restore(ss);
 						return err;
 					}
-					if (no(cdr(args))) {
+					if (no(cdr(*p))) {
 						*result = cond;
 						stack_restore(ss);
 						return ERROR_OK;
 					}
 					if (!no(cond)) {
-						err = eval_expr(car(cdr(args)), env, result);
+						err = eval_expr(car(cdr(*p)), env, result);
 						stack_restore(ss);
 						return err;
 					}
-					args = cdr(cdr(args));
+					p = &cdr(cdr(*p));
 				}
 				*result = nil;
 				stack_restore(ss);
@@ -2391,15 +2392,15 @@ error eval_expr(atom expr, atom env, atom *result)
 
 		/* Evaulate arguments */
 		args = copy_list(args);
-		atom p = args;
-		while (!no(p)) {
-			err = eval_expr(car(p), env, &car(p));
+		atom *p = &args;
+		while (!no(*p)) {
+			err = eval_expr(car(*p), env, &car(*p));
 			if (err) {
 				stack_restore(ss);
 				return err;
 			}
 
-			p = cdr(p);
+			p = &cdr(*p);
 		}
 		err = apply(op, args, result);
 		stack_restore(ss);
