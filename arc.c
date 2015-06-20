@@ -1192,6 +1192,7 @@ error builtin_type(atom args, atom *result) {
 	case T_NUM: *result = sym_num; break;
 	case T_MACRO: *result = sym_mac; break;
 	case T_TABLE: *result = sym_table; break;
+	case T_CHAR: *result = sym_char; break;
 	default: *result = nil; break; /* impossible */
 	}
 	return ERROR_OK;
