@@ -45,8 +45,13 @@ For example, this is always true:
                     cddr.xs))
     (apply f xs)))
 
-(def rev (list)
-  (reduce (fn (a x) (cons x a)) nil list))
+(def rev (xs)
+"Returns a list containing the elements of 'xs' back to front."
+  ((rfn recur (xs acc)
+    (if (no xs)
+      acc
+      (recur cdr.xs
+             (cons car.xs acc)))) xs nil))
 
 (def map1 (f xs)
 "Returns a list containing the result of function 'f' applied to every element of 'xs'."
