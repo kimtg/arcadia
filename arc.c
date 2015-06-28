@@ -8,7 +8,10 @@ struct pair *pair_head = NULL;
 struct str *str_head = NULL;
 struct table *table_head = NULL;
 int alloc_count = 0;
-atom symbol_table = { T_NIL };
+int alloc_count_old = 0;
+char **symbol_table = NULL;
+int symbol_size = 0;
+int symbol_capacity = 0;
 const atom nil = { T_NIL };
 atom code_expr = { T_NIL };
 atom env; /* the global environment */
@@ -37,9 +40,9 @@ void stack_add(atom a) {
 }
 
 void consider_gc() {
-	if (alloc_count > 100000) {
+	if (alloc_count > alloc_count_old * 2) {
 		gc();
-		alloc_count = 0;
+		alloc_count = alloc_count_old;
 	}
 }
 
@@ -108,7 +111,6 @@ void gc()
 	struct str *as, **ps;
 	struct table *at, **pt;
 
-	gc_mark(symbol_table);
 	gc_mark(code_expr);
 
 	/* mark atoms in the stack */
@@ -117,6 +119,7 @@ void gc()
 		gc_mark(stack[i]);
 	}
 
+	alloc_count_old = 0;
 	/* Free unmarked "cons" allocations */
 	p = &pair_head;
 	while (*p != NULL) {
@@ -128,6 +131,7 @@ void gc()
 		else {
 			p = &a->next;
 			a->mark = 0; /* clear mark */
+			alloc_count_old++;
 		}
 	}
 
@@ -143,6 +147,7 @@ void gc()
 		else {
 			ps = &as->next;
 			as->mark = 0; /* clear mark */
+			alloc_count_old++;
 		}
 	}
 
@@ -158,6 +163,7 @@ void gc()
 		else {
 			pt = &at->next;
 			at->mark = 0; /* clear mark */
+			alloc_count_old++;
 		}
 	}
 }
@@ -173,19 +179,26 @@ atom make_number(double x)
 
 atom make_sym(const char *s)
 {
-	atom a, p;
+	atom a;
 
-	p = symbol_table;
-	while (!no(p)) {
-		a = car(p);
-		if (strcmp(a.value.symbol, s) == 0)
+	int i;
+	for (i = 0; i < symbol_size; i++) {
+		char *s2 = symbol_table[i];
+		if (strcmp(s2, s) == 0) {
+			a.type = T_SYM;
+			a.value.symbol = s2;
 			return a;
-		p = cdr(p);
+		}
 	}
 
 	a.type = T_SYM;
 	a.value.symbol = (char*)strdup(s);
-	symbol_table = cons(a, symbol_table);
+	if (symbol_size >= symbol_capacity) {
+		symbol_capacity *= 2;
+		symbol_table = realloc(symbol_table, symbol_capacity * sizeof(char *));
+	}
+	symbol_table[symbol_size] = a.value.symbol;
+	symbol_size++;
 	return a;
 }
 
@@ -2412,6 +2425,9 @@ error eval_expr(atom expr, atom env, atom *result)
 void arc_init(char *file_path) {
 	srand((unsigned int)time(0));
 	env = env_create(nil);
+
+	symbol_capacity = 500;
+	symbol_table = malloc(symbol_capacity * sizeof(char *));
 
 	/* Set up the initial environment */
 	sym_t = make_sym("t");
