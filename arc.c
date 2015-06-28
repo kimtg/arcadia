@@ -1728,6 +1728,7 @@ error builtin_coerce(atom args, atom *result) {
 
 error builtin_flushout(atom args, atom *result) {
   if (len(args) != 0) return ERROR_ARGS;
+  fflush(stdout);
   *result = sym_t;
   return ERROR_OK;
 }
