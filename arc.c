@@ -2192,7 +2192,7 @@ error macex_eval(atom expr, atom *result) {
 error arc_load_file(const char *path)
 {
 	char *text;
-
+	error err = ERROR_OK;
 	/* printf("Reading %s...\n", path); */
 	text = slurp(path);
 	if (text) {
@@ -2200,12 +2200,13 @@ error arc_load_file(const char *path)
 		atom expr;
 		while (read_expr(p, &p, &expr) == ERROR_OK) {
 			atom result;
-			error err = macex_eval(expr, &result);
+			err = macex_eval(expr, &result);
 			if (err) {
 				print_error(err);
 				printf("error in expression:\n\t");
 				print_expr(expr);
 				putchar('\n');
+				break;
 			}
 			/*else {
 			print_expr(result);
@@ -2214,7 +2215,7 @@ error arc_load_file(const char *path)
 		}
 		/*puts("");*/
 		free(text);
-		return ERROR_OK;
+		return err;
 	}
 	else {
 		return ERROR_FILE;

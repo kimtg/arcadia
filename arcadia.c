@@ -30,16 +30,19 @@ void repl() {
 			goto read_start;
 		}
 
-		while (!no(code_expr)) {
-			if (!err)
+		if (!err) {
+			while (!no(code_expr)) {
 				err = macex_eval(car(code_expr), &result);
-			if (err)
-				print_error(err);
-			else {
-				print_expr(result);
-				putchar('\n');
+				if (err) {
+					print_error(err);
+					break;
+				}
+				else {
+					print_expr(result);
+					putchar('\n');
+				}
+				code_expr = cdr(code_expr);
 			}
-			code_expr = cdr(code_expr);
 		}
 		free(buf);
 		free(input);
