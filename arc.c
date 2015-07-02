@@ -662,7 +662,7 @@ char *readline_fp(char *prompt, FILE *fp) {
 
 atom env_create(atom parent)
 {
-	return cons(parent, make_table(16));
+	return cons(parent, make_table(2));
 }
 
 error env_get(atom env, atom symbol, atom *result)
@@ -670,9 +670,9 @@ error env_get(atom env, atom symbol, atom *result)
 	while (1) {
 		atom parent = car(env);
 		struct table *ptbl = cdr(env).value.table;
-		atom a = table_get(ptbl, symbol);
-		if (!no(a)) {
-			*result = cdr(a);
+		struct pair *a = table_get(ptbl, symbol);
+		if (a) {
+			*result = a->cdr;
 			return ERROR_OK;
 		}
 		if (no(parent)) {
@@ -693,9 +693,9 @@ error env_assign_eq(atom env, atom symbol, atom value) {
 	while (1) {
 		atom parent = car(env);
 		struct table *ptbl = cdr(env).value.table;
-		atom a = table_get(ptbl, symbol);
-		if (!no(a)) {
-			cdr(a) = value;
+		struct pair *a = table_get(ptbl, symbol);
+		if (a) {
+			a->cdr = value;
 			return ERROR_OK;
 		}
 		if (no(parent)) {
@@ -838,9 +838,9 @@ error apply(atom fn, atom args, atom *result)
 		long len1 = len(args);
 		if (len1 != 1 && len1 != 2) return ERROR_ARGS;
 		atom *pkey = &car(args);
-		atom pair = table_get(fn.value.table, *pkey);
-		if (!no(pair)) {
-			*result = cdr(pair);
+		struct pair *pair = table_get(fn.value.table, *pkey);
+		if (pair) {
+			*result = pair->cdr;
 		}
 		else {
 			if (len1 == 2) /* default value is specified */
@@ -1607,7 +1607,7 @@ error builtin_newstring(atom args, atom *result) {
 error builtin_table(atom args, atom *result) {
 	long arg_len = len(args);
 	if (arg_len != 0) return ERROR_ARGS;
-	*result = make_table(16);
+	*result = make_table(8);
 	return ERROR_OK;
 }
 
@@ -1986,9 +1986,9 @@ atom make_table(int capacity) {
 
 /* return 1 if found */
 int table_set(struct table *tbl, atom k, atom v) {
-	atom p = table_get(tbl, k);
-	if (!no(p)) {
-		cdr(p) = v;
+	struct pair *p = table_get(tbl, k);
+	if (p) {
+		p->cdr = v;
 		return 1;
 	}
 	else {
@@ -2001,7 +2001,7 @@ void table_add(struct table *tbl, atom k, atom v) {
 	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
 	*p = cons(cons(k, v), *p);
 	tbl->size++;
-	if (tbl->size > 0.75 * tbl->capacity) { /* rehash */
+	if (tbl->size > 0.75 * tbl->capacity) { /* rehash, load factor = 0.75 */
 		int new_capacity = tbl->capacity * 2;
 		struct atom *data2 = malloc(new_capacity * sizeof(struct atom));
 		int i;
@@ -2024,18 +2024,19 @@ void table_add(struct table *tbl, atom k, atom v) {
 	}
 }
 
-/* return pair. return nil if not found */
-atom table_get(struct table *tbl, atom k) {
+/* return pair. return NULL if not found */
+struct pair *table_get(struct table *tbl, atom k) {
 	int pos = hash_code(k) % tbl->capacity;
 	atom p = tbl->data[pos];
 	while (!no(p)) {
-		atom pair = car(p);
-		if (is(car(pair), k)) {
+		//atom pair = car(p);
+		struct pair *pair = car(p).value.pair;
+		if (is(pair->car, k)) {
 			return pair;
 		}
 		p = cdr(p);
 	}
-	return nil;
+	return NULL;
 }
 
 char *slurp_fp(FILE *fp) {

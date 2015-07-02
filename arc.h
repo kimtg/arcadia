@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.9.11"
+#define VERSION "0.9.12"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -112,7 +112,7 @@ int is(atom a, atom b);
 unsigned int hash_code(atom a);
 atom make_table(int capacity);
 void table_add(struct table *tbl, atom k, atom v);
-atom table_get(struct table *tbl, atom k);
+struct pair *table_get(struct table *tbl, atom k);
 int table_set(struct table *tbl, atom k, atom v);
 /* end forward */
 
