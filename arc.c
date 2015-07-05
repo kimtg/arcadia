@@ -919,12 +919,12 @@ error builtin_add(atom args, atom *result)
 {
 	atom acc = make_number(0);
 	atom a, a2;
-	if (!listp(args)) return ERROR_ARGS;
 	if (!no(args)) {
 		a = args;
 		a2 = car(a);
 		if (a2.type == T_NUM) {
 			while (!no(a)) {
+				if (a.type != T_CONS) return ERROR_ARGS;
 				a2 = car(a);
 				if (a2.type != T_NUM) return ERROR_TYPE;
 				acc.value.number += a2.value.number;
@@ -934,6 +934,7 @@ error builtin_add(atom args, atom *result)
 		else if (a2.type == T_STRING) {
 			char *buf = str_new();
 			while (!no(a)) {
+				if (a.type != T_CONS) return ERROR_ARGS;
 				a2 = car(a);
 				char *s = to_string(a2, 0);
 				strcat_alloc(&buf, s);
@@ -945,6 +946,7 @@ error builtin_add(atom args, atom *result)
 		else if (a2.type == T_CONS || a2.type == T_NIL) {
 			acc = nil;
 			while (!no(a)) {
+				if (a.type != T_CONS) return ERROR_ARGS;
 				a2 = car(a);
 				acc = append(acc, a2);
 				a = cdr(a);
@@ -959,7 +961,6 @@ error builtin_subtract(atom args, atom *result)
 {
 	atom acc;
 	atom a, a2;
-	if (!listp(args)) return ERROR_ARGS;
 	if (no(args)) { /* 0 argument */
 		*result = make_number(0);
 		return ERROR_OK;
@@ -974,6 +975,7 @@ error builtin_subtract(atom args, atom *result)
 	acc = make_number(a2.value.number);
 	a = cdr(args);
 	while (!no(a)) {
+		if (a.type != T_CONS) return ERROR_ARGS;
 		a2 = car(a);
 		if (a2.type != T_NUM) return ERROR_TYPE;
 		acc.value.number -= a2.value.number;
@@ -987,10 +989,10 @@ error builtin_multiply(atom args, atom *result)
 {
 	atom acc = make_number(1);
 	atom a, a2;
-	if (!listp(args)) return ERROR_ARGS;
 
 	a = args;
 	while (!no(a)) {
+		if (a.type != T_CONS) return ERROR_ARGS;
 		a2 = car(a);
 		if (a2.type != T_NUM) return ERROR_TYPE;
 		acc.value.number *= a2.value.number;
@@ -1004,7 +1006,6 @@ error builtin_divide(atom args, atom *result)
 {
 	atom acc;
 	atom a, a2;
-	if (!listp(args)) return ERROR_ARGS;
 	if (no(args)) { /* 0 argument */
 		*result = make_number(1.0);
 		return ERROR_OK;
@@ -1019,6 +1020,7 @@ error builtin_divide(atom args, atom *result)
 	acc = make_number(a2.value.number);
 	a = cdr(args);
 	while (!no(a)) {
+		if (a.type != T_CONS) return ERROR_ARGS;
 		a2 = car(a);
 		if (a2.type != T_NUM) return ERROR_TYPE;
 		acc.value.number /= a2.value.number;
