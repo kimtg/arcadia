@@ -1119,30 +1119,34 @@ error builtin_apply(atom args, atom *result)
 }
 
 int is(atom a, atom b) {
-  if (a.type == b.type) {
-    switch (a.type) {
-    case T_NIL:
-      return 1;
-    case T_CONS:
-    case T_CLOSURE:
-    case T_MACRO:
-      return (a.value.pair == b.value.pair);
-    case T_SYM:
-      return (a.value.symbol == b.value.symbol);
-    case T_NUM:
-      return (a.value.number == b.value.number);
-    case T_BUILTIN:
-      return (a.value.builtin == b.value.builtin);
-    case T_STRING:
-      return strcmp(a.value.str->value, b.value.str->value) == 0;
-    case T_CHAR:
-      return (a.value.ch == b.value.ch);
-    default:
-      /* impossible */
-      return 0;
-    }
-  }
-  return 0;
+	if (a.type == b.type) {
+		switch (a.type) {
+		case T_NIL:
+			return 1;
+		case T_CONS:
+		case T_CLOSURE:
+		case T_MACRO:
+			return (a.value.pair == b.value.pair);
+		case T_SYM:
+			return (a.value.symbol == b.value.symbol);
+		case T_NUM:
+			return (a.value.number == b.value.number);
+		case T_BUILTIN:
+			return (a.value.builtin == b.value.builtin);
+		case T_STRING:
+			return strcmp(a.value.str->value, b.value.str->value) == 0;
+		case T_CHAR:
+			return (a.value.ch == b.value.ch);
+		case T_TABLE:
+			return a.value.table == b.value.table;
+		case T_INPUT:
+		case T_OUTPUT:
+			return a.value.fp == b.value.fp;
+		case T_CONTINUATION:
+			return a.value.jb == b.value.jb;
+		}
+	}
+	return 0;
 }
 
 error builtin_is(atom args, atom *result)
