@@ -40,7 +40,7 @@ void stack_add(atom a) {
 }
 
 void consider_gc() {
-	if (alloc_count > alloc_count_old * 2) {
+	if (alloc_count > 4 * alloc_count_old) {
 		gc();
 		alloc_count = alloc_count_old;
 	}
@@ -2035,7 +2035,6 @@ struct pair *table_get(struct table *tbl, atom k) {
 	int pos = hash_code(k) % tbl->capacity;
 	atom p = tbl->data[pos];
 	while (!no(p)) {
-		//atom pair = car(p);
 		struct pair *pair = car(p).value.pair;
 		if (is(pair->car, k)) {
 			return pair;
@@ -2205,7 +2204,12 @@ error arc_load_file(const char *path)
 	if (text) {
 		const char *p = text;
 		atom expr;
-		while (read_expr(p, &p, &expr) == ERROR_OK) {
+		while (1) {
+			int ss = stack_size;
+			if (read_expr(p, &p, &expr) != ERROR_OK) {
+				stack_restore(ss);
+				break;
+			}
 			atom result;
 			err = macex_eval(expr, &result);
 			if (err) {
@@ -2215,6 +2219,7 @@ error arc_load_file(const char *path)
 				putchar('\n');
 				break;
 			}
+			stack_restore(ss);
 			/*else {
 			print_expr(result);
 			putchar(' ');
