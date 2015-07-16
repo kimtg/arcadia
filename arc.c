@@ -917,19 +917,23 @@ Addition. This operator also performs string and list concatenation.
 */
 error builtin_add(atom args, atom *result)
 {
-	atom acc = make_number(0);
 	atom a, a2;
-	if (!no(args)) {
+	if (no(args)) {
+		*result = make_number(0);
+	}
+	else {
 		a = args;
 		a2 = car(a);
 		if (a2.type == T_NUM) {
+			double r = 0;
 			while (!no(a)) {
 				if (a.type != T_CONS) return ERROR_ARGS;
 				a2 = car(a);
 				if (a2.type != T_NUM) return ERROR_TYPE;
-				acc.value.number += a2.value.number;
+				r += a2.value.number;
 				a = cdr(a);
 			}
+			*result = make_number(r);
 		}
 		else if (a2.type == T_STRING) {
 			char *buf = str_new();
@@ -941,25 +945,24 @@ error builtin_add(atom args, atom *result)
 				free(s);
 				a = cdr(a);
 			}
-			acc = make_string(buf);
+			*result = make_string(buf);
 		}
 		else if (a2.type == T_CONS || a2.type == T_NIL) {
-			acc = nil;
+			atom acc = nil;
 			while (!no(a)) {
 				if (a.type != T_CONS) return ERROR_ARGS;
 				a2 = car(a);
 				acc = append(acc, a2);
 				a = cdr(a);
 			}
+			*result = acc;
 		}
 	}
-	*result = acc;
 	return ERROR_OK;
 }
 
 error builtin_subtract(atom args, atom *result)
 {
-	atom acc;
 	atom a, a2;
 	if (no(args)) { /* 0 argument */
 		*result = make_number(0);
@@ -972,42 +975,41 @@ error builtin_subtract(atom args, atom *result)
 	}
 	a2 = car(args);
 	if (a2.type != T_NUM) return ERROR_TYPE;
-	acc = make_number(a2.value.number);
+	double r = a2.value.number;
 	a = cdr(args);
 	while (!no(a)) {
 		if (a.type != T_CONS) return ERROR_ARGS;
 		a2 = car(a);
 		if (a2.type != T_NUM) return ERROR_TYPE;
-		acc.value.number -= a2.value.number;
+		r -= a2.value.number;
 		a = cdr(a);
 	}
-	*result = acc;
+	*result = make_number(r);
 	return ERROR_OK;
 }
 
 error builtin_multiply(atom args, atom *result)
 {
-	atom acc = make_number(1);
 	atom a, a2;
 
+	double r = 1;
 	a = args;
 	while (!no(a)) {
 		if (a.type != T_CONS) return ERROR_ARGS;
 		a2 = car(a);
 		if (a2.type != T_NUM) return ERROR_TYPE;
-		acc.value.number *= a2.value.number;
+		r *= a2.value.number;
 		a = cdr(a);
 	}
-	*result = acc;
+	*result = make_number(r);
 	return ERROR_OK;
 }
 
 error builtin_divide(atom args, atom *result)
 {
-	atom acc;
 	atom a, a2;
 	if (no(args)) { /* 0 argument */
-		*result = make_number(1.0);
+		*result = make_number(1);
 		return ERROR_OK;
 	}
 	if (no(cdr(args))) { /* 1 argument */
@@ -1017,16 +1019,16 @@ error builtin_divide(atom args, atom *result)
 	}
 	a2 = car(args);
 	if (a2.type != T_NUM) return ERROR_TYPE;
-	acc = make_number(a2.value.number);
+	double r = a2.value.number;
 	a = cdr(args);
 	while (!no(a)) {
 		if (a.type != T_CONS) return ERROR_ARGS;
 		a2 = car(a);
 		if (a2.type != T_NUM) return ERROR_TYPE;
-		acc.value.number /= a2.value.number;
+		r /= a2.value.number;
 		a = cdr(a);
 	}
-	*result = acc;
+	*result = make_number(r);
 	return ERROR_OK;
 }
 
