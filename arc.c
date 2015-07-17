@@ -42,7 +42,6 @@ void stack_add(atom a) {
 void consider_gc() {
 	if (alloc_count > 4 * alloc_count_old) {
 		gc();
-		alloc_count = alloc_count_old;
 	}
 }
 
@@ -166,6 +165,7 @@ void gc()
 			alloc_count_old++;
 		}
 	}
+	alloc_count = alloc_count_old;
 }
 
 
