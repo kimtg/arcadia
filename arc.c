@@ -917,43 +917,38 @@ Addition. This operator also performs string and list concatenation.
 */
 error builtin_add(atom args, atom *result)
 {
-	atom a, a2;
 	if (no(args)) {
 		*result = make_number(0);
 	}
 	else {
-		a = args;
-		a2 = car(a);
-		if (a2.type == T_NUM) {
-			double r = 0;
-			while (!no(a)) {
-				if (a.type != T_CONS) return ERROR_ARGS;
-				a2 = car(a);
-				if (a2.type != T_NUM) return ERROR_TYPE;
-				r += a2.value.number;
-				a = cdr(a);
+		if (car(args).type == T_NUM) {
+			double r = car(args).value.number;
+			args = cdr(args);
+			while (!no(args)) {
+				if (args.type != T_CONS) return ERROR_ARGS;
+				if (car(args).type != T_NUM) return ERROR_TYPE;
+				r += car(args).value.number;
+				args = cdr(args);
 			}
 			*result = make_number(r);
 		}
-		else if (a2.type == T_STRING) {
+		else if (car(args).type == T_STRING) {
 			char *buf = str_new();
-			while (!no(a)) {
-				if (a.type != T_CONS) return ERROR_ARGS;
-				a2 = car(a);
-				char *s = to_string(a2, 0);
+			while (!no(args)) {
+				if (args.type != T_CONS) return ERROR_ARGS;
+				char *s = to_string(car(args), 0);
 				strcat_alloc(&buf, s);
 				free(s);
-				a = cdr(a);
+				args = cdr(args);
 			}
 			*result = make_string(buf);
 		}
-		else if (a2.type == T_CONS || a2.type == T_NIL) {
+		else if (car(args).type == T_CONS || car(args).type == T_NIL) {
 			atom acc = nil;
-			while (!no(a)) {
-				if (a.type != T_CONS) return ERROR_ARGS;
-				a2 = car(a);
-				acc = append(acc, a2);
-				a = cdr(a);
+			while (!no(args)) {
+				if (args.type != T_CONS) return ERROR_ARGS;
+				acc = append(acc, car(args));
+				args = cdr(args);
 			}
 			*result = acc;
 		}
@@ -963,7 +958,6 @@ error builtin_add(atom args, atom *result)
 
 error builtin_subtract(atom args, atom *result)
 {
-	atom a, a2;
 	if (no(args)) { /* 0 argument */
 		*result = make_number(0);
 		return ERROR_OK;
@@ -973,16 +967,14 @@ error builtin_subtract(atom args, atom *result)
 		*result = make_number(-car(args).value.number);
 		return ERROR_OK;
 	}
-	a2 = car(args);
-	if (a2.type != T_NUM) return ERROR_TYPE;
-	double r = a2.value.number;
-	a = cdr(args);
-	while (!no(a)) {
-		if (a.type != T_CONS) return ERROR_ARGS;
-		a2 = car(a);
-		if (a2.type != T_NUM) return ERROR_TYPE;
-		r -= a2.value.number;
-		a = cdr(a);
+	if (car(args).type != T_NUM) return ERROR_TYPE;
+	double r = car(args).value.number;
+	args = cdr(args);
+	while (!no(args)) {
+		if (args.type != T_CONS) return ERROR_ARGS;
+		if (car(args).type != T_NUM) return ERROR_TYPE;
+		r -= car(args).value.number;
+		args = cdr(args);
 	}
 	*result = make_number(r);
 	return ERROR_OK;
@@ -990,16 +982,12 @@ error builtin_subtract(atom args, atom *result)
 
 error builtin_multiply(atom args, atom *result)
 {
-	atom a, a2;
-
 	double r = 1;
-	a = args;
-	while (!no(a)) {
-		if (a.type != T_CONS) return ERROR_ARGS;
-		a2 = car(a);
-		if (a2.type != T_NUM) return ERROR_TYPE;
-		r *= a2.value.number;
-		a = cdr(a);
+	while (!no(args)) {
+		if (args.type != T_CONS) return ERROR_ARGS;
+		if (car(args).type != T_NUM) return ERROR_TYPE;
+		r *= car(args).value.number;
+		args = cdr(args);
 	}
 	*result = make_number(r);
 	return ERROR_OK;
@@ -1007,7 +995,6 @@ error builtin_multiply(atom args, atom *result)
 
 error builtin_divide(atom args, atom *result)
 {
-	atom a, a2;
 	if (no(args)) { /* 0 argument */
 		*result = make_number(1);
 		return ERROR_OK;
@@ -1017,16 +1004,14 @@ error builtin_divide(atom args, atom *result)
 		*result = make_number(1.0 / car(args).value.number);
 		return ERROR_OK;
 	}
-	a2 = car(args);
-	if (a2.type != T_NUM) return ERROR_TYPE;
-	double r = a2.value.number;
-	a = cdr(args);
-	while (!no(a)) {
-		if (a.type != T_CONS) return ERROR_ARGS;
-		a2 = car(a);
-		if (a2.type != T_NUM) return ERROR_TYPE;
-		r /= a2.value.number;
-		a = cdr(a);
+	if (car(args).type != T_NUM) return ERROR_TYPE;
+	double r = car(args).value.number;
+	args = cdr(args);
+	while (!no(args)) {
+		if (args.type != T_CONS) return ERROR_ARGS;
+		if (car(args).type != T_NUM) return ERROR_TYPE;
+		r /= car(args).value.number;
+		args = cdr(args);
 	}
 	*result = make_number(r);
 	return ERROR_OK;
@@ -1034,39 +1019,34 @@ error builtin_divide(atom args, atom *result)
 
 error builtin_less(atom args, atom *result)
 {
-  atom a, b;
-  if (no(args) || no(cdr(args))) {
-    *result = sym_t;
-    return ERROR_OK;
-  }
-  switch (car(args).type) {
-  case T_NUM:
-    while (!no(cdr(args))) {
-      a = car(args);
-      b = car(cdr(args));
-      if (a.value.number >= b.value.number) {
-	*result = nil;
-	return ERROR_OK;
-      }
-      args = cdr(args);
-    }
-    *result = sym_t;
-    return ERROR_OK;
-  case T_STRING:
-    while (!no(cdr(args))) {
-      a = car(args);
-      b = car(cdr(args));
-      if (strcmp(a.value.str->value, b.value.str->value) >= 0) {
-	*result = nil;
-	return ERROR_OK;
-      }
-      args = cdr(args);
-    }
-    *result = sym_t;
-    return ERROR_OK;
-  default:
-    return ERROR_TYPE;
-  }
+	if (no(args) || no(cdr(args))) {
+		*result = sym_t;
+		return ERROR_OK;
+	}
+	switch (car(args).type) {
+	case T_NUM:
+		while (!no(cdr(args))) {
+			if (car(args).value.number >= car(cdr(args)).value.number) {
+				*result = nil;
+				return ERROR_OK;
+			}
+			args = cdr(args);
+		}
+		*result = sym_t;
+		return ERROR_OK;
+	case T_STRING:
+		while (!no(cdr(args))) {
+			if (strcmp(car(args).value.str->value, car(cdr(args)).value.str->value) >= 0) {
+				*result = nil;
+				return ERROR_OK;
+			}
+			args = cdr(args);
+		}
+		*result = sym_t;
+		return ERROR_OK;
+	default:
+		return ERROR_TYPE;
+	}
 }
 
 error builtin_greater(atom args, atom *result)
@@ -2035,13 +2015,13 @@ void table_add(struct table *tbl, atom k, atom v) {
 /* return pair. return NULL if not found */
 struct pair *table_get(struct table *tbl, atom k) {
 	int pos = hash_code(k) % tbl->capacity;
-	atom p = tbl->data[pos];
-	while (!no(p)) {
-		struct pair *pair = car(p).value.pair;
+	atom *p = &tbl->data[pos];
+	while (!no(*p)) {
+		struct pair *pair = car(*p).value.pair;
 		if (is(pair->car, k)) {
 			return pair;
 		}
-		p = cdr(p);
+		p = &cdr(*p);
 	}
 	return NULL;
 }
@@ -2270,14 +2250,28 @@ error eval_expr(atom expr, atom env, atom *result)
 
 		if (op.type == T_SYM) {
 			/* Handle special forms */
-
-			if (op.value.symbol == sym_quote.value.symbol) {
-				if (no(args) || !no(cdr(args))) {
-					stack_restore(ss);
-					return ERROR_ARGS;
+			if (op.value.symbol == sym_if.value.symbol) {
+				atom cond;
+				atom *p = &args;
+				while (!no(*p)) {
+					err = eval_expr(car(*p), env, &cond);
+					if (err) {
+						stack_restore(ss);
+						return err;
+					}
+					if (no(cdr(*p))) {
+						*result = cond;
+						stack_restore(ss);
+						return ERROR_OK;
+					}
+					if (!no(cond)) {
+						err = eval_expr(car(cdr(*p)), env, result);
+						stack_restore(ss);
+						return err;
+					}
+					p = &cdr(cdr(*p));
 				}
-
-				*result = car(args);
+				*result = nil;
 				stack_restore(ss);
 				return ERROR_OK;
 			}
@@ -2307,6 +2301,16 @@ error eval_expr(atom expr, atom env, atom *result)
 					return ERROR_TYPE;
 				}
 			}
+			else if (op.value.symbol == sym_quote.value.symbol) {
+				if (no(args) || !no(cdr(args))) {
+					stack_restore(ss);
+					return ERROR_ARGS;
+				}
+
+				*result = car(args);
+				stack_restore(ss);
+				return ERROR_OK;
+			}			
 			else if (op.value.symbol == sym_fn.value.symbol) {
 				if (no(args)) {
 					stack_restore(ss);
@@ -2315,32 +2319,7 @@ error eval_expr(atom expr, atom env, atom *result)
 				err = make_closure(env, car(args), cdr(args), result);
 				stack_restore(ss);
 				return err;
-			}
-			else if (op.value.symbol == sym_if.value.symbol) {
-				atom cond;
-				atom *p = &args;
-				while (!no(*p)) {
-					err = eval_expr(car(*p), env, &cond);
-					if (err) {
-						stack_restore(ss);
-						return err;
-					}
-					if (no(cdr(*p))) {
-						*result = cond;
-						stack_restore(ss);
-						return ERROR_OK;
-					}
-					if (!no(cond)) {
-						err = eval_expr(car(cdr(*p)), env, result);
-						stack_restore(ss);
-						return err;
-					}
-					p = &cdr(cdr(*p));
-				}
-				*result = nil;
-				stack_restore(ss);
-				return ERROR_OK;
-			}
+			}			
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
 				atom name, macro;
 
