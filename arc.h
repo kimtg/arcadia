@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.9.17"
+#define VERSION "0.9.18"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -92,6 +92,7 @@ char *slurp(const char *path);
 error eval_expr(atom expr, atom env, atom *result);
 void gc_mark(atom root);
 void gc();
+void stack_add(atom a);
 void stack_restore(int saved_size);
 error macex(atom expr, atom *result);
 char *to_string(atom a, int write);
@@ -122,7 +123,7 @@ int table_set(struct table *tbl, atom k, atom v);
 
 /* symbols for faster execution */
 extern atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_string, sym_num, sym_table;
-extern atom code_expr;
 extern int arc_reader_unclosed;
+extern int stack_size;
 
 #endif

@@ -8,7 +8,8 @@ void repl() {
 	char *input;
 
 	while ((input = readline("> ")) != NULL) {
-	  read_start:
+		int ss = stack_size;
+	read_start:
 		arc_reader_unclosed = 0;
 #ifdef READLINE
 		if (input && *input)
@@ -21,6 +22,7 @@ void repl() {
 		error err;
 		atom result;
 
+		atom code_expr;
 		err = read_expr(p, &p, &code_expr);
 		if (arc_reader_unclosed > 0) { /* read more lines */
 			char *line = readline("  ");
@@ -29,7 +31,7 @@ void repl() {
 			input = strcat_alloc(&input, line);
 			goto read_start;
 		}
-
+		stack_add(code_expr);
 		if (!err) {
 			while (!no(code_expr)) {
 				err = macex_eval(car(code_expr), &result);
@@ -44,6 +46,7 @@ void repl() {
 				code_expr = cdr(code_expr);
 			}
 		}
+		stack_restore(ss);
 		free(buf);
 		free(input);
 	}

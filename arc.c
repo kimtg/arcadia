@@ -13,7 +13,6 @@ char **symbol_table = NULL;
 int symbol_size = 0;
 int symbol_capacity = 0;
 const atom nil = { T_NIL };
-atom code_expr = { T_NIL };
 atom env; /* the global environment */
 atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char;
 atom cur_expr;
@@ -37,6 +36,15 @@ void stack_add(atom a) {
 		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
 	stack[stack_size - 1] = a;
+}
+
+void stack_restore(int saved_size) {
+	stack_size = saved_size;
+	/* if there is waste of memory, realloc */
+	if (stack_size < stack_capacity / 4) {
+		stack_capacity /= 2;
+		stack = realloc(stack, stack_capacity * sizeof(atom));
+	}
 }
 
 void consider_gc() {
@@ -109,8 +117,6 @@ void gc()
 	struct pair *a, **p;
 	struct str *as, **ps;
 	struct table *at, **pt;
-
-	gc_mark(code_expr);
 
 	/* mark atoms in the stack */
 	int i;
@@ -2213,15 +2219,6 @@ error arc_load_file(const char *path)
 	}
 	else {
 		return ERROR_FILE;
-	}
-}
-
-void stack_restore(int saved_size) {
-	stack_size = saved_size;
-	/* if there is waste of memory, realloc */
-	if (stack_size < stack_capacity / 4) {
-		stack_capacity /= 2;
-		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
 }
 
