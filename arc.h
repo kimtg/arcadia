@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.9.18"
+#define VERSION "0.9.19"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -114,7 +114,9 @@ unsigned int hash_code(atom a);
 atom make_table(int capacity);
 void table_add(struct table *tbl, atom k, atom v);
 struct pair *table_get(struct table *tbl, atom k);
+struct pair *table_get_sym(struct table *tbl, char *k);
 int table_set(struct table *tbl, atom k, atom v);
+int table_set_sym(struct table *tbl, char *k, atom v);
 /* end forward */
 
 #define car(p) ((p).value.pair->car)

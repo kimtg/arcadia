@@ -671,12 +671,12 @@ atom env_create(atom parent)
 	return cons(parent, make_table(2));
 }
 
-error env_get(atom env, atom symbol, atom *result)
+error env_get(atom env, char *symbol, atom *result)
 {
 	while (1) {
 		atom parent = car(env);
 		struct table *ptbl = cdr(env).value.table;
-		struct pair *a = table_get(ptbl, symbol);
+		struct pair *a = table_get_sym(ptbl, symbol);
 		if (a) {
 			*result = a->cdr;
 			return ERROR_OK;
@@ -689,17 +689,17 @@ error env_get(atom env, atom symbol, atom *result)
 	}
 }
 
-error env_assign(atom env, atom symbol, atom value) {
+error env_assign(atom env, char *symbol, atom value) {
 	struct table *ptbl = cdr(env).value.table;
-	table_set(ptbl, symbol, value);
+	table_set_sym(ptbl, symbol, value);
 	return ERROR_OK;
 }
 
-error env_assign_eq(atom env, atom symbol, atom value) {
+error env_assign_eq(atom env, char *symbol, atom value) {
 	while (1) {
 		atom parent = car(env);
 		struct table *ptbl = cdr(env).value.table;
-		struct pair *a = table_get(ptbl, symbol);
+		struct pair *a = table_get_sym(ptbl, symbol);
 		if (a) {
 			a->cdr = value;
 			return ERROR_OK;
@@ -772,7 +772,7 @@ error apply(atom fn, atom args, atom *result)
 		/* Bind the arguments */
 		while (!no(arg_names)) {
 			if (arg_names.type == T_SYM) {
-				env_assign(env, arg_names, args);
+				env_assign(env, arg_names.value.symbol, args);
 				args = nil;
 				break;
 			}
@@ -780,7 +780,7 @@ error apply(atom fn, atom args, atom *result)
 			if (arg_name.type == T_SYM) {
 				if (no(args)) /* missing argument */
 					return ERROR_ARGS;
-				env_assign(env, arg_name, car(args));
+				env_assign(env, arg_name.value.symbol, car(args));
 				args = cdr(args);
 			}
 			else { /* (o ARG [DEFAULT]) */
@@ -796,7 +796,7 @@ error apply(atom fn, atom args, atom *result)
 					val = car(args);
 					args = cdr(args);
 				}
-				env_assign(env, car(cdr(arg_name)), val);
+				env_assign(env, car(cdr(arg_name)).value.symbol, val);
 			}
 			arg_names = cdr(arg_names);
 		}
@@ -1475,7 +1475,7 @@ error builtin_bound(atom args, atom *result) {
 	if (len(args) == 1) {
 		atom a = car(args);
 		if (a.type != T_SYM) return ERROR_TYPE;
-		error err = env_get(env, a, result);
+		error err = env_get(env, a.value.symbol, result);
 		*result = (err ? nil : sym_t);
 		return ERROR_OK;
 	}
@@ -1991,7 +1991,24 @@ int table_set(struct table *tbl, atom k, atom v) {
 	}
 }
 
+/* return 1 if found */
+int table_set_sym(struct table *tbl, char *k, atom v) {
+	struct pair *p = table_get_sym(tbl, k);
+	if (p) {
+		p->cdr = v;
+		return 1;
+	}
+	else {
+		atom k2;
+		k2.type = T_SYM;
+		k2.value.symbol = k;
+		table_add(tbl, k2, v);
+		return 0;
+	}
+}
+
 void table_add(struct table *tbl, atom k, atom v) {
+	/* insert new item */
 	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
 	*p = cons(cons(k, v), *p);
 	tbl->size++;
@@ -2003,18 +2020,17 @@ void table_add(struct table *tbl, atom k, atom v) {
 			data2[i] = nil;
 		}
 		for (i = 0; i < tbl->capacity; i++) {
-			atom p = tbl->data[i];
-			while (!no(p)) {
-				atom pair1 = car(p);
-				atom k1 = car(pair1);
-				atom *p2 = &data2[hash_code(k1) % new_capacity];
-				*p2 = cons(pair1, *p2);
-				p = cdr(p);
+			atom *p = &tbl->data[i];
+			while (!no(*p)) {
+				atom *pair1 = &car(*p);
+				atom *p2 = &data2[hash_code(car(*pair1)) % new_capacity];
+				*p2 = cons(*pair1, *p2);
+				p = &cdr(*p);
 			}
 		}
 		free(tbl->data);
 		tbl->data = data2;
-		tbl->capacity = new_capacity;		
+		tbl->capacity = new_capacity;
 	}
 }
 
@@ -2025,6 +2041,20 @@ struct pair *table_get(struct table *tbl, atom k) {
 	while (!no(*p)) {
 		struct pair *pair = car(*p).value.pair;
 		if (is(pair->car, k)) {
+			return pair;
+		}
+		p = &cdr(*p);
+	}
+	return NULL;
+}
+
+/* return pair. return NULL if not found */
+struct pair *table_get_sym(struct table *tbl, char *k) {
+	int pos = (unsigned int)k % tbl->capacity;
+	atom *p = &tbl->data[pos];
+	while (!no(*p)) {
+		struct pair *pair = car(*p).value.pair;
+		if (pair->car.value.symbol == k) {
 			return pair;
 		}
 		p = &cdr(*p);
@@ -2118,7 +2148,7 @@ error macex(atom expr, atom *result) {
 				if (!err) {
 					macro.type = T_MACRO;
 					*result = cons(sym_quote, cons(car(args), nil));
-					err = env_assign(env, name, macro);
+					err = env_assign(env, name.value.symbol, macro);
 					stack_restore(ss);
 					return err;
 				}
@@ -2130,7 +2160,7 @@ error macex(atom expr, atom *result) {
 		}
 
 		/* Is it a macro? */
-		if (op.type == T_SYM && !env_get(env, op, result) && result->type == T_MACRO) {
+		if (op.type == T_SYM && !env_get(env, op.value.symbol, result) && result->type == T_MACRO) {
 			/* Evaluate operator */
 			err = eval_expr(op, env, &op);
 			if (err) {
@@ -2228,7 +2258,7 @@ error eval_expr(atom expr, atom env, atom *result)
 
 	cur_expr = expr; /* for error reporting */
 	if (expr.type == T_SYM) {
-		err = env_get(env, expr, result);
+		err = env_get(env, expr.value.symbol, result);
 		return err;
 	}
 	else if (expr.type != T_CONS) {
@@ -2289,7 +2319,7 @@ error eval_expr(atom expr, atom env, atom *result)
 					}
 
 					*result = val;
-					err = env_assign_eq(env, sym, val);
+					err = env_assign_eq(env, sym.value.symbol, val);
 					stack_restore(ss);
 					return err;
 				}
@@ -2335,7 +2365,7 @@ error eval_expr(atom expr, atom env, atom *result)
 				if (!err) {
 					macro.type = T_MACRO;
 					*result = name;
-					err = env_assign(env, name, macro);
+					err = env_assign(env, name.value.symbol, macro);
 					stack_restore(ss);
 					return err;
 				}
@@ -2439,63 +2469,63 @@ void arc_init(char *file_path) {
 	sym_int = make_sym("int");
 	sym_char = make_sym("char");
 
-	env_assign(env, sym_t, sym_t);
-	env_assign(env, make_sym("nil"), nil);
-	env_assign(env, make_sym("car"), make_builtin(builtin_car));
-	env_assign(env, make_sym("cdr"), make_builtin(builtin_cdr));
-	env_assign(env, make_sym("cons"), make_builtin(builtin_cons));
-	env_assign(env, make_sym("+"), make_builtin(builtin_add));
-	env_assign(env, make_sym("-"), make_builtin(builtin_subtract));
-	env_assign(env, make_sym("*"), make_builtin(builtin_multiply));
-	env_assign(env, make_sym("/"), make_builtin(builtin_divide));
-	env_assign(env, make_sym("<"), make_builtin(builtin_less));
-	env_assign(env, make_sym(">"), make_builtin(builtin_greater));
-	env_assign(env, make_sym("apply"), make_builtin(builtin_apply));
-	env_assign(env, make_sym("is"), make_builtin(builtin_is));
-	env_assign(env, make_sym("scar"), make_builtin(builtin_scar));
-	env_assign(env, make_sym("scdr"), make_builtin(builtin_scdr));
-	env_assign(env, make_sym("mod"), make_builtin(builtin_mod));
-	env_assign(env, make_sym("type"), make_builtin(builtin_type));
-	env_assign(env, make_sym("string-sref"), make_builtin(builtin_string_sref));
-	env_assign(env, make_sym("writeb"), make_builtin(builtin_writeb));
-	env_assign(env, make_sym("expt"), make_builtin(builtin_expt));
-	env_assign(env, make_sym("log"), make_builtin(builtin_log));
-	env_assign(env, make_sym("sqrt"), make_builtin(builtin_sqrt));
-	env_assign(env, make_sym("readline"), make_builtin(builtin_readline));
-	env_assign(env, make_sym("quit"), make_builtin(builtin_quit));
-	env_assign(env, make_sym("rand"), make_builtin(builtin_rand));
-	env_assign(env, make_sym("read"), make_builtin(builtin_read));
-	env_assign(env, make_sym("macex"), make_builtin(builtin_macex));
-	env_assign(env, make_sym("string"), make_builtin(builtin_string));
-	env_assign(env, make_sym("sym"), make_builtin(builtin_sym));
-	env_assign(env, make_sym("system"), make_builtin(builtin_system));
-	env_assign(env, make_sym("eval"), make_builtin(builtin_eval));
-	env_assign(env, make_sym("load"), make_builtin(builtin_load));
-	env_assign(env, make_sym("int"), make_builtin(builtin_int));
-	env_assign(env, make_sym("trunc"), make_builtin(builtin_trunc));
-	env_assign(env, make_sym("sin"), make_builtin(builtin_sin));
-	env_assign(env, make_sym("cos"), make_builtin(builtin_cos));
-	env_assign(env, make_sym("tan"), make_builtin(builtin_tan));
-	env_assign(env, make_sym("bound"), make_builtin(builtin_bound));
-	env_assign(env, make_sym("infile"), make_builtin(builtin_infile));
-	env_assign(env, make_sym("outfile"), make_builtin(builtin_outfile));
-	env_assign(env, make_sym("close"), make_builtin(builtin_close));
-	env_assign(env, make_sym("stdin"), make_input(stdin));
-	env_assign(env, make_sym("stdout"), make_output(stdout));
-	env_assign(env, make_sym("stderr"), make_output(stderr));
-	env_assign(env, make_sym("disp"), make_builtin(builtin_disp));
-	env_assign(env, make_sym("readb"), make_builtin(builtin_readb));
-	env_assign(env, make_sym("sread"), make_builtin(builtin_sread));
-	env_assign(env, make_sym("write"), make_builtin(builtin_write));
-	env_assign(env, make_sym("newstring"), make_builtin(builtin_newstring));
-	env_assign(env, make_sym("table"), make_builtin(builtin_table));
-	env_assign(env, make_sym("maptable"), make_builtin(builtin_maptable));
-	env_assign(env, make_sym("table-sref"), make_builtin(builtin_table_sref));
-	env_assign(env, make_sym("coerce"), make_builtin(builtin_coerce));
-	env_assign(env, make_sym("flushout"), make_builtin(builtin_flushout));
-	env_assign(env, make_sym("err"), make_builtin(builtin_err));
-	env_assign(env, make_sym("len"), make_builtin(builtin_len));
-	env_assign(env, make_sym("ccc"), make_builtin(builtin_ccc));
+	env_assign(env, sym_t.value.symbol, sym_t);
+	env_assign(env, make_sym("nil").value.symbol, nil);
+	env_assign(env, make_sym("car").value.symbol, make_builtin(builtin_car));
+	env_assign(env, make_sym("cdr").value.symbol, make_builtin(builtin_cdr));
+	env_assign(env, make_sym("cons").value.symbol, make_builtin(builtin_cons));
+	env_assign(env, make_sym("+").value.symbol, make_builtin(builtin_add));
+	env_assign(env, make_sym("-").value.symbol, make_builtin(builtin_subtract));
+	env_assign(env, make_sym("*").value.symbol, make_builtin(builtin_multiply));
+	env_assign(env, make_sym("/").value.symbol, make_builtin(builtin_divide));
+	env_assign(env, make_sym("<").value.symbol, make_builtin(builtin_less));
+	env_assign(env, make_sym(">").value.symbol, make_builtin(builtin_greater));
+	env_assign(env, make_sym("apply").value.symbol, make_builtin(builtin_apply));
+	env_assign(env, make_sym("is").value.symbol, make_builtin(builtin_is));
+	env_assign(env, make_sym("scar").value.symbol, make_builtin(builtin_scar));
+	env_assign(env, make_sym("scdr").value.symbol, make_builtin(builtin_scdr));
+	env_assign(env, make_sym("mod").value.symbol, make_builtin(builtin_mod));
+	env_assign(env, make_sym("type").value.symbol, make_builtin(builtin_type));
+	env_assign(env, make_sym("string-sref").value.symbol, make_builtin(builtin_string_sref));
+	env_assign(env, make_sym("writeb").value.symbol, make_builtin(builtin_writeb));
+	env_assign(env, make_sym("expt").value.symbol, make_builtin(builtin_expt));
+	env_assign(env, make_sym("log").value.symbol, make_builtin(builtin_log));
+	env_assign(env, make_sym("sqrt").value.symbol, make_builtin(builtin_sqrt));
+	env_assign(env, make_sym("readline").value.symbol, make_builtin(builtin_readline));
+	env_assign(env, make_sym("quit").value.symbol, make_builtin(builtin_quit));
+	env_assign(env, make_sym("rand").value.symbol, make_builtin(builtin_rand));
+	env_assign(env, make_sym("read").value.symbol, make_builtin(builtin_read));
+	env_assign(env, make_sym("macex").value.symbol, make_builtin(builtin_macex));
+	env_assign(env, make_sym("string").value.symbol, make_builtin(builtin_string));
+	env_assign(env, make_sym("sym").value.symbol, make_builtin(builtin_sym));
+	env_assign(env, make_sym("system").value.symbol, make_builtin(builtin_system));
+	env_assign(env, make_sym("eval").value.symbol, make_builtin(builtin_eval));
+	env_assign(env, make_sym("load").value.symbol, make_builtin(builtin_load));
+	env_assign(env, make_sym("int").value.symbol, make_builtin(builtin_int));
+	env_assign(env, make_sym("trunc").value.symbol, make_builtin(builtin_trunc));
+	env_assign(env, make_sym("sin").value.symbol, make_builtin(builtin_sin));
+	env_assign(env, make_sym("cos").value.symbol, make_builtin(builtin_cos));
+	env_assign(env, make_sym("tan").value.symbol, make_builtin(builtin_tan));
+	env_assign(env, make_sym("bound").value.symbol, make_builtin(builtin_bound));
+	env_assign(env, make_sym("infile").value.symbol, make_builtin(builtin_infile));
+	env_assign(env, make_sym("outfile").value.symbol, make_builtin(builtin_outfile));
+	env_assign(env, make_sym("close").value.symbol, make_builtin(builtin_close));
+	env_assign(env, make_sym("stdin").value.symbol, make_input(stdin));
+	env_assign(env, make_sym("stdout").value.symbol, make_output(stdout));
+	env_assign(env, make_sym("stderr").value.symbol, make_output(stderr));
+	env_assign(env, make_sym("disp").value.symbol, make_builtin(builtin_disp));
+	env_assign(env, make_sym("readb").value.symbol, make_builtin(builtin_readb));
+	env_assign(env, make_sym("sread").value.symbol, make_builtin(builtin_sread));
+	env_assign(env, make_sym("write").value.symbol, make_builtin(builtin_write));
+	env_assign(env, make_sym("newstring").value.symbol, make_builtin(builtin_newstring));
+	env_assign(env, make_sym("table").value.symbol, make_builtin(builtin_table));
+	env_assign(env, make_sym("maptable").value.symbol, make_builtin(builtin_maptable));
+	env_assign(env, make_sym("table-sref").value.symbol, make_builtin(builtin_table_sref));
+	env_assign(env, make_sym("coerce").value.symbol, make_builtin(builtin_coerce));
+	env_assign(env, make_sym("flushout").value.symbol, make_builtin(builtin_flushout));
+	env_assign(env, make_sym("err").value.symbol, make_builtin(builtin_err));
+	env_assign(env, make_sym("len").value.symbol, make_builtin(builtin_len));
+	env_assign(env, make_sym("ccc").value.symbol, make_builtin(builtin_ccc));
 
 	char *dir_path = get_dir_path(file_path);
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
