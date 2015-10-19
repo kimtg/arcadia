@@ -228,11 +228,19 @@ error make_closure(atom env, atom args, atom body, atom *result)
 	while (!no(p)) {
 		if (p.type == T_SYM)
 			break;
-		else if (p.type != T_CONS	||
-						 (car(p).type != T_SYM && car(p).type != T_CONS))
+		else if (p.type != T_CONS || (car(p).type != T_SYM && car(p).type != T_CONS))
 			return ERROR_TYPE;
-		if (car(p).type == T_CONS && !is(car(car(p)), sym_o))
-			return ERROR_SYNTAX;
+		if (car(p).type == T_CONS) {
+			if (is(car(car(p)), sym_o)) {
+				if (!no(cdr(cdr(car(p))))) {
+					error err = eval_expr(car(cdr(cdr(car(p)))), env, &car(cdr(cdr(car(p)))));
+					if (err) return err;
+				}
+			}
+			else {
+				return ERROR_SYNTAX;
+			}
+		}
 		p = cdr(p);
 	}
 
@@ -789,8 +797,7 @@ error apply(atom fn, atom args, atom *result)
 					if (no(cdr(cdr(arg_name))))
 						val = nil;
 					else {
-						error err = eval_expr(car(cdr(cdr(arg_name))), env, &val);
-						if (err) return err;
+						val = car(cdr(cdr(arg_name)));
 					}
 				} else {
 					val = car(args);
