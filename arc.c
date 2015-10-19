@@ -233,6 +233,7 @@ error make_closure(atom env, atom args, atom body, atom *result)
 		if (car(p).type == T_CONS) {
 			if (is(car(car(p)), sym_o)) {
 				if (!no(cdr(cdr(car(p))))) {
+					/* evaluate the default value */
 					error err = eval_expr(car(cdr(cdr(car(p)))), env, &car(cdr(cdr(car(p)))));
 					if (err) return err;
 				}
