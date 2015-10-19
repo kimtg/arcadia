@@ -1324,6 +1324,7 @@ error builtin_read(atom args, atom *result) {
 	char *s;
 	if (alen == 0) {
 		s = readline("");
+		if (s == NULL) return ERROR_SYNTAX;
 		const char *buf = s;
 		error err = read_expr(buf, &buf, result);
 
