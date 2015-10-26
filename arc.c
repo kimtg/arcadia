@@ -2103,17 +2103,7 @@ error macex(atom expr, atom *result) {
 
 	cur_expr = expr; /* for error reporting */
 
-	if (expr.type == T_SYM) {
-		*result = expr;
-		stack_add(*result);
-		return ERROR_OK;
-	}
-	else if (expr.type != T_CONS) {
-		*result = expr;
-		stack_add(*result);
-		return ERROR_OK;
-	}
-	else if (!listp(expr)) {
+	if (expr.type != T_CONS || !listp(expr)) {
 		*result = expr;
 		stack_add(*result);
 		return ERROR_OK;
