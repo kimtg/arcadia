@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.9.22"
+#define VERSION "0.9.23"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -117,6 +117,7 @@ struct pair *table_get(struct table *tbl, atom k);
 struct pair *table_get_sym(struct table *tbl, char *k);
 int table_set(struct table *tbl, atom k, atom v);
 int table_set_sym(struct table *tbl, char *k, atom v);
+void consider_gc();
 /* end forward */
 
 #define car(p) ((p).value.pair->car)
