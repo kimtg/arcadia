@@ -1193,6 +1193,7 @@ error builtin_mod(atom args, atom *result) {
 }
 
 error builtin_type(atom args, atom *result) {
+	if (len(args) != 1) return ERROR_ARGS;
 	atom x = car(args);
 	switch (x.type) {
 	case T_CONS: *result = sym_cons; break;
