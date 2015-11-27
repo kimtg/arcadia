@@ -1166,6 +1166,7 @@ error builtin_is(atom args, atom *result)
 }
 
 error builtin_scar(atom args, atom *result) {
+	if (len(args) != 2) return ERROR_ARGS;
 	atom place = car(args), value;
 	if (place.type != T_CONS) return ERROR_TYPE;
 	value = car(cdr(args));
@@ -1175,6 +1176,7 @@ error builtin_scar(atom args, atom *result) {
 }
 
 error builtin_scdr(atom args, atom *result) {
+	if (len(args) != 2) return ERROR_ARGS;
 	atom place = car(args), value;
 	if (place.type != T_CONS) return ERROR_TYPE;
 	value = car(cdr(args));
@@ -1184,6 +1186,7 @@ error builtin_scdr(atom args, atom *result) {
 }
 
 error builtin_mod(atom args, atom *result) {
+	if (len(args) != 2) return ERROR_ARGS;
 	atom dividend = car(args);
 	atom divisor = car(cdr(args));
 	double r = fmod(dividend.value.number, divisor.value.number);
