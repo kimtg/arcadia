@@ -634,7 +634,7 @@ char *readline(char *prompt) {
 	char *str;
 	int ch;
 	size_t len = 0;
-	printf(prompt);
+	printf("%s", prompt);
 	str = malloc(sizeof(char)* size); /* size is start size */
 	if (!str) return NULL;
 	while (EOF != (ch = fgetc(stdin)) && ch != '\n') {
@@ -657,7 +657,7 @@ char *readline_fp(char *prompt, FILE *fp) {
 	char *str;
 	int ch;
 	size_t len = 0;
-	printf(prompt);
+	printf("%s", prompt);
 	str = malloc(sizeof(char)* size); /* size is start size */
 	if (!str) return NULL;
 	while (EOF != (ch = fgetc(fp)) && ch != '\n') {
