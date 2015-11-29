@@ -629,25 +629,7 @@ error read_expr(const char *input, const char **end, atom *result)
 
 #ifndef READLINE
 char *readline(char *prompt) {
-	size_t size = 80;
-	/* The size is extended by the input with the value of the provisional */
-	char *str;
-	int ch;
-	size_t len = 0;
-	printf("%s", prompt);
-	str = malloc(sizeof(char)* size); /* size is start size */
-	if (!str) return NULL;
-	while (EOF != (ch = fgetc(stdin)) && ch != '\n') {
-		str[len++] = ch;
-		if (len == size){
-			str = realloc(str, sizeof(char)*(size *= 2));
-			if (!str) return NULL;
-		}
-	}
-	if (ch == EOF && len == 0) return NULL;
-	str[len++] = '\0';
-
-	return realloc(str, sizeof(char)*len);
+	return readline_fp(prompt, stdin);
 }
 #endif /* READLINE */
 
