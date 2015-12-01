@@ -2444,6 +2444,9 @@ error eval_expr(atom expr, atom env, atom *result)
 }
 
 void arc_init(char *file_path) {
+#ifdef READLINE
+	rl_bind_key('\t', rl_insert); /* prevent tab completion */
+#endif
 	srand((unsigned int)time(0));
 	env = env_create(nil);
 
