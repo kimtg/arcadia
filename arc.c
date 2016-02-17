@@ -38,14 +38,24 @@ void stack_add(atom a) {
 	stack[stack_size - 1] = a;
 }
 
-void stack_restore(int saved_size) {
-	consider_gc();
+void stack_restore_no_gc(int saved_size) {
 	stack_size = saved_size;
 	/* if there is waste of memory, realloc */
 	if (stack_size < stack_capacity / 4) {
 		stack_capacity /= 2;
 		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
+}
+
+void stack_restore(int saved_size) {
+	stack_restore_no_gc(saved_size);
+	consider_gc();
+}
+
+void stack_restore_add(int saved_size, atom a) {
+	stack_restore_no_gc(saved_size);
+	stack_add(a);
+	consider_gc();
 }
 
 void consider_gc() {
@@ -2102,8 +2112,7 @@ error macex(atom expr, atom *result) {
 				}
 
 				*result = expr;
-				stack_restore(ss);
-				stack_add(*result);
+				stack_restore_add(ss, *result);
 				return ERROR_OK;
 			}
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
@@ -2125,8 +2134,7 @@ error macex(atom expr, atom *result) {
 					macro.type = T_MACRO;
 					*result = cons(sym_quote, cons(car(args), nil));
 					err = env_assign(env, name.value.symbol, macro);
-					stack_restore(ss);
-					stack_add(*result);
+					stack_restore_add(ss, *result);
 					return err;
 				}
 				else {
@@ -2152,14 +2160,12 @@ error macex(atom expr, atom *result) {
 				stack_restore(ss);
 				return err;
 			}
-			stack_add(result2);
 			err = macex(result2, result); /* recursive */
 			if (err) {
 				stack_restore(ss);
 				return err;
 			}
-			stack_restore(ss);
-			stack_add(*result);
+			stack_restore_add(ss, *result);
 			return ERROR_OK;
 		}
 		else {
@@ -2175,8 +2181,7 @@ error macex(atom expr, atom *result) {
 				p = cdr(p);
 			}
 			*result = expr2;
-			stack_restore(ss);
-			stack_add(*result);
+			stack_restore_add(ss, *result);
 			return ERROR_OK;
 		}
 	}
@@ -2269,21 +2274,18 @@ error eval_expr(atom expr, atom env, atom *result)
 					}
 					if (no(cdr(*p))) {
 						*result = cond;
-						stack_restore(ss);
-						stack_add(*result);
+						stack_restore_add(ss, *result);
 						return ERROR_OK;
 					}
 					if (!no(cond)) {
 						err = eval_expr(car(cdr(*p)), env, result);
-						stack_restore(ss);
-						stack_add(*result);
+						stack_restore_add(ss, *result);
 						return err;
 					}
 					p = &cdr(cdr(*p));
 				}
 				*result = nil;
-				stack_restore(ss);
-				stack_add(*result);
+				stack_restore_add(ss, *result);
 				return ERROR_OK;
 			}
 			else if (op.value.symbol == sym_assign.value.symbol) {
@@ -2304,8 +2306,7 @@ error eval_expr(atom expr, atom env, atom *result)
 
 					*result = val;
 					err = env_assign_eq(env, sym.value.symbol, val);
-					stack_restore(ss);
-					stack_add(*result);
+					stack_restore_add(ss, *result);
 					return err;
 				}
 				else {
@@ -2320,8 +2321,7 @@ error eval_expr(atom expr, atom env, atom *result)
 				}
 
 				*result = car(args);
-				stack_restore(ss);
-				stack_add(*result);
+				stack_restore_add(ss, *result);
 				return ERROR_OK;
 			}			
 			else if (op.value.symbol == sym_fn.value.symbol) {
@@ -2330,8 +2330,7 @@ error eval_expr(atom expr, atom env, atom *result)
 					return ERROR_ARGS;
 				}
 				err = make_closure(env, car(args), cdr(args), result);
-				stack_restore(ss);
-				stack_add(*result);
+				stack_restore_add(ss, *result);
 				return err;
 			}			
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
@@ -2353,8 +2352,7 @@ error eval_expr(atom expr, atom env, atom *result)
 					macro.type = T_MACRO;
 					*result = name;
 					err = env_assign(env, name.value.symbol, macro);
-					stack_restore(ss);
-					stack_add(*result);
+					stack_restore_add(ss, *result);
 					return err;
 				}
 				else {
@@ -2384,10 +2382,9 @@ error eval_expr(atom expr, atom env, atom *result)
 						}
 						e = cdr(e);
 					}
-					stack_restore(ss2);
+					stack_restore_add(ss2, nil);
 				}
-				stack_restore(ss);
-				stack_add(*result);
+				stack_restore_add(ss, *result);
 				return ERROR_OK;
 			}
 		}
@@ -2404,14 +2401,12 @@ error eval_expr(atom expr, atom env, atom *result)
 			atom expansion;
 			op.type = T_CLOSURE;
 			err = apply(op, args, &expansion);
-			stack_add(expansion);
 			if (err) {
 				stack_restore(ss);
 				return err;
 			}
 			err = eval_expr(expansion, env, result);
-			stack_restore(ss);
-			stack_add(*result);
+			stack_restore_add(ss, *result);
 			return err;
 		}
 
@@ -2428,8 +2423,7 @@ error eval_expr(atom expr, atom env, atom *result)
 			p = &cdr(*p);
 		}
 		err = apply(op, args, result);
-		stack_restore(ss);
-		stack_add(*result);
+		stack_restore_add(ss, *result);
 		return err;
 	}
 }

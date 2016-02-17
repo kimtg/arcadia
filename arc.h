@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.9.25"
+#define VERSION "0.9.27"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -94,6 +94,7 @@ void gc_mark(atom root);
 void gc();
 void stack_add(atom a);
 void stack_restore(int saved_size);
+void stack_restore_add(int saved_size, atom a);
 error macex(atom expr, atom *result);
 char *to_string(atom a, int write);
 char *strcat_alloc(char **dst, char *src);
@@ -128,5 +129,6 @@ void consider_gc();
 extern atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_string, sym_num, sym_table;
 extern int arc_reader_unclosed;
 extern int stack_size;
+extern const atom nil;
 
 #endif
