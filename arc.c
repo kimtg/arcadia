@@ -42,7 +42,7 @@ void stack_restore_no_gc(int saved_size) {
 	stack_size = saved_size;
 	/* if there is waste of memory, realloc */
 	if (stack_size < stack_capacity / 4) {
-		stack_capacity /= 2;
+		stack_capacity = stack_size * 2;
 		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
 }
