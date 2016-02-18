@@ -2519,11 +2519,6 @@ void arc_init(char *file_path) {
 	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
 	strcpy(lib, dir_path);
 	strcat_alloc(&lib, "library.arc");
-	if (arc_load_file(lib) != ERROR_OK) {
-		strcpy(lib, dir_path);
-		strcat_alloc(&lib, "../library.arc");
-		arc_load_file(lib);
-	}
 	free(lib);
 	free(dir_path);
 }
