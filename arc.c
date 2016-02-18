@@ -2382,7 +2382,7 @@ error eval_expr(atom expr, atom env, atom *result)
 						}
 						e = cdr(e);
 					}
-					stack_restore_add(ss2, nil);
+					stack_restore(ss2);
 				}
 				stack_restore_add(ss, *result);
 				return ERROR_OK;
