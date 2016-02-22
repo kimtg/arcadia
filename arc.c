@@ -2025,7 +2025,7 @@ void table_add(struct table *tbl, atom k, atom v) {
 
 /* return pair. return NULL if not found */
 struct pair *table_get(struct table *tbl, atom k) {
-	if (tbl->capacity == 0) return NULL;
+	if (tbl->size == 0) return NULL;
 	int pos = hash_code(k) % tbl->capacity;
 	atom *p = &tbl->data[pos];
 	while (!no(*p)) {
@@ -2040,7 +2040,7 @@ struct pair *table_get(struct table *tbl, atom k) {
 
 /* return pair. return NULL if not found */
 struct pair *table_get_sym(struct table *tbl, char *k) {
-	if (tbl->capacity == 0) return NULL;
+	if (tbl->size == 0) return NULL;
 	int pos = ((unsigned int)k / sizeof(char *)) % tbl->capacity;
 	atom *p = &tbl->data[pos];
 	while (!no(*p)) {
