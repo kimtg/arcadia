@@ -657,7 +657,7 @@ char *readline_fp(char *prompt, FILE *fp) {
 
 atom env_create(atom parent)
 {
-	return cons(parent, make_table(2));
+	return cons(parent, make_table(1));
 }
 
 error env_get(atom env, char *symbol, atom *result)
@@ -1991,21 +1991,14 @@ int table_set_sym(struct table *tbl, char *k, atom v) {
 		return 1;
 	}
 	else {
-		atom k2;
-		k2.type = T_SYM;
-		k2.value.symbol = k;
-		table_add(tbl, k2, v);
+		table_add(tbl, make_sym(k), v);
 		return 0;
 	}
 }
 
 void table_add(struct table *tbl, atom k, atom v) {
-	/* insert new item */
-	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
-	*p = cons(cons(k, v), *p);
-	tbl->size++;
-	if (tbl->size > 0.75 * tbl->capacity) { /* rehash, load factor = 0.75 */
-		int new_capacity = tbl->capacity * 2;
+	if (tbl->size + 1 > tbl->capacity) { /* rehash, load factor = 1 */
+		int new_capacity = (tbl->size + 1) * 2;
 		struct atom *data2 = malloc(new_capacity * sizeof(struct atom));
 		int i;
 		for (i = 0; i < new_capacity; i++) {
@@ -2024,10 +2017,15 @@ void table_add(struct table *tbl, atom k, atom v) {
 		tbl->data = data2;
 		tbl->capacity = new_capacity;
 	}
+	/* insert new item */
+	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
+	*p = cons(cons(k, v), *p);
+	tbl->size++;
 }
 
 /* return pair. return NULL if not found */
 struct pair *table_get(struct table *tbl, atom k) {
+	if (tbl->capacity == 0) return NULL;
 	int pos = hash_code(k) % tbl->capacity;
 	atom *p = &tbl->data[pos];
 	while (!no(*p)) {
@@ -2042,6 +2040,7 @@ struct pair *table_get(struct table *tbl, atom k) {
 
 /* return pair. return NULL if not found */
 struct pair *table_get_sym(struct table *tbl, char *k) {
+	if (tbl->capacity == 0) return NULL;
 	int pos = ((unsigned int)k / sizeof(char *)) % tbl->capacity;
 	atom *p = &tbl->data[pos];
 	while (!no(*p)) {
