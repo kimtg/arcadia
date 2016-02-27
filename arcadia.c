@@ -31,7 +31,6 @@ void repl() {
 			input = strcat_alloc(&input, line);
 			goto read_start;
 		}
-		stack_add(code_expr);
 		if (!err) {
 			while (!no(code_expr)) {
 				err = macex_eval(car(code_expr), &result);

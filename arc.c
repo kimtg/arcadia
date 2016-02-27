@@ -920,8 +920,8 @@ error builtin_add(atom args, atom *result)
 			double r = car(args).value.number;
 			args = cdr(args);
 			while (!no(args)) {
-				if (args.type != T_CONS) return ERROR_ARGS;
-				if (car(args).type != T_NUM) return ERROR_TYPE;
+				//if (args.type != T_CONS) return ERROR_ARGS;
+				//if (car(args).type != T_NUM) return ERROR_TYPE;
 				r += car(args).value.number;
 				args = cdr(args);
 			}
@@ -966,8 +966,8 @@ error builtin_subtract(atom args, atom *result)
 	double r = car(args).value.number;
 	args = cdr(args);
 	while (!no(args)) {
-		if (args.type != T_CONS) return ERROR_ARGS;
-		if (car(args).type != T_NUM) return ERROR_TYPE;
+		//if (args.type != T_CONS) return ERROR_ARGS;
+		//if (car(args).type != T_NUM) return ERROR_TYPE;
 		r -= car(args).value.number;
 		args = cdr(args);
 	}
@@ -2092,13 +2092,10 @@ error macex(atom expr, atom *result) {
 
 	if (expr.type != T_CONS || !listp(expr)) {
 		*result = expr;
-		stack_add(*result);
 		return ERROR_OK;
 	}
 	else {
 		int ss = stack_size; /* save stack point */
-		stack_add(expr);
-		stack_add(env);
 		atom op = car(expr);
 		atom args = cdr(expr);
 
@@ -2243,12 +2240,10 @@ error eval_expr(atom expr, atom env, atom *result)
 	cur_expr = expr; /* for error reporting */
 	if (expr.type == T_SYM) {
 		err = env_get(env, expr.value.symbol, result);
-		stack_add(*result);
 		return err;
 	}
 	else if (expr.type != T_CONS) {
 		*result = expr;
-		stack_add(*result);
 		return ERROR_OK;
 	}
 	else if (!listp(expr)) {
@@ -2256,8 +2251,6 @@ error eval_expr(atom expr, atom env, atom *result)
 	}
 	else {
 		int ss = stack_size; /* save stack point */
-		stack_add(expr);
-		stack_add(env);
 		atom op = car(expr);
 		atom args = cdr(expr);
 
