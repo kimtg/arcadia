@@ -197,7 +197,7 @@ atom make_sym(const char *s)
 	atom a;
 
 	int i;
-	for (i = 0; i < symbol_size; i++) {
+	for (i = symbol_size - 1; i >= 0; i--) { /* compare recent symbol first */
 		char *s2 = symbol_table[i];
 		if (strcmp(s2, s) == 0) {
 			a.type = T_SYM;
@@ -1983,7 +1983,7 @@ int table_set(struct table *tbl, atom k, atom v) {
 	}
 }
 
-/* return 1 if found */
+/* return 1 if found. k is symbol. */
 int table_set_sym(struct table *tbl, char *k, atom v) {
 	struct pair *p = table_get_sym(tbl, k);
 	if (p) {
@@ -1991,7 +1991,8 @@ int table_set_sym(struct table *tbl, char *k, atom v) {
 		return 1;
 	}
 	else {
-		table_add(tbl, make_sym(k), v);
+		atom s = { T_SYM, .value.symbol = k };
+		table_add(tbl, s, v);
 		return 0;
 	}
 }
