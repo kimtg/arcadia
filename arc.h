@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.9.32"
+#define VERSION "0.9.33"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -76,10 +76,15 @@ struct str {
 	struct str *next;
 };
 
+struct table_entry {
+	struct atom k, v;
+	struct table_entry *next;
+};
+
 struct table {
 	int capacity;
 	int size;
-	atom *data;
+	struct table_entry **data;
 	char mark;
 	struct table *next;
 };
@@ -114,8 +119,8 @@ int is(atom a, atom b);
 unsigned int hash_code(atom a);
 atom make_table(int capacity);
 void table_add(struct table *tbl, atom k, atom v);
-struct pair *table_get(struct table *tbl, atom k);
-struct pair *table_get_sym(struct table *tbl, char *k);
+struct table_entry *table_get(struct table *tbl, atom k);
+struct table_entry *table_get_sym(struct table *tbl, char *k);
 int table_set(struct table *tbl, atom k, atom v);
 int table_set_sym(struct table *tbl, char *k, atom v);
 void consider_gc();

@@ -113,7 +113,12 @@ void gc_mark(atom root)
 		at->mark = 1;
 		int i;
 		for (i = 0; i < at->capacity; i++) {
-			gc_mark(at->data[i]);
+			struct table_entry *e = at->data[i];
+			while (e) {
+				gc_mark(e->k);
+				gc_mark(e->v);
+				e = e->next;
+			}
 		}
 		break; }
 	default:
@@ -171,6 +176,15 @@ void gc()
 		at = *pt;
 		if (!at->mark) {
 			*pt = at->next;
+			int i;
+			for (i = 0; i < at->capacity; i++) {
+				struct table_entry *e = at->data[i];
+				while (e) {
+					struct table_entry *next = e->next;
+					free(e);
+					e = next;
+				}
+			}
 			free(at->data);
 			free(at);
 		}
@@ -665,9 +679,9 @@ error env_get(atom env, char *symbol, atom *result)
 	while (1) {
 		atom parent = car(env);
 		struct table *ptbl = cdr(env).value.table;
-		struct pair *a = table_get_sym(ptbl, symbol);
+		struct table_entry *a = table_get_sym(ptbl, symbol);
 		if (a) {
-			*result = a->cdr;
+			*result = a->v;
 			return ERROR_OK;
 		}
 		if (no(parent)) {
@@ -688,9 +702,9 @@ error env_assign_eq(atom env, char *symbol, atom value) {
 	while (1) {
 		atom parent = car(env);
 		struct table *ptbl = cdr(env).value.table;
-		struct pair *a = table_get_sym(ptbl, symbol);
+		struct table_entry *a = table_get_sym(ptbl, symbol);
 		if (a) {
-			a->cdr = value;
+			a->v = value;
 			return ERROR_OK;
 		}
 		if (no(parent)) {
@@ -833,9 +847,9 @@ error apply(atom fn, atom args, atom *result)
 		long len1 = len(args);
 		if (len1 != 1 && len1 != 2) return ERROR_ARGS;
 		atom *pkey = &car(args);
-		struct pair *pair = table_get(fn.value.table, *pkey);
+		struct table_entry *pair = table_get(fn.value.table, *pkey);
 		if (pair) {
-			*result = pair->cdr;
+			*result = pair->v;
 		}
 		else {
 			if (len1 == 2) /* default value is specified */
@@ -1609,12 +1623,11 @@ error builtin_maptable(atom args, atom *result) {
 	if (tbl->type != T_TABLE) return ERROR_TYPE;
 	int i;
 	for (i = 0; i < tbl->value.table->capacity; i++) {
-		atom *p = &tbl->value.table->data[i];
-		while (!no(*p)) {
-			atom *pair = &car(*p);
-			error err = apply(*proc, cons(car(*pair), cons(cdr(*pair), nil)), result);
+		struct table_entry *p = tbl->value.table->data[i];
+		while (p) {
+			error err = apply(*proc, cons(p->k, cons(p->v, nil)), result);
 			if (err) return err;
-			p = &cdr(*p);
+			p = p->next;
 		}
 	}
 	*result = *tbl;
@@ -1861,11 +1874,17 @@ char *to_string(atom a, int write) {
 		strcat_alloc(&s, "#<table:");
 		int i;
 		for (i = 0; i < a.value.table->capacity; i++) {
-			atom *data = &a.value.table->data[i];
-			if (!no(*data)) {
-				char *s2 = to_string(*data, write);
+			struct table_entry *p = a.value.table->data[i];
+			while (p) {
+				char *s2 = to_string(p->k, write);
+				strcat_alloc(&s, " ");
 				strcat_alloc(&s, s2);
 				free(s2);
+				strcat_alloc(&s, ":");
+				s2 = to_string(p->v, write);
+				strcat_alloc(&s, s2);
+				free(s2);
+				p = p->next;
 			}
 		}
 		strcat_alloc(&s, ">");
@@ -1956,10 +1975,10 @@ atom make_table(int capacity) {
 	s = a.value.table = malloc(sizeof(struct table));
 	s->capacity = capacity;
 	s->size = 0;
-	s->data = malloc(capacity * sizeof(atom));
+	s->data = malloc(capacity * sizeof(struct table_entry *));
 	int i;
 	for (i = 0; i < capacity; i++) {
-		s->data[i] = nil;
+		s->data[i] = NULL;
 	}
 	s->mark = 0;
 	s->next = table_head;
@@ -1970,11 +1989,20 @@ atom make_table(int capacity) {
 	return a;
 }
 
+struct table_entry *table_entry_new(atom k, atom v, struct table_entry *next) {
+	struct table_entry *r = malloc(sizeof(*r));
+	r->k = k;
+	r->v = v;
+	r->next = next;
+	return r;
+}
+
+
 /* return 1 if found */
 int table_set(struct table *tbl, atom k, atom v) {
-	struct pair *p = table_get(tbl, k);
+	struct table_entry *p = table_get(tbl, k);
 	if (p) {
-		p->cdr = v;
+		p->v = v;
 		return 1;
 	}
 	else {
@@ -1985,9 +2013,9 @@ int table_set(struct table *tbl, atom k, atom v) {
 
 /* return 1 if found. k is symbol. */
 int table_set_sym(struct table *tbl, char *k, atom v) {
-	struct pair *p = table_get_sym(tbl, k);
+	struct table_entry *p = table_get_sym(tbl, k);
 	if (p) {
-		p->cdr = v;
+		p->v = v;
 		return 1;
 	}
 	else {
@@ -2000,18 +2028,19 @@ int table_set_sym(struct table *tbl, char *k, atom v) {
 void table_add(struct table *tbl, atom k, atom v) {
 	if (tbl->size + 1 > tbl->capacity) { /* rehash, load factor = 1 */
 		int new_capacity = (tbl->size + 1) * 2;
-		struct atom *data2 = malloc(new_capacity * sizeof(struct atom));
+		struct table_entry **data2 = malloc(new_capacity * sizeof(struct table_entry *));
 		int i;
 		for (i = 0; i < new_capacity; i++) {
-			data2[i] = nil;
+			data2[i] = NULL;
 		}
 		for (i = 0; i < tbl->capacity; i++) {
-			atom *p = &tbl->data[i];
-			while (!no(*p)) {
-				atom *pair1 = &car(*p);
-				atom *p2 = &data2[hash_code(car(*pair1)) % new_capacity];
-				*p2 = cons(*pair1, *p2);
-				p = &cdr(*p);
+			struct table_entry *p = tbl->data[i];
+			while (p) {
+				struct table_entry **p2 = &data2[hash_code(p->k) % new_capacity];
+				struct table_entry *next = p->next;
+				*p2 = table_entry_new(p->k, p->v, *p2);
+				free(p);
+				p = next;
 			}
 		}
 		free(tbl->data);
@@ -2019,37 +2048,35 @@ void table_add(struct table *tbl, atom k, atom v) {
 		tbl->capacity = new_capacity;
 	}
 	/* insert new item */
-	atom *p = &tbl->data[hash_code(k) % tbl->capacity];
-	*p = cons(cons(k, v), *p);
+	struct table_entry **p = &tbl->data[hash_code(k) % tbl->capacity];
+	*p = table_entry_new(k, v, *p);
 	tbl->size++;
 }
 
-/* return pair. return NULL if not found */
-struct pair *table_get(struct table *tbl, atom k) {
+/* return entry. return NULL if not found */
+struct table_entry *table_get(struct table *tbl, atom k) {
 	if (tbl->size == 0) return NULL;
 	int pos = hash_code(k) % tbl->capacity;
-	atom *p = &tbl->data[pos];
-	while (!no(*p)) {
-		struct pair *pair = car(*p).value.pair;
-		if (is(pair->car, k)) {
-			return pair;
+	struct table_entry *p = tbl->data[pos];
+	while (p) {
+		if (is(p->k, k)) {
+			return p;
 		}
-		p = &cdr(*p);
+		p = p->next;
 	}
 	return NULL;
 }
 
-/* return pair. return NULL if not found */
-struct pair *table_get_sym(struct table *tbl, char *k) {
+/* return entry. return NULL if not found */
+struct table_entry *table_get_sym(struct table *tbl, char *k) {
 	if (tbl->size == 0) return NULL;
 	int pos = ((unsigned int)k / sizeof(char *)) % tbl->capacity;
-	atom *p = &tbl->data[pos];
-	while (!no(*p)) {
-		struct pair *pair = car(*p).value.pair;
-		if (pair->car.value.symbol == k) {
-			return pair;
+	struct table_entry *p = tbl->data[pos];
+	while (p) {
+		if (p->k.value.symbol == k) {
+			return p;
 		}
-		p = &cdr(*p);
+		p = p->next;
 	}
 	return NULL;
 }
