@@ -59,8 +59,8 @@ void stack_restore_add(int saved_size, atom a) {
 }
 
 void consider_gc() {
-	if (alloc_count > 4 * alloc_count_old)
-		gc();
+  	if (alloc_count > 4 * alloc_count_old)
+  		gc();
 }
 
 atom cons(atom car_val, atom cdr_val)
@@ -934,8 +934,7 @@ error builtin_add(atom args, atom *result)
 			double r = car(args).value.number;
 			args = cdr(args);
 			while (!no(args)) {
-				//if (args.type != T_CONS) return ERROR_ARGS;
-				//if (car(args).type != T_NUM) return ERROR_TYPE;
+				if (car(args).type != T_NUM) return ERROR_TYPE;
 				r += car(args).value.number;
 				args = cdr(args);
 			}
@@ -980,8 +979,7 @@ error builtin_subtract(atom args, atom *result)
 	double r = car(args).value.number;
 	args = cdr(args);
 	while (!no(args)) {
-		//if (args.type != T_CONS) return ERROR_ARGS;
-		//if (car(args).type != T_NUM) return ERROR_TYPE;
+		if (car(args).type != T_NUM) return ERROR_TYPE;
 		r -= car(args).value.number;
 		args = cdr(args);
 	}
@@ -993,7 +991,6 @@ error builtin_multiply(atom args, atom *result)
 {
 	double r = 1;
 	while (!no(args)) {
-		if (args.type != T_CONS) return ERROR_ARGS;
 		if (car(args).type != T_NUM) return ERROR_TYPE;
 		r *= car(args).value.number;
 		args = cdr(args);
@@ -1017,7 +1014,6 @@ error builtin_divide(atom args, atom *result)
 	double r = car(args).value.number;
 	args = cdr(args);
 	while (!no(args)) {
-		if (args.type != T_CONS) return ERROR_ARGS;
 		if (car(args).type != T_NUM) return ERROR_TYPE;
 		r /= car(args).value.number;
 		args = cdr(args);
@@ -2262,8 +2258,9 @@ error arc_load_file(const char *path)
 
 error eval_expr(atom expr, atom env, atom *result)
 {
-	error err = ERROR_OK;
-
+	error err;
+	int ss = stack_size; /* save stack point */
+start_eval:
 	cur_expr = expr; /* for error reporting */
 	if (expr.type == T_SYM) {
 		err = env_get(env, expr.value.symbol, result);
@@ -2277,30 +2274,29 @@ error eval_expr(atom expr, atom env, atom *result)
 		return ERROR_SYNTAX;
 	}
 	else {
-		int ss = stack_size; /* save stack point */
 		atom op = car(expr);
 		atom args = cdr(expr);
 
 		if (op.type == T_SYM) {
 			/* Handle special forms */
 			if (op.value.symbol == sym_if.value.symbol) {
-				atom cond;
 				atom *p = &args;
 				while (!no(*p)) {
+					atom cond;
+					if (no(cdr(*p))) { /* else */
+						/* tail call optimization of else part */
+						expr = car(*p);
+						goto start_eval;
+					}
 					err = eval_expr(car(*p), env, &cond);
 					if (err) {
 						stack_restore(ss);
 						return err;
 					}
-					if (no(cdr(*p))) {
-						*result = cond;
-						stack_restore_add(ss, *result);
-						return ERROR_OK;
-					}
-					if (!no(cond)) {
-						err = eval_expr(car(cdr(*p)), env, result);
-						stack_restore_add(ss, *result);
-						return err;
+					if (!no(cond)) { /* then */
+						/* tail call optimization of err = eval_expr(car(cdr(*p)), env, result); */
+						expr = car(cdr(*p));
+						goto start_eval;
 					}
 					p = &cdr(cdr(*p));
 				}
@@ -2442,7 +2438,131 @@ error eval_expr(atom expr, atom env, atom *result)
 
 			p = &cdr(*p);
 		}
-		err = apply(op, args, result);
+		/* tail call optimization of err = apply(op, args, result); */
+		{
+			atom fn = op;
+			atom env2, arg_names, body;
+
+			if (fn.type == T_BUILTIN) {
+				err = (*fn.value.builtin)(args, result);
+				stack_restore_add(ss, *result);
+				return err;
+			}
+			else if (fn.type == T_CLOSURE) {
+				env2 = env_create(car(fn));
+				arg_names = car(cdr(fn));
+				body = cdr(cdr(fn));
+
+				/* Bind the arguments */
+				while (!no(arg_names)) {
+					if (arg_names.type == T_SYM) {
+						env_assign(env2, arg_names.value.symbol, args);
+						args = nil;
+						break;
+					}
+					atom arg_name = car(arg_names);
+					if (arg_name.type == T_SYM) {
+						if (no(args)) {/* missing argument */
+							stack_restore(ss);
+							return ERROR_ARGS;
+						}
+						env_assign(env2, arg_name.value.symbol, car(args));
+						args = cdr(args);
+					}
+					else { /* (o ARG [DEFAULT]) */
+						atom val;
+						if (no(args)) { /* missing argument */
+							if (no(cdr(cdr(arg_name))))
+								val = nil;
+							else {
+								error err = eval_expr(car(cdr(cdr(arg_name))), env2, &val);
+								if (err) {
+									stack_restore(ss);
+									return err;
+								}
+							}
+						} else {
+							val = car(args);
+							args = cdr(args);
+						}
+						env_assign(env2, car(cdr(arg_name)).value.symbol, val);
+					}
+					arg_names = cdr(arg_names);
+				}
+				if (!no(args)) {
+					stack_restore(ss);
+					return ERROR_ARGS;
+				}
+
+				/* Evaluate the body */
+				while (!no(body)) {
+					if (no(cdr(body))) {
+						/* tail call */
+						expr = car(body);
+						env = env2;
+						goto start_eval;
+					}
+					error err = eval_expr(car(body), env2, result);
+					if (err) {
+						stack_restore(ss);
+						return err;
+					}
+					body = cdr(body);
+				}
+				stack_restore_add(ss, *result);
+				return ERROR_OK;
+			}
+			else if (fn.type == T_CONTINUATION) {
+				if (len(args) != 1) { stack_restore(ss); return ERROR_ARGS; }
+				thrown = car(args);
+				longjmp(*fn.value.jb, 1);
+			}
+			else if (fn.type == T_STRING) { /* implicit indexing for string */
+				if (len(args) != 1) { stack_restore(ss); return ERROR_ARGS; }
+				long index = (long)(car(args)).value.number;
+				*result = make_char(fn.value.str->value[index]);
+				stack_restore_add(ss, *result);
+				return ERROR_OK;
+			}
+			else if (fn.type == T_CONS && listp(fn)) { /* implicit indexing for list */
+				if (len(args) != 1) { stack_restore(ss); return ERROR_ARGS; }
+				long index = (long)(car(args)).value.number;
+				atom a = fn;
+				long i;
+				for (i = 0; i < index; i++) {
+					a = cdr(a);
+					if (no(a)) {
+						*result = nil;
+						stack_restore(ss);
+						return ERROR_OK;
+					}
+				}
+				*result = car(a);
+				stack_restore_add(ss, *result);
+				return ERROR_OK;
+			}
+			else if (fn.type == T_TABLE) { /* implicit indexing for table */
+				long len1 = len(args);
+				if (len1 != 1 && len1 != 2) { stack_restore(ss); return ERROR_ARGS; }
+				atom *pkey = &car(args);
+				struct table_entry *pair = table_get(fn.value.table, *pkey);
+				if (pair) {
+					*result = pair->v;
+				}
+				else {
+					if (len1 == 2) /* default value is specified */
+						*result = car(cdr(args));
+					else
+						*result = nil;
+				}
+				stack_restore_add(ss, *result);
+				return ERROR_OK;
+			}
+			else {
+				stack_restore(ss);
+				return ERROR_TYPE;
+			}
+		}
 		stack_restore_add(ss, *result);
 		return err;
 	}

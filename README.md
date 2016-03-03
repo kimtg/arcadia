@@ -40,7 +40,8 @@ OPTIONS:
 `++ -- <= = >= aand abs accum acons adjoin afn aif alist all alref and andf assoc atend atom avg before best bestn caar cadr carif caris case caselet catch cddr check commonest compare complement compose consif conswhen copy copylist count counts cut dedup def do do1 dotted drain each empty even fill-table find firstn flat for forlen get idfn iflet in insert-sorted insort insortnew intersperse isa isnt iso join keep keys last len< len> let list listtab loop map map1 mappend max med median mem memtable merge mergesort min mismatch most multiple n-of nearest no noisy-each nor nthcdr number obj odd on only ontable or orf pair point pop pos positive pr prn pull push pushnew quasiquote rand-choice rand-elt range reclist recstring reduce reinsert-sorted rem repeat retrieve rev rfn rotate round roundup rreduce set single some sort split sref sum summing swap tablist testify tuples trues union uniq unless until vals w/table w/uniq when whenlet whiler whilet wipe with withs zap`
 
 ## Features
-* Easy-to-understand garbage collection
+* Easy-to-understand mark-and-sweep garbage collection
+* Tail call optimization
 * Implicit indexing
 * [Syntax sugar](http://arclanguage.github.io/ref/evaluation.html) (`[]`, `~`, `.`, `!`, `:`)
 
