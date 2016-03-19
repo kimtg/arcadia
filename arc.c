@@ -1138,6 +1138,20 @@ int is(atom a, atom b) {
 	return 0;
 }
 
+int iso(atom a, atom b) {
+	if (a.type == b.type) {
+		switch (a.type) {
+		case T_CONS:
+		case T_CLOSURE:
+		case T_MACRO:
+			return iso(a.value.pair->car, b.value.pair->car) && iso(a.value.pair->cdr, b.value.pair->cdr);
+		default:
+			return is(a, b);
+		}
+	}
+	return 0;
+}
+
 error builtin_is(atom args, atom *result)
 {
   atom a, b;
@@ -1924,7 +1938,7 @@ unsigned int hash_code(atom a) {
 	switch (a.type) {
 	case T_NIL:
 		return 0;
-	case T_CONS:		
+	case T_CONS:
 		while (!no(a)) {
 			r *= 31;
 			if (a.type == T_CONS) {
@@ -2055,7 +2069,7 @@ struct table_entry *table_get(struct table *tbl, atom k) {
 	int pos = hash_code(k) % tbl->capacity;
 	struct table_entry *p = tbl->data[pos];
 	while (p) {
-		if (is(p->k, k)) {
+		if (iso(p->k, k)) {
 			return p;
 		}
 		p = p->next;
