@@ -1962,7 +1962,7 @@ unsigned int hash_code(atom a) {
 		unsigned int v_uint;
 		double v_double;
 	};
-	unsigned int r = 0;
+	unsigned int r = 1;
 	switch (a.type) {
 	case T_NIL:
 		return 0;
