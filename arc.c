@@ -1336,36 +1336,64 @@ error builtin_rand(atom args, atom *result) {
 	return ERROR_OK;
 }
 
+error read_fp(FILE *fp, atom *result) {
+	char *s = readline_fp("", fp);
+	if (s == NULL) return ERROR_FILE;
+	const char *buf = s;
+	error err = read_expr(buf, &buf, result);
+
+	/* bring back remaining expressions so that "(read) (read)" works */
+	if (buf) {
+		if (*buf) ungetc('\n', fp);
+		const char *b0 = buf;
+		for (; *buf; buf++) {
+		}
+		for (buf--; buf >= b0; buf--) {
+			ungetc(*buf, fp);
+		}
+	}
+	free(s);
+	return err;
+}
+
+/* read [input-source [eof]]
+Reads a S-expression from the input-source, which can be either a string or an input-port. If the end of file is reached, nil is returned or the specified eof value. */
 error builtin_read(atom args, atom *result) {
 	long alen = len(args);
-	char *s;
+	error err;
 	if (alen == 0) {
-		s = readline("");
-		if (s == NULL) return ERROR_SYNTAX;
-		const char *buf = s;
-		error err = read_expr(buf, &buf, result);
-
-		/* bring back remaining expressions so that "(read) (read)" works */
-		if (buf) {
-			if (*buf) ungetc('\n', stdin);
-			const char *b0 = buf;
-			for (; *buf; buf++) {
-			}
-			for (buf--; buf >= b0; buf--) {
-				ungetc(*buf, stdin);
-			}
+		err = read_fp(stdin, result);
+	}
+	else if (alen <= 2) {
+		atom src = car(args);
+		if (src.type == T_STRING) {
+			char *s = car(args).value.str->value;
+			const char *buf = s;
+			err = read_expr(buf, &buf, result);
 		}
-		free(s);
+		else if (src.type == T_INPUT) {
+			err = read_fp(src.value.fp, result);
+		}
+		else {
+			return ERROR_TYPE;
+		}
+	}
+	else if (alen > 2) {
+		return ERROR_ARGS;
+	}
+
+	if (err == ERROR_FILE) {
+		atom eof = nil; /* default value when EOF */
+		if (alen == 2) { /* specified return value when EOF */
+			eof = car(cdr(args));
+		}
+
+		*result = eof;
+		return ERROR_OK;
+	}
+	else {
 		return err;
 	}
-	else if (alen == 1) {
-		s = car(args).value.str->value;
-		const char *buf = s;
-		error err = read_expr(buf, &buf, result);
-		return err;
-	}
-	else return ERROR_ARGS;
-	return ERROR_OK;
 }
 
 error builtin_macex(atom args, atom *result) {
