@@ -111,7 +111,7 @@ void gc_mark(atom root)
 		at = root.value.table;
 		if (at->mark) return;
 		at->mark = 1;
-		int i;
+		size_t i;
 		for (i = 0; i < at->capacity; i++) {
 			struct table_entry *e = at->data[i];
 			while (e) {
@@ -176,7 +176,7 @@ void gc()
 		at = *pt;
 		if (!at->mark) {
 			*pt = at->next;
-			int i;
+			size_t i;
 			for (i = 0; i < at->capacity; i++) {
 				struct table_entry *e = at->data[i];
 				while (e) {
@@ -1659,7 +1659,7 @@ error builtin_maptable(atom args, atom *result) {
 	atom *tbl = &car(cdr(args));
 	if (proc->type != T_BUILTIN && proc->type != T_CLOSURE) return ERROR_TYPE;
 	if (tbl->type != T_TABLE) return ERROR_TYPE;
-	int i;
+	size_t i;
 	for (i = 0; i < tbl->value.table->capacity; i++) {
 		struct table_entry *p = tbl->value.table->data[i];
 		while (p) {
@@ -1910,7 +1910,7 @@ char *to_string(atom a, int write) {
 		break;
 	case T_TABLE: {
 		strcat_alloc(&s, "#<table:");
-		int i;
+		size_t i;
 		for (i = 0; i < a.value.table->capacity; i++) {
 			struct table_entry *p = a.value.table->data[i];
 			while (p) {
@@ -2065,9 +2065,9 @@ int table_set_sym(struct table *tbl, char *k, atom v) {
 
 void table_add(struct table *tbl, atom k, atom v) {
 	if (tbl->size + 1 > tbl->capacity) { /* rehash, load factor = 1 */
-		int new_capacity = (tbl->size + 1) * 2;
+		size_t new_capacity = (tbl->size + 1) * 2;
 		struct table_entry **data2 = malloc(new_capacity * sizeof(struct table_entry *));
-		int i;
+		size_t i;
 		for (i = 0; i < new_capacity; i++) {
 			data2[i] = NULL;
 		}

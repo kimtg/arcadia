@@ -82,8 +82,8 @@ struct table_entry {
 };
 
 struct table {
-	int capacity;
-	int size;
+	size_t capacity;
+	size_t size;
 	struct table_entry **data;
 	char mark;
 	struct table *next;
