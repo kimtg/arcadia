@@ -2469,17 +2469,27 @@ start_eval:
 		}
 
 		/* Evaulate arguments */
-		args = copy_list(args);
+		atom head = nil, tail;
 		atom *p = &args;
 		while (!no(*p)) {
-			err = eval_expr(car(*p), env, &car(*p));
+			atom r;
+			err = eval_expr(car(*p), env, &r);
 			if (err) {
 				stack_restore(ss);
 				return err;
 			}
+			if (no(head)) {
+				head = cons(r, nil);
+				tail = head;
+			}
+			else {
+				cdr(tail) = cons(r, nil);
+				tail = cdr(tail);
+			}
 
 			p = &cdr(*p);
 		}
+		args = head;
 		
 		if (op.type == T_CLOSURE) {
 			/* tail call optimization of err = apply(op, args, result); */
