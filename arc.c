@@ -725,9 +725,9 @@ int listp(atom expr)
 	return 1;
 }
 
-long len(atom xs) {
+size_t len(atom xs) {
 	atom *p = &xs;
-	long ret = 0;
+	size_t ret = 0;
 	while (!no(*p)) {
 		if (p->type != T_CONS)
 			return 0;
@@ -1359,7 +1359,7 @@ error read_fp(FILE *fp, atom *result) {
 /* read [input-source [eof]]
 Reads a S-expression from the input-source, which can be either a string or an input-port. If the end of file is reached, nil is returned or the specified eof value. */
 error builtin_read(atom args, atom *result) {
-	long alen = len(args);
+	size_t alen = len(args);
 	error err;
 	if (alen == 0) {
 		err = read_fp(stdin, result);
@@ -1378,7 +1378,7 @@ error builtin_read(atom args, atom *result) {
 			return ERROR_TYPE;
 		}
 	}
-	else if (alen > 2) {
+	else {
 		return ERROR_ARGS;
 	}
 
