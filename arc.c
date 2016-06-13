@@ -2209,11 +2209,7 @@ error macex(atom expr, atom *result) {
 		/* Is it a macro? */
 		if (op.type == T_SYM && !env_get(env, op.value.symbol, result) && result->type == T_MACRO) {
 			/* Evaluate operator */
-			err = eval_expr(op, env, &op);
-			if (err) {
-				stack_restore(ss);
-				return err;
-			}
+			op = *result;
 
 			op.type = T_CLOSURE;
 			atom result2;
@@ -2493,11 +2489,10 @@ start_eval:
 		
 		if (op.type == T_CLOSURE) {
 			/* tail call optimization of err = apply(op, args, result); */
-			atom fn = op;
 			atom env2, arg_names, body;
-			env2 = env_create(car(fn));
-			arg_names = car(cdr(fn));
-			body = cdr(cdr(fn));
+			env2 = env_create(car(op));
+			arg_names = car(cdr(op));
+			body = cdr(cdr(op));
 
 			/* Bind the arguments */
 			while (!no(arg_names)) {
