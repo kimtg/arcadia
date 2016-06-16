@@ -12,19 +12,6 @@
 
 (def no (x) (is x nil))
 
-(mac compose args
-"Takes a list of functions and returns a function that behaves as if all its
-'args' were called in sequence.
-For example, this is always true:
-  ((compose f g h) a b c) <=> (f (g (h a b c))).
-Be wary of passing macros to compose."
-  (w/uniq g
-    `(fn ,g
-       ,((afn (fs)
-          (if cdr.fs
-            (list car.fs (self cdr.fs))
-            `(apply ,(if car.fs car.fs 'idfn) ,g))) args))))
-
 (def complement (f)
 "Returns a function that behaves as if the result of calling 'f' was negated.
 For example, this is always true:
@@ -90,13 +77,6 @@ For example, this is always true:
 (mac let (sym def . body)
 	`((fn (,sym) ,@body) ,def))
 
-(mac each (var expr . body)
-     (w/uniq (seq i)
-	     `(let ,seq ,expr
-		   (if (isa ,seq 'cons) (while ,seq (= ,var (car ,seq)) ,@body (= ,seq (cdr ,seq)))
-		       (isa ,seq 'table) (maptable (fn ,var ,@body) ,seq)
-		       'else (let ,i 0 (while (isnt (,seq ,i) #\nul) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
-
 (mac do body
 	`((fn () ,@body)))
 
@@ -131,6 +111,13 @@ function 'f' to them."
     `(with ,(apply join (map (fn (x) (list x '(uniq))) names))
        ,@body)
     `(let ,names (uniq) ,@body)))
+
+(mac each (var expr . body)
+     (w/uniq (seq i)
+	     `(let ,seq ,expr
+		   (if (isa ,seq 'cons) (while ,seq (= ,var (car ,seq)) ,@body (= ,seq (cdr ,seq)))
+		       (isa ,seq 'table) (maptable (fn ,var ,@body) ,seq)
+		       'else (let ,i 0 (while (isnt (,seq ,i) #\nul) (= ,var (,seq ,i)) ,@body (++ ,i)))))))
 
 (mac and args
 "Stops at the first argument to fail (return nil). Returns the last argument before stopping."
@@ -359,6 +346,19 @@ For examples, see [[aif]]."
 (mac afn (parms . body)
 "Like [[fn]] and [[rfn]] but the created function can call itself as 'self'"
   `(rfn self ,parms ,@body))
+
+(mac compose args
+"Takes a list of functions and returns a function that behaves as if all its
+'args' were called in sequence.
+For example, this is always true:
+  ((compose f g h) a b c) <=> (f (g (h a b c))).
+Be wary of passing macros to compose."
+  (w/uniq g
+    `(fn ,g
+       ,((afn (fs)
+          (if cdr.fs
+            (list car.fs (self cdr.fs))
+            `(apply ,(if car.fs car.fs 'idfn) ,g))) args))))
 
 ; Destructive stable merge-sort, adapted from slib and improved
 ; by Eli Barzilay for MzLib; re-written in Arc.

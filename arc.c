@@ -2216,9 +2216,13 @@ error macex_eval(atom expr, atom *result) {
 	atom expr2;
 	error err = macex(expr, &expr2);
 	if (err) return err;
-	/*printf("expanded: ");
+/*	printf("macex_eval: ");
+	print_expr(expr);
+	puts("");
+	printf("expanded: ");
 	print_expr(expr2);
-	puts("");*/
+	puts("\n");
+*/
 	return eval_expr(expr2, env, result);
 }
 
@@ -2414,20 +2418,6 @@ start_eval:
 		err = eval_expr(op, env, &op);
 		if (err) {
 			stack_restore(ss);
-			return err;
-		}
-
-		/* Is it a macro? */
-		if (op.type == T_MACRO) {
-			atom expansion;
-			op.type = T_CLOSURE;
-			err = apply(op, args, &expansion);
-			if (err) {
-				stack_restore(ss);
-				return err;
-			}
-			err = eval_expr(expansion, env, result);
-			stack_restore_add(ss, *result);
 			return err;
 		}
 
