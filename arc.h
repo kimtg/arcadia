@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.10.5"
+#define VERSION "0.10.6"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -131,8 +131,6 @@ void consider_gc();
 #define cdr(p) ((p).value.pair->cdr)
 #define no(atom) ((atom).type == T_NIL)
 
-/* symbols for faster execution */
-extern atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_string, sym_num, sym_table;
 extern int arc_reader_unclosed;
 extern int stack_size;
 extern const atom nil;

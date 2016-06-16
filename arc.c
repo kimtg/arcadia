@@ -14,6 +14,7 @@ int symbol_size = 0;
 int symbol_capacity = 0;
 const atom nil = { T_NIL };
 atom env; /* the global environment */
+/* symbols for faster execution */
 atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char;
 atom cur_expr;
 int arc_reader_unclosed = 0;
@@ -2162,49 +2163,15 @@ error macex(atom expr, atom *result) {
 	else {
 		int ss = stack_size; /* save stack point */
 		atom op = car(expr);
-		atom args = cdr(expr);
 
-		if (op.type == T_SYM) {
-			/* Handle special forms */
-
-			if (op.value.symbol == sym_quote.value.symbol) {
-				if (no(args) || !no(cdr(args))) {
-					stack_restore(ss);
-					return ERROR_ARGS;
-				}
-
-				*result = expr;
-				stack_restore_add(ss, *result);
-				return ERROR_OK;
-			}
-			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
-				atom name, macro;
-
-				if (no(args) || no(cdr(args)) || no(cdr(cdr(args)))) {
-					stack_restore(ss);
-					return ERROR_ARGS;
-				}
-
-				name = car(args);
-				if (name.type != T_SYM) {
-					stack_restore(ss);
-					return ERROR_TYPE;
-				}
-
-				err = make_closure(env, car(cdr(args)), cdr(cdr(args)), &macro);
-				if (!err) {
-					macro.type = T_MACRO;
-					*result = cons(sym_quote, cons(car(args), nil));
-					err = env_assign(env, name.value.symbol, macro);
-					stack_restore_add(ss, *result);
-					return err;
-				}
-				else {
-					stack_restore(ss);
-					return err;
-				}
-			}
+		/* Handle quote */
+		if (op.type == T_SYM && op.value.symbol == sym_quote.value.symbol) {
+			*result = expr;
+			stack_restore_add(ss, *result);
+			return ERROR_OK;
 		}
+
+		atom args = cdr(expr);
 
 		/* Is it a macro? */
 		if (op.type == T_SYM && !env_get(env, op.value.symbol, result) && result->type == T_MACRO) {
@@ -2212,6 +2179,7 @@ error macex(atom expr, atom *result) {
 			op = *result;
 
 			op.type = T_CLOSURE;
+
 			atom result2;
 			err = apply(op, args, &result2);
 			if (err) {
@@ -2227,16 +2195,15 @@ error macex(atom expr, atom *result) {
 			return ERROR_OK;
 		}
 		else {
-			/* preprocess elements */
+			/* macex elements */
 			atom expr2 = copy_list(expr);
-			atom p = expr2;
-			while (!no(p)) {
-				err = macex(car(p), &car(p));
+			atom h;
+			for (h = expr2; !no(h); h = cdr(h)) {
+				err = macex(car(h), &car(h));
 				if (err) {
 					stack_restore(ss);
 					return err;
 				}
-				p = cdr(p);
 			}
 			*result = expr2;
 			stack_restore_add(ss, *result);
