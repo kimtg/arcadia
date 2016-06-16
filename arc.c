@@ -2167,7 +2167,6 @@ error macex(atom expr, atom *result) {
 		/* Handle quote */
 		if (op.type == T_SYM && op.value.symbol == sym_quote.value.symbol) {
 			*result = expr;
-			stack_restore_add(ss, *result);
 			return ERROR_OK;
 		}
 
