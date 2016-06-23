@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.10.8"
+#define VERSION "0.11.0"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -46,7 +46,13 @@ typedef enum {
 } error;
 
 typedef struct atom atom;
-typedef error(*builtin)(atom args, atom *result);
+
+struct vector {
+	atom *data;
+	size_t capacity, size;
+};
+
+typedef error(*builtin)(struct vector vargs, atom *result);
 
 struct atom {
 	enum type type;
@@ -90,7 +96,7 @@ struct table {
 };
 
 /* forward declarations */
-error apply(atom fn, atom args, atom *result);
+error apply(atom fn, struct vector vargs, atom *result);
 int listp(atom expr);
 char *slurp_fp(FILE *fp);
 char *slurp(const char *path);
@@ -125,6 +131,7 @@ struct table_entry *table_get_sym(struct table *tbl, char *k);
 int table_set(struct table *tbl, atom k, atom v);
 int table_set_sym(struct table *tbl, char *k, atom v);
 void consider_gc();
+atom cons(atom car_val, atom cdr_val);
 /* end forward */
 
 #define car(p) ((p).value.pair->car)
