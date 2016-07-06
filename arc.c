@@ -2014,7 +2014,7 @@ unsigned int hash_code(atom a) {
 		}
 		return r;
 	case T_SYM:
-		return (unsigned int)a.value.symbol / sizeof(a.value.symbol);
+		return (unsigned int)a.value.symbol / sizeof(*a.value.symbol);
 	case T_STRING: {
 		char *v = a.value.str->value;
 		for (; *v != 0; v++) {
@@ -2027,14 +2027,14 @@ unsigned int hash_code(atom a) {
 		h.v_double = a.value.number;
 		return h.v_uint; }
 	case T_BUILTIN:
-		return (unsigned int)a.value.builtin / sizeof(a.value.builtin);
+		return (unsigned int)a.value.builtin;
 	case T_CLOSURE:
 		return hash_code(cdr(a));
 	case T_MACRO:
 		return hash_code(cdr(a));
 	case T_INPUT:
 	case T_OUTPUT:
-		return (unsigned int)a.value.fp / sizeof(a.value.fp);
+		return (unsigned int)a.value.fp / sizeof(*a.value.fp);
 	default:
 		return 0;
 	}
@@ -2142,7 +2142,7 @@ struct table_entry *table_get(struct table *tbl, atom k) {
 /* return entry. return NULL if not found */
 struct table_entry *table_get_sym(struct table *tbl, char *k) {
 	if (tbl->size == 0) return NULL;
-	int pos = ((unsigned int)k / sizeof(char *)) % tbl->capacity;
+	int pos = ((unsigned int)k / sizeof(char)) % tbl->capacity;
 	struct table_entry *p = tbl->data[pos];
 	while (p) {
 		if (p->k.value.symbol == k) {
