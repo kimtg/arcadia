@@ -722,18 +722,17 @@ atom env_create(atom parent)
 error env_get(atom env, char *symbol, atom *result)
 {
 	while (1) {
-		atom parent = car(env);
 		struct table *ptbl = cdr(env).value.table;
 		struct table_entry *a = table_get_sym(ptbl, symbol);
 		if (a) {
 			*result = a->v;
 			return ERROR_OK;
 		}
-		if (no(parent)) {
+		if (no(car(env))) {
 			/*printf("%s: ", symbol.value.symbol);*/
 			return ERROR_UNBOUND;
 		}
-		env = parent;
+		env = car(env);
 	}
 }
 
