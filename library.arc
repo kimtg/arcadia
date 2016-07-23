@@ -32,14 +32,6 @@ For example, this is always true:
                     cddr.xs))
     (apply f xs)))
 
-(def rev (xs)
-"Returns a list containing the elements of 'xs' back to front."
-  ((rfn recur (xs acc)
-    (if (no xs)
-      acc
-      (recur cdr.xs
-             (cons car.xs acc)))) xs nil))
-
 (def map1 (f xs)
 "Returns a list containing the result of function 'f' applied to every element of 'xs'."
   (if (no xs)
@@ -79,6 +71,19 @@ For example, this is always true:
 
 (mac do body
 	`((fn () ,@body)))
+
+(mac rfn (name parms . body)
+"Like [[fn]] but permits the created function to call itself recursively as the given 'name'."
+  `(let ,name nil
+     (assign ,name (fn ,parms ,@body))))
+
+(def rev (xs)
+"Returns a list containing the elements of 'xs' back to front."
+  ((rfn recur (xs acc)
+    (if (no xs)
+      acc
+      (recur cdr.xs
+             (cons car.xs acc)))) xs nil))
 
 (def pair (xs (o f list))
   "Splits the elements of 'xs' into buckets of two, and optionally applies the
@@ -337,11 +342,6 @@ For examples, see [[aif]]."
   (if (no n)            xs
       (and (> n 0) xs)  (cons (car xs) (firstn (- n 1) (cdr xs)))
 			nil))
-
-(mac rfn (name parms . body)
-"Like [[fn]] but permits the created function to call itself recursively as the given 'name'."
-  `(let ,name nil
-     (assign ,name (fn ,parms ,@body))))
 
 (mac afn (parms . body)
 "Like [[fn]] and [[rfn]] but the created function can call itself as 'self'"
