@@ -2262,6 +2262,32 @@ error macex_eval(atom expr, atom *result) {
 	return eval_expr(expr2, env, result);
 }
 
+error load_string(const char *text) {
+	error err = ERROR_OK;
+	const char *p = text;
+	atom expr;
+	while (1) {
+		if (read_expr(p, &p, &expr) != ERROR_OK) {
+			break;
+		}
+		atom result;
+		err = macex_eval(expr, &result);
+		if (err) {
+			print_error(err);
+			printf("error in expression:\n\t");
+			print_expr(expr);
+			putchar('\n');
+			break;
+		}
+		//else {
+		//	print_expr(result);
+		//	putchar(' ');
+		//}
+	}
+	//puts("");
+	return err;
+}
+
 error arc_load_file(const char *path)
 {
 	char *text;
@@ -2269,30 +2295,7 @@ error arc_load_file(const char *path)
 	/* printf("Reading %s...\n", path); */
 	text = slurp(path);
 	if (text) {
-		const char *p = text;
-		atom expr;
-		while (1) {
-			int ss = stack_size;
-			if (read_expr(p, &p, &expr) != ERROR_OK) {
-				stack_restore(ss);
-				break;
-			}
-			atom result;
-			err = macex_eval(expr, &result);
-			if (err) {
-				print_error(err);
-				printf("error in expression:\n\t");
-				print_expr(expr);
-				putchar('\n');
-				break;
-			}
-			stack_restore(ss);
-			/*else {
-			print_expr(result);
-			putchar(' ');
-			}*/
-		}
-		/*puts("");*/
+		err = load_string(text);
 		free(text);
 		return err;
 	}
@@ -2639,13 +2642,10 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("len").value.symbol, make_builtin(builtin_len));
 	env_assign(env, make_sym("ccc").value.symbol, make_builtin(builtin_ccc));
 
-	char *dir_path = get_dir_path(file_path);
-	char *lib = malloc((strlen(dir_path) + 1) * sizeof(char));
-	strcpy(lib, dir_path);
-	strcat_alloc(&lib, "library.arc");
-	arc_load_file(lib);
-	free(lib);
-	free(dir_path);
+	const char *stdlib =
+		#include "library.h"
+		;
+	load_string(stdlib);
 }
 
 char *get_dir_path(char *file_path) {
