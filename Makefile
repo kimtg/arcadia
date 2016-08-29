@@ -18,7 +18,7 @@ ico.o: arc.rc arc.ico
 
 arcadia.o: arcadia.c arc.h
 	$(CC) $(CFLAGS) arcadia.c
-arc.o: arc.c arc.h
+arc.o: arc.c arc.h library.h
 	$(CC) $(CFLAGS) arc.c
 run: $(BIN)
 	./$(BIN)
