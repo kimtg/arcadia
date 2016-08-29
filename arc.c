@@ -20,6 +20,7 @@ atom cur_expr;
 int arc_reader_unclosed = 0;
 atom thrown;
 
+/* Be sure to free after use */
 void vector_new(struct vector *a) {
 	a->capacity = 8;
 	a->size = 0;
@@ -52,6 +53,7 @@ atom vector_to_atom(struct vector *a, int start) {
 	return r;
 }
 
+/* Be sure to free after use */
 struct vector atom_to_vector(atom a) {
 	struct vector r;
 	vector_new(&r);
@@ -1133,7 +1135,10 @@ error builtin_apply(struct vector vargs, atom *result)
 		return ERROR_ARGS;
 
 	fn = vargs.data[0];
-	return apply(fn, atom_to_vector(vargs.data[1]), result);
+	struct vector v = atom_to_vector(vargs.data[1]);
+	error err = apply(fn, v, result);
+	vector_free(&v);
+	return err;
 }
 
 int is(atom a, atom b) {
