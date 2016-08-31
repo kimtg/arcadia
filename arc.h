@@ -123,7 +123,7 @@ void print_expr(atom a);
 void print_error(error e);
 int is(atom a, atom b);
 int iso(atom a, atom b);
-unsigned int hash_code(atom a);
+size_t hash_code(atom a);
 atom make_table(int capacity);
 void table_add(struct table *tbl, atom k, atom v);
 struct table_entry *table_get(struct table *tbl, atom k);
