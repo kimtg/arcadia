@@ -1440,13 +1440,20 @@ error builtin_macex(struct vector vargs, atom *result) {
 	return ERROR_OK;
 }
 
+/* 
+ * From Arc tutorial:
+ * Every argument will appear as it would look if printed out by pr,
+ * except nil, which is ignored.
+ */
 error builtin_string(struct vector vargs, atom *result) {
 	char *s = str_new();
 	size_t i;
 	for (i = 0; i < vargs.size; i++) {
-		char *a = to_string(vargs.data[i], 0);
-		strcat_alloc(&s, a);
-		free(a);
+		if (!no(vargs.data[i])) {
+			char *a = to_string(vargs.data[i], 0);
+			strcat_alloc(&s, a);
+			free(a);
+		}
 	}
 	*result = make_string(s);
 	return ERROR_OK;
