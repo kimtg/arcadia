@@ -1,7 +1,5 @@
 # Arcadia: An implementation of the Arc programming language #
 
-(C) 2014-2016 Kim, Taegyoon
-
 Arc is a dialect of Lisp.
 
 ## Build
@@ -52,7 +50,7 @@ OPTIONS:
 
 ## License ##
 
-   Copyright 2014-2016 Kim, Taegyoon
+   Copyright 2014-2017 Kim, Taegyoon
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
