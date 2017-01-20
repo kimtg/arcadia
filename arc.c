@@ -2004,10 +2004,6 @@ char *to_string(atom a, int write) {
 }
 
 size_t hash_code(atom a) {
-	union hash_uint {
-		size_t v_size_t;
-		double v_double;
-	};
 	size_t r = 1;
 	switch (a.type) {
 	case T_NIL:
@@ -2034,10 +2030,8 @@ size_t hash_code(atom a) {
 			r += *v;
 		}
 		return r; }
-	case T_NUM: {
-		union hash_uint h;
-		h.v_double = a.value.number;
-		return h.v_size_t; }
+	case T_NUM:
+		return (size_t)a.value.number;
 	case T_BUILTIN:
 		return (size_t)a.value.builtin;
 	case T_CLOSURE:
