@@ -24,7 +24,7 @@ void repl() {
 
 		atom code_expr;
 		err = read_expr(p, &p, &code_expr);
-		if (arc_reader_unclosed > 0) { /* read more lines */
+		if (err == ERROR_FILE && arc_reader_unclosed > 0) { /* read more lines */
 			char *line = readline("  ");
 			if (!line) break;
 			input = strcat_alloc(&input, "\n");
@@ -44,6 +44,8 @@ void repl() {
 				}
 				code_expr = cdr(code_expr);
 			}
+		} else {
+			print_error(err);
 		}
 		stack_restore(ss);
 		free(buf);

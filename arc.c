@@ -369,7 +369,7 @@ start:
 
 	if (str[0] == '\0') {
 		*start = *end = NULL;
-		return ERROR_SYNTAX;
+		return ERROR_FILE;
 	}
 
 	*start = str;
