@@ -9,46 +9,51 @@ void repl() {
 
 	while ((input = readline("> ")) != NULL) {
 		int ss = stack_size;
-	read_start:
-		arc_reader_unclosed = 0;
+	read_start:;
 #ifdef READLINE
 		if (input && *input)
 			add_history(input);
 #endif
 
-		char *buf = (char *)malloc(strlen(input) + 4);
-		sprintf(buf, "(%s\n)", input);
-		const char *p = buf;
+		const char *p = input;
 		error err;
-		atom result;
 
 		atom code_expr;
 		err = read_expr(p, &p, &code_expr);
-		if (err == ERROR_FILE && arc_reader_unclosed > 0) { /* read more lines */
+		if (err == ERROR_FILE) { /* read more lines */
 			char *line = readline("  ");
 			if (!line) break;
 			input = strcat_alloc(&input, "\n");
 			input = strcat_alloc(&input, line);
+			free(line);
 			goto read_start;
 		}
 		if (!err) {
-			while (!no(code_expr)) {
-				err = macex_eval(car(code_expr), &result);
+			atom expr;
+			p = input;
+			while (1) {
+				error err = read_expr(p, &p, &expr);
+				if (err != ERROR_OK) {
+					break;
+				}
+				atom result;
+				err = macex_eval(expr, &result);
 				if (err) {
 					print_error(err);
+					printf("error in expression:\n");
+					print_expr(expr);
+					putchar('\n');
 					break;
 				}
 				else {
 					print_expr(result);
-					putchar('\n');
+					puts("");
 				}
-				code_expr = cdr(code_expr);
 			}
 		} else {
 			print_error(err);
 		}
 		stack_restore(ss);
-		free(buf);
 		free(input);
 	}
 }

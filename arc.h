@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.12.5"
+#define VERSION "0.12.6"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -138,7 +138,6 @@ atom cons(atom car_val, atom cdr_val);
 #define cdr(p) ((p).value.pair->cdr)
 #define no(atom) ((atom).type == T_NIL)
 
-extern int arc_reader_unclosed;
 extern int stack_size;
 extern const atom nil;
 

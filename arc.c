@@ -17,7 +17,6 @@ atom env; /* the global environment */
 /* symbols for faster execution */
 atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char;
 atom cur_expr;
-int arc_reader_unclosed = 0;
 atom thrown;
 
 /* Be sure to free after use */
@@ -379,12 +378,10 @@ start:
 	else if (str[0] == ',')
 		*end = str + (str[1] == '@' ? 2 : 1);
 	else if (str[0] == '"') {
-		arc_reader_unclosed++;
 		str++;
 		while (*str != 0) {
 			if (*str == '\\') str++;
 			else if (*str == '"') {
-				arc_reader_unclosed--;
 				break;
 			}
 			str++;
@@ -567,7 +564,6 @@ error read_list(const char *start, const char **end, atom *result)
 			return err;
 
 		if (token[0] == ')') {
-			arc_reader_unclosed--;
 			return ERROR_OK;
 		}
 
@@ -585,7 +581,6 @@ error read_list(const char *start, const char **end, atom *result)
 			if (!err && token[0] != ')') {
 				err = ERROR_SYNTAX;
 			}
-			arc_reader_unclosed--;
 			return err;
 		}
 
@@ -630,7 +625,6 @@ error read_bracket(const char *start, const char **end, atom *result)
 		err = lex(*end, &token, end);
 		if (err) return err;
 		if (token[0] == ']') {
-			arc_reader_unclosed--;
 			return ERROR_OK;
 		}
 
@@ -659,13 +653,11 @@ error read_expr(const char *input, const char **end, atom *result)
 		return err;
 
 	if (token[0] == '(') {
-		arc_reader_unclosed++;
 		return read_list(*end, end, result);
 	}
 	else if (token[0] == ')')
 		return ERROR_SYNTAX;
 	else if (token[0] == '[') {
-		arc_reader_unclosed++;
 		return read_bracket(*end, end, result);
 	}
 	else if (token[0] == ']')
@@ -2273,14 +2265,15 @@ error load_string(const char *text) {
 	const char *p = text;
 	atom expr;
 	while (1) {
-		if (read_expr(p, &p, &expr) != ERROR_OK) {
+		error err = read_expr(p, &p, &expr);
+		if (err != ERROR_OK) {
 			break;
 		}
 		atom result;
 		err = macex_eval(expr, &result);
 		if (err) {
 			print_error(err);
-			printf("error in expression:\n\t");
+			printf("error in expression:\n");
 			print_expr(expr);
 			putchar('\n');
 			break;
