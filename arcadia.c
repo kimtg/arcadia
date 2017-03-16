@@ -18,8 +18,8 @@ void repl() {
 		const char *p = input;
 		error err;
 
-		atom code_expr;
-		err = read_expr(p, &p, &code_expr);
+		atom expr;
+		err = read_expr(p, &p, &expr);
 		if (err == ERROR_FILE) { /* read more lines */
 			char *line = readline("  ");
 			if (!line) break;
@@ -29,15 +29,9 @@ void repl() {
 			goto read_start;
 		}
 		if (!err) {
-			atom expr;
-			p = input;
 			while (1) {
-				error err = read_expr(p, &p, &expr);
-				if (err != ERROR_OK) {
-					break;
-				}
 				atom result;
-				err = macex_eval(expr, &result);
+				error err = macex_eval(expr, &result);
 				if (err) {
 					print_error(err);
 					printf("error in expression:\n");
@@ -48,6 +42,10 @@ void repl() {
 				else {
 					print_expr(result);
 					puts("");
+				}
+				err = read_expr(p, &p, &expr);
+				if (err != ERROR_OK) {
+					break;
 				}
 			}
 		} else {
