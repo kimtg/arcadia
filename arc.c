@@ -296,8 +296,6 @@ error make_closure(atom env, atom args, atom body, atom *result)
 			break;
 		else if (p.type != T_CONS || (car(p).type != T_SYM && car(p).type != T_CONS))
 			return ERROR_TYPE;
-		if (car(p).type == T_CONS && !is(car(car(p)), sym_o))
-			return ERROR_SYNTAX;
 		p = cdr(p);
 	}
 
@@ -723,7 +721,7 @@ error env_get(atom env, char *symbol, atom *result)
 			return ERROR_OK;
 		}
 		if (no(car(env))) {
-			/*printf("%s: ", symbol.value.symbol);*/
+			/* printf("%s: ", symbol); */
 			return ERROR_UNBOUND;
 		}
 		env = car(env);
@@ -799,6 +797,45 @@ atom copy_list(atom list)
 	return a;
 }
 
+error destructuring_bind(atom arg_name, atom val, int val_unspecified, atom env) {
+	if (no(arg_name)) {
+		if (no(val))
+			return ERROR_OK;
+		else {
+			return ERROR_ARGS;
+		}
+	}
+	else if (arg_name.type == T_SYM) {		
+		return env_assign(env, arg_name.value.symbol, val);		
+	}
+	else if (arg_name.type == T_CONS) {
+		if (is(car(arg_name), sym_o)) { /* (o ARG [DEFAULT]) */
+			if (val_unspecified) { /* missing argument */
+				if (!no(cdr(cdr(arg_name)))) {
+					error err = eval_expr(car(cdr(cdr(arg_name))), env, &val);
+					if (err) {
+						return err;
+					}
+				}
+			}
+			return env_assign(env, car(cdr(arg_name)).value.symbol, val);
+		}
+		else {
+			if (val.type != T_CONS) {
+				return ERROR_ARGS;
+			}
+			error err = destructuring_bind(car(arg_name), car(val), 0, env);
+			if (err) {
+				return err;
+			}
+			return destructuring_bind(cdr(arg_name), cdr(val), no(cdr(val)), env);
+		}
+	}
+	else {
+		return ERROR_ARGS;
+	}
+}
+
 error apply(atom fn, struct vector vargs, atom *result)
 {
 	if (fn.type == T_BUILTIN)
@@ -817,29 +854,20 @@ error apply(atom fn, struct vector vargs, atom *result)
 				break;
 			}
 			atom arg_name = car(arg_names);
-			if (arg_name.type == T_SYM) {
-				if (i >= vargs.size) /* missing argument */
-					return ERROR_ARGS;
-				env_assign(env, arg_name.value.symbol, vargs.data[i]);
-				i++;
+			atom val;
+			int val_unspecified = 0;
+			if (i < vargs.size) {
+				val = vargs.data[i];
 			}
-			else { /* (o ARG [DEFAULT]) */
-				atom val;
-				if (i >= vargs.size) { /* missing argument */
-					if (no(cdr(cdr(arg_name))))
-						val = nil;
-					else {
-						error err = eval_expr(car(cdr(cdr(arg_name))), env, &val);
-						if (err) return err;
-					}
-				}
-				else {
-					val = vargs.data[i];
-					i++;
-				}
-				env_assign(env, car(cdr(arg_name)).value.symbol, val);
+			else {
+				val_unspecified = 1;
+			}
+			error err = destructuring_bind(arg_name, val, val_unspecified, env);
+			if (err) {
+				return err;
 			}
 			arg_names = cdr(arg_names);
+			i++;
 		}
 		if (i < vargs.size) {
 			return ERROR_ARGS;
@@ -849,8 +877,9 @@ error apply(atom fn, struct vector vargs, atom *result)
 		*result = nil;
 		while (!no(body)) {
 			error err = eval_expr(car(body), env, result);
-			if (err)
+			if (err) {
 				return err;
+			}
 			body = cdr(body);
 		}
 
@@ -2478,7 +2507,7 @@ start_eval:
 
 		/* tail call optimization of err = apply(fn, args, result); */
 		if (fn.type == T_CLOSURE) {
-			atom env2 = env_create(car(fn));
+			env = env_create(car(fn));
 			atom arg_names = car(cdr(fn));
 			atom body = cdr(cdr(fn));
 
@@ -2486,42 +2515,27 @@ start_eval:
 			size_t i = 0;
 			while (!no(arg_names)) {
 				if (arg_names.type == T_SYM) {
-					env_assign(env2, arg_names.value.symbol, vector_to_atom(&vargs, i));
+					env_assign(env, arg_names.value.symbol, vector_to_atom(&vargs, i));
 					i = vargs.size;
 					break;
 				}
 				atom arg_name = car(arg_names);
-				if (arg_name.type == T_SYM) {
-					if (i >= vargs.size) { /* missing argument */
-						vector_free(&vargs);
-						return ERROR_ARGS;
-					}
-					env_assign(env2, arg_name.value.symbol, vargs.data[i]);
-					i++;
+				atom val;
+				int val_unspecified = 0;
+				if (i < vargs.size) {
+					val = vargs.data[i];
 				}
-				else { /* (o ARG [DEFAULT]) */
-					atom val;
-					if (i >= vargs.size) { /* missing argument */
-						if (no(cdr(cdr(arg_name))))
-							val = nil;
-						else {
-							error err = eval_expr(car(cdr(cdr(arg_name))), env2, &val);
-							if (err) {
-								vector_free(&vargs);
-								return err;
-							}
-						}
-					}
-					else {
-						val = vargs.data[i];
-						i++;
-					}
-					env_assign(env2, car(cdr(arg_name)).value.symbol, val);
+				else {
+					val_unspecified = 1;
+				}
+				error err = destructuring_bind(arg_name, val, val_unspecified, env);
+				if (err) {
+					return err;
 				}
 				arg_names = cdr(arg_names);
+				i++;
 			}
 			if (i < vargs.size) {
-				vector_free(&vargs);
 				return ERROR_ARGS;
 			}
 
@@ -2531,11 +2545,10 @@ start_eval:
 				if (no(cdr(body))) {
 					/* tail call */
 					expr = car(body);
-					env = env2;
 					vector_free(&vargs);
 					goto start_eval;
 				}
-				error err = eval_expr(car(body), env2, result);
+				error err = eval_expr(car(body), env, result);
 				if (err) {
 					vector_free(&vargs);
 					return err;
