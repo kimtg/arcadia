@@ -696,11 +696,18 @@ char *readline_fp(char *prompt, FILE *fp) {
 	while (EOF != (ch = fgetc(fp)) && ch != '\n') {
 		str[len++] = ch;
 		if (len == size) {
-			str = realloc(str, sizeof(char)*(size *= 2));
-			if (!str) return NULL;
+			void *p = realloc(str, sizeof(char)*(size *= 2));
+			if (!p) {
+				free(str);
+				return NULL;
+			}
+			str = p;
 		}
 	}
-	if (ch == EOF && len == 0) return NULL;
+	if (ch == EOF && len == 0) {
+		free(str);
+		return NULL;
+	}
 	str[len++] = '\0';
 
 	return realloc(str, sizeof(char)*len);
