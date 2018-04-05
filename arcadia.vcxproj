@@ -89,13 +89,11 @@
     <ClCompile Include="arcadia.c" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="library.arc">
-      <DeploymentContent>false</DeploymentContent>
-    </None>
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="arc.h" />
+    <ClInclude Include="library.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="arc.rc" />

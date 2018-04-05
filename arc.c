@@ -843,6 +843,36 @@ error destructuring_bind(atom arg_name, atom val, int val_unspecified, atom env)
 	}
 }
 
+error env_bind(atom env, atom arg_names, struct vector vargs) {
+	/* Bind the arguments */
+	size_t i = 0;
+	while (!no(arg_names)) {
+		if (arg_names.type == T_SYM) {
+			env_assign(env, arg_names.value.symbol, vector_to_atom(&vargs, i));
+			i = vargs.size;
+			break;
+		}
+		atom arg_name = car(arg_names);
+		atom val;
+		int val_unspecified = 0;
+		if (i < vargs.size) {
+			val = vargs.data[i];
+		}
+		else {
+			val_unspecified = 1;
+		}
+		error err = destructuring_bind(arg_name, val, val_unspecified, env);
+		if (err) {
+			return err;
+		}
+		arg_names = cdr(arg_names);
+		i++;
+	}
+	if (i < vargs.size) {
+		return ERROR_ARGS;
+	}
+}
+
 error apply(atom fn, struct vector vargs, atom *result)
 {
 	if (fn.type == T_BUILTIN)
@@ -852,32 +882,9 @@ error apply(atom fn, struct vector vargs, atom *result)
 		atom arg_names = car(cdr(fn));
 		atom body = cdr(cdr(fn));
 
-		/* Bind the arguments */
-		size_t i = 0;
-		while (!no(arg_names)) {
-			if (arg_names.type == T_SYM) {
-				env_assign(env, arg_names.value.symbol, vector_to_atom(&vargs, i));
-				i = vargs.size;
-				break;
-			}
-			atom arg_name = car(arg_names);
-			atom val;
-			int val_unspecified = 0;
-			if (i < vargs.size) {
-				val = vargs.data[i];
-			}
-			else {
-				val_unspecified = 1;
-			}
-			error err = destructuring_bind(arg_name, val, val_unspecified, env);
-			if (err) {
-				return err;
-			}
-			arg_names = cdr(arg_names);
-			i++;
-		}
-		if (i < vargs.size) {
-			return ERROR_ARGS;
+		error err = env_bind(env, arg_names, vargs);
+		if (err) {
+			return err;
 		}
 
 		/* Evaluate the body */
@@ -889,7 +896,6 @@ error apply(atom fn, struct vector vargs, atom *result)
 			}
 			body = cdr(body);
 		}
-
 		return ERROR_OK;
 	}
 	else if (fn.type == T_CONTINUATION) {
@@ -2519,32 +2525,7 @@ start_eval:
 			atom body = cdr(cdr(fn));
 
 			/* Bind the arguments */
-			size_t i = 0;
-			while (!no(arg_names)) {
-				if (arg_names.type == T_SYM) {
-					env_assign(env, arg_names.value.symbol, vector_to_atom(&vargs, i));
-					i = vargs.size;
-					break;
-				}
-				atom arg_name = car(arg_names);
-				atom val;
-				int val_unspecified = 0;
-				if (i < vargs.size) {
-					val = vargs.data[i];
-				}
-				else {
-					val_unspecified = 1;
-				}
-				error err = destructuring_bind(arg_name, val, val_unspecified, env);
-				if (err) {
-					return err;
-				}
-				arg_names = cdr(arg_names);
-				i++;
-			}
-			if (i < vargs.size) {
-				return ERROR_ARGS;
-			}
+			env_bind(env, arg_names, vargs);
 
 			/* Evaluate the body */
 			*result = nil;
