@@ -1049,12 +1049,11 @@ error builtin_subtract(struct vector vargs, atom *result)
 		*result = make_number(0);
 		return ERROR_OK;
 	}
+	if (vargs.data[0].type != T_NUM) return ERROR_TYPE;
 	if (vargs.size == 1) { /* 1 argument */
-		if (vargs.data[0].type != T_NUM) return ERROR_TYPE;
 		*result = make_number(-vargs.data[0].value.number);
 		return ERROR_OK;
 	}
-	if (vargs.data[0].type != T_NUM) return ERROR_TYPE;
 	double r = vargs.data[0].value.number;
 	size_t i;
 	for (i = 1; i < vargs.size; i++) {
@@ -1083,12 +1082,11 @@ error builtin_divide(struct vector vargs, atom *result)
 		*result = make_number(1);
 		return ERROR_OK;
 	}
+	if (vargs.data[0].type != T_NUM) return ERROR_TYPE;
 	if (vargs.size == 1) { /* 1 argument */
-		if (vargs.data[0].type != T_NUM) return ERROR_TYPE;
 		*result = make_number(1.0 / vargs.data[0].value.number);
 		return ERROR_OK;
 	}
-	if (vargs.data[0].type != T_NUM) return ERROR_TYPE;
 	double r = vargs.data[0].value.number;
 	size_t i;
 	for (i = 1; i < vargs.size; i++) {
