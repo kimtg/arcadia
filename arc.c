@@ -871,6 +871,7 @@ error env_bind(atom env, atom arg_names, struct vector vargs) {
 	if (i < vargs.size) {
 		return ERROR_ARGS;
 	}
+	return ERROR_OK;
 }
 
 error apply(atom fn, struct vector vargs, atom *result)
