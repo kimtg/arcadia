@@ -1729,22 +1729,22 @@ error builtin_table(struct vector vargs, atom *result) {
 error builtin_maptable(struct vector vargs, atom *result) {
 	long arg_len = vargs.size;
 	if (arg_len != 2) return ERROR_ARGS;
-	atom *proc = &vargs.data[0];
-	atom *tbl = &vargs.data[1];
-	if (tbl->type != T_TABLE) return ERROR_TYPE;
+	atom proc = vargs.data[0];
+	atom tbl = vargs.data[1];
+	if (tbl.type != T_TABLE) return ERROR_TYPE;
 	size_t i;
-	for (i = 0; i < tbl->value.table->capacity; i++) {
-		struct table_entry *p = tbl->value.table->data[i];
+	for (i = 0; i < tbl.value.table->capacity; i++) {
+		struct table_entry *p = tbl.value.table->data[i];
 		while (p) {
 			vector_clear(&vargs);
 			vector_add(&vargs, p->k);
 			vector_add(&vargs, p->v);
-			error err = apply(*proc, vargs, result);
+			error err = apply(proc, vargs, result);
 			if (err) return err;
 			p = p->next;
 		}
 	}
-	*result = *tbl;
+	*result = tbl;
 	return ERROR_OK;
 }
 
