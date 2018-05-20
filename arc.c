@@ -1731,7 +1731,6 @@ error builtin_maptable(struct vector vargs, atom *result) {
 	if (arg_len != 2) return ERROR_ARGS;
 	atom *proc = &vargs.data[0];
 	atom *tbl = &vargs.data[1];
-	if (proc->type != T_BUILTIN && proc->type != T_CLOSURE) return ERROR_TYPE;
 	if (tbl->type != T_TABLE) return ERROR_TYPE;
 	size_t i;
 	for (i = 0; i < tbl->value.table->capacity; i++) {
