@@ -102,7 +102,7 @@ void stack_restore_add(int saved_size, atom a) {
 }
 
 void consider_gc() {
-	if (alloc_count > 4 * alloc_count_old)
+	if (alloc_count > 2 * alloc_count_old)
 		gc();
 }
 
