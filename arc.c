@@ -843,20 +843,20 @@ error destructuring_bind(atom arg_name, atom val, int val_unspecified, atom env)
 	}
 }
 
-error env_bind(atom env, atom arg_names, struct vector vargs) {
+error env_bind(atom env, atom arg_names, struct vector *vargs) {
 	/* Bind the arguments */
 	size_t i = 0;
 	while (!no(arg_names)) {
 		if (arg_names.type == T_SYM) {
-			env_assign(env, arg_names.value.symbol, vector_to_atom(&vargs, i));
-			i = vargs.size;
+			env_assign(env, arg_names.value.symbol, vector_to_atom(vargs, i));
+			i = vargs->size;
 			break;
 		}
 		atom arg_name = car(arg_names);
 		atom val;
 		int val_unspecified = 0;
-		if (i < vargs.size) {
-			val = vargs.data[i];
+		if (i < vargs->size) {
+			val = vargs->data[i];
 		}
 		else {
 			val_unspecified = 1;
@@ -868,13 +868,13 @@ error env_bind(atom env, atom arg_names, struct vector vargs) {
 		arg_names = cdr(arg_names);
 		i++;
 	}
-	if (i < vargs.size) {
+	if (i < vargs->size) {
 		return ERROR_ARGS;
 	}
 	return ERROR_OK;
 }
 
-error apply(atom fn, struct vector vargs, atom *result)
+error apply(atom fn, struct vector *vargs, atom *result)
 {
 	if (fn.type == T_BUILTIN)
 		return (*fn.value.builtin)(vargs, result);
@@ -900,19 +900,19 @@ error apply(atom fn, struct vector vargs, atom *result)
 		return ERROR_OK;
 	}
 	else if (fn.type == T_CONTINUATION) {
-		if (vargs.size != 1) return ERROR_ARGS;
-		thrown = vargs.data[0];
+		if (vargs->size != 1) return ERROR_ARGS;
+		thrown = vargs->data[0];
 		longjmp(*fn.value.jb, 1);
 	}
 	else if (fn.type == T_STRING) { /* implicit indexing for string */
-		if (vargs.size != 1) return ERROR_ARGS;
-		long index = (long)(vargs.data[0]).value.number;
+		if (vargs->size != 1) return ERROR_ARGS;
+		long index = (long)(vargs->data[0]).value.number;
 		*result = make_char(fn.value.str->value[index]);
 		return ERROR_OK;
 	}
 	else if (fn.type == T_CONS && listp(fn)) { /* implicit indexing for list */
-		if (vargs.size != 1) return ERROR_ARGS;
-		long index = (long)(vargs.data[0]).value.number;
+		if (vargs->size != 1) return ERROR_ARGS;
+		long index = (long)(vargs->data[0]).value.number;
 		atom a = fn;
 		long i;
 		for (i = 0; i < index; i++) {
@@ -926,15 +926,15 @@ error apply(atom fn, struct vector vargs, atom *result)
 		return ERROR_OK;
 	}
 	else if (fn.type == T_TABLE) { /* implicit indexing for table */
-		long len1 = vargs.size;
+		long len1 = vargs->size;
 		if (len1 != 1 && len1 != 2) return ERROR_ARGS;
-		struct table_entry *pair = table_get(fn.value.table, vargs.data[0]);
+		struct table_entry *pair = table_get(fn.value.table, vargs->data[0]);
 		if (pair) {
 			*result = pair->v;
 		}
 		else {
 			if (len1 == 2) /* default value is specified */
-				*result = vargs.data[1];
+				*result = vargs->data[1];
 			else
 				*result = nil;
 		}
@@ -945,12 +945,12 @@ error apply(atom fn, struct vector vargs, atom *result)
 	}
 }
 
-error builtin_car(struct vector vargs, atom *result)
+error builtin_car(struct vector *vargs, atom *result)
 {
-	if (vargs.size != 1)
+	if (vargs->size != 1)
 		return ERROR_ARGS;
 
-	atom a = vargs.data[0];
+	atom a = vargs->data[0];
 	if (no(a))
 		*result = nil;
 	else if (a.type != T_CONS)
@@ -961,12 +961,12 @@ error builtin_car(struct vector vargs, atom *result)
 	return ERROR_OK;
 }
 
-error builtin_cdr(struct vector vargs, atom *result)
+error builtin_cdr(struct vector *vargs, atom *result)
 {
-	if (vargs.size != 1)
+	if (vargs->size != 1)
 		return ERROR_ARGS;
 
-	atom a = vargs.data[0];
+	atom a = vargs->data[0];
 	if (no(a))
 		*result = nil;
 	else if (a.type != T_CONS)
@@ -977,12 +977,12 @@ error builtin_cdr(struct vector vargs, atom *result)
 	return ERROR_OK;
 }
 
-error builtin_cons(struct vector vargs, atom *result)
+error builtin_cons(struct vector *vargs, atom *result)
 {
-	if (vargs.size != 2)
+	if (vargs->size != 2)
 		return ERROR_ARGS;
 
-	*result = cons(vargs.data[0], vargs.data[1]);
+	*result = cons(vargs->data[0], vargs->data[1]);
 
 	return ERROR_OK;
 }
@@ -1007,36 +1007,36 @@ atom append(atom a, atom b) {
 + args
 Addition. This operator also performs string and list concatenation.
 */
-error builtin_add(struct vector vargs, atom *result)
+error builtin_add(struct vector *vargs, atom *result)
 {
-	if (vargs.size == 0) {
+	if (vargs->size == 0) {
 		*result = make_number(0);
 	}
 	else {
-		if (vargs.data[0].type == T_NUM) {
-			double r = vargs.data[0].value.number;
+		if (vargs->data[0].type == T_NUM) {
+			double r = vargs->data[0].value.number;
 			size_t i;
-			for (i = 1; i < vargs.size; i++) {
-				if (vargs.data[i].type != T_NUM) return ERROR_TYPE;
-				r += vargs.data[i].value.number;
+			for (i = 1; i < vargs->size; i++) {
+				if (vargs->data[i].type != T_NUM) return ERROR_TYPE;
+				r += vargs->data[i].value.number;
 			}
 			*result = make_number(r);
 		}
-		else if (vargs.data[0].type == T_STRING) {
+		else if (vargs->data[0].type == T_STRING) {
 			char *buf = str_new();
 			size_t i;
-			for (i = 0; i < vargs.size; i++) {
-				char *s = to_string(vargs.data[i], 0);
+			for (i = 0; i < vargs->size; i++) {
+				char *s = to_string(vargs->data[i], 0);
 				strcat_alloc(&buf, s);
 				free(s);
 			}
 			*result = make_string(buf);
 		}
-		else if (vargs.data[0].type == T_CONS || vargs.data[0].type == T_NIL) {
+		else if (vargs->data[0].type == T_CONS || vargs->data[0].type == T_NIL) {
 			atom acc = nil;
 			size_t i;
-			for (i = 0; i < vargs.size; i++) {
-				acc = append(acc, vargs.data[i]);
+			for (i = 0; i < vargs->size; i++) {
+				acc = append(acc, vargs->data[i]);
 			}
 			*result = acc;
 		}
@@ -1044,71 +1044,71 @@ error builtin_add(struct vector vargs, atom *result)
 	return ERROR_OK;
 }
 
-error builtin_subtract(struct vector vargs, atom *result)
+error builtin_subtract(struct vector *vargs, atom *result)
 {
-	if (vargs.size == 0) { /* 0 argument */
+	if (vargs->size == 0) { /* 0 argument */
 		*result = make_number(0);
 		return ERROR_OK;
 	}
-	if (vargs.data[0].type != T_NUM) return ERROR_TYPE;
-	if (vargs.size == 1) { /* 1 argument */
-		*result = make_number(-vargs.data[0].value.number);
+	if (vargs->data[0].type != T_NUM) return ERROR_TYPE;
+	if (vargs->size == 1) { /* 1 argument */
+		*result = make_number(-vargs->data[0].value.number);
 		return ERROR_OK;
 	}
-	double r = vargs.data[0].value.number;
+	double r = vargs->data[0].value.number;
 	size_t i;
-	for (i = 1; i < vargs.size; i++) {
-		if (vargs.data[i].type != T_NUM) return ERROR_TYPE;
-		r -= vargs.data[i].value.number;
+	for (i = 1; i < vargs->size; i++) {
+		if (vargs->data[i].type != T_NUM) return ERROR_TYPE;
+		r -= vargs->data[i].value.number;
 	}
 	*result = make_number(r);
 	return ERROR_OK;
 }
 
-error builtin_multiply(struct vector vargs, atom *result)
+error builtin_multiply(struct vector *vargs, atom *result)
 {
 	double r = 1;
 	size_t i;
-	for (i = 0; i < vargs.size; i++) {
-		if (vargs.data[i].type != T_NUM) return ERROR_TYPE;
-		r *= vargs.data[i].value.number;
+	for (i = 0; i < vargs->size; i++) {
+		if (vargs->data[i].type != T_NUM) return ERROR_TYPE;
+		r *= vargs->data[i].value.number;
 	}
 	*result = make_number(r);
 	return ERROR_OK;
 }
 
-error builtin_divide(struct vector vargs, atom *result)
+error builtin_divide(struct vector *vargs, atom *result)
 {
-	if (vargs.size == 0) { /* 0 argument */
+	if (vargs->size == 0) { /* 0 argument */
 		*result = make_number(1);
 		return ERROR_OK;
 	}
-	if (vargs.data[0].type != T_NUM) return ERROR_TYPE;
-	if (vargs.size == 1) { /* 1 argument */
-		*result = make_number(1.0 / vargs.data[0].value.number);
+	if (vargs->data[0].type != T_NUM) return ERROR_TYPE;
+	if (vargs->size == 1) { /* 1 argument */
+		*result = make_number(1.0 / vargs->data[0].value.number);
 		return ERROR_OK;
 	}
-	double r = vargs.data[0].value.number;
+	double r = vargs->data[0].value.number;
 	size_t i;
-	for (i = 1; i < vargs.size; i++) {
-		if (vargs.data[i].type != T_NUM) return ERROR_TYPE;
-		r /= vargs.data[i].value.number;
+	for (i = 1; i < vargs->size; i++) {
+		if (vargs->data[i].type != T_NUM) return ERROR_TYPE;
+		r /= vargs->data[i].value.number;
 	}
 	*result = make_number(r);
 	return ERROR_OK;
 }
 
-error builtin_less(struct vector vargs, atom *result)
+error builtin_less(struct vector *vargs, atom *result)
 {
-	if (vargs.size <= 1) {
+	if (vargs->size <= 1) {
 		*result = sym_t;
 		return ERROR_OK;
 	}
 	size_t i;
-	switch (vargs.data[0].type) {
+	switch (vargs->data[0].type) {
 	case T_NUM:
-		for (i = 0; i < vargs.size - 1; i++) {
-			if (vargs.data[i].value.number >= vargs.data[i + 1].value.number) {
+		for (i = 0; i < vargs->size - 1; i++) {
+			if (vargs->data[i].value.number >= vargs->data[i + 1].value.number) {
 				*result = nil;
 				return ERROR_OK;
 			}
@@ -1116,8 +1116,8 @@ error builtin_less(struct vector vargs, atom *result)
 		*result = sym_t;
 		return ERROR_OK;
 	case T_STRING:
-		for (i = 0; i < vargs.size - 1; i++) {
-			if (strcmp(vargs.data[i].value.str->value, vargs.data[i + 1].value.str->value) >= 0) {
+		for (i = 0; i < vargs->size - 1; i++) {
+			if (strcmp(vargs->data[i].value.str->value, vargs->data[i + 1].value.str->value) >= 0) {
 				*result = nil;
 				return ERROR_OK;
 			}
@@ -1129,17 +1129,17 @@ error builtin_less(struct vector vargs, atom *result)
 	}
 }
 
-error builtin_greater(struct vector vargs, atom *result)
+error builtin_greater(struct vector *vargs, atom *result)
 {
-	if (vargs.size <= 1) {
+	if (vargs->size <= 1) {
 		*result = sym_t;
 		return ERROR_OK;
 	}
 	size_t i;
-	switch (vargs.data[0].type) {
+	switch (vargs->data[0].type) {
 	case T_NUM:
-		for (i = 0; i < vargs.size - 1; i++) {
-			if (vargs.data[i].value.number <= vargs.data[i + 1].value.number) {
+		for (i = 0; i < vargs->size - 1; i++) {
+			if (vargs->data[i].value.number <= vargs->data[i + 1].value.number) {
 				*result = nil;
 				return ERROR_OK;
 			}
@@ -1147,8 +1147,8 @@ error builtin_greater(struct vector vargs, atom *result)
 		*result = sym_t;
 		return ERROR_OK;
 	case T_STRING:
-		for (i = 0; i < vargs.size - 1; i++) {
-			if (strcmp(vargs.data[i].value.str->value, vargs.data[i + 1].value.str->value) <= 0) {
+		for (i = 0; i < vargs->size - 1; i++) {
+			if (strcmp(vargs->data[i].value.str->value, vargs->data[i + 1].value.str->value) <= 0) {
 				*result = nil;
 				return ERROR_OK;
 			}
@@ -1160,16 +1160,16 @@ error builtin_greater(struct vector vargs, atom *result)
 	}
 }
 
-error builtin_apply(struct vector vargs, atom *result)
+error builtin_apply(struct vector *vargs, atom *result)
 {
 	atom fn;
 
-	if (vargs.size != 2)
+	if (vargs->size != 2)
 		return ERROR_ARGS;
 
-	fn = vargs.data[0];
-	struct vector v = atom_to_vector(vargs.data[1]);
-	error err = apply(fn, v, result);
+	fn = vargs->data[0];
+	struct vector v = atom_to_vector(vargs->data[1]);
+	error err = apply(fn, &v, result);
 	vector_free(&v);
 	return err;
 }
@@ -1219,17 +1219,17 @@ int iso(atom a, atom b) {
 	return 0;
 }
 
-error builtin_is(struct vector vargs, atom *result)
+error builtin_is(struct vector *vargs, atom *result)
 {
 	atom a, b;
-	if (vargs.size <= 1) {
+	if (vargs->size <= 1) {
 		*result = sym_t;
 		return ERROR_OK;
 	}
 	size_t i;
-	for (i = 0; i < vargs.size - 1; i++) {
-		a = vargs.data[i];
-		b = vargs.data[i + 1];
+	for (i = 0; i < vargs->size - 1; i++) {
+		a = vargs->data[i];
+		b = vargs->data[i + 1];
 		if (!is(a, b)) {
 			*result = nil;
 			return ERROR_OK;
@@ -1239,39 +1239,39 @@ error builtin_is(struct vector vargs, atom *result)
 	return ERROR_OK;
 }
 
-error builtin_scar(struct vector vargs, atom *result) {
-	if (vargs.size != 2) return ERROR_ARGS;
-	atom place = vargs.data[0], value;
+error builtin_scar(struct vector *vargs, atom *result) {
+	if (vargs->size != 2) return ERROR_ARGS;
+	atom place = vargs->data[0], value;
 	if (place.type != T_CONS) return ERROR_TYPE;
-	value = vargs.data[1];
+	value = vargs->data[1];
 	place.value.pair->car = value;
 	*result = value;
 	return ERROR_OK;
 }
 
-error builtin_scdr(struct vector vargs, atom *result) {
-	if (vargs.size != 2) return ERROR_ARGS;
-	atom place = vargs.data[0], value;
+error builtin_scdr(struct vector *vargs, atom *result) {
+	if (vargs->size != 2) return ERROR_ARGS;
+	atom place = vargs->data[0], value;
 	if (place.type != T_CONS) return ERROR_TYPE;
-	value = vargs.data[1];
+	value = vargs->data[1];
 	place.value.pair->cdr = value;
 	*result = value;
 	return ERROR_OK;
 }
 
-error builtin_mod(struct vector vargs, atom *result) {
-	if (vargs.size != 2) return ERROR_ARGS;
-	atom dividend = vargs.data[0];
-	atom divisor = vargs.data[1];
+error builtin_mod(struct vector *vargs, atom *result) {
+	if (vargs->size != 2) return ERROR_ARGS;
+	atom dividend = vargs->data[0];
+	atom divisor = vargs->data[1];
 	double r = fmod(dividend.value.number, divisor.value.number);
 	if (dividend.value.number * divisor.value.number < 0 && r != 0) r += divisor.value.number;
 	*result = make_number(r);
 	return ERROR_OK;
 }
 
-error builtin_type(struct vector vargs, atom *result) {
-	if (vargs.size != 1) return ERROR_ARGS;
-	atom x = vargs.data[0];
+error builtin_type(struct vector *vargs, atom *result) {
+	if (vargs->size != 1) return ERROR_ARGS;
+	atom x = vargs->data[0];
 	switch (x.type) {
 	case T_CONS: *result = sym_cons; break;
 	case T_SYM:
@@ -1291,21 +1291,21 @@ error builtin_type(struct vector vargs, atom *result) {
 }
 
 /* string-sref obj value index */
-error builtin_string_sref(struct vector vargs, atom *result) {
+error builtin_string_sref(struct vector *vargs, atom *result) {
 	atom index, obj, value;
-	if (vargs.size != 3) return ERROR_ARGS;
-	obj = vargs.data[0];
+	if (vargs->size != 3) return ERROR_ARGS;
+	obj = vargs->data[0];
 	if (obj.type != T_STRING) return ERROR_TYPE;
-	value = vargs.data[1];
-	index = vargs.data[2];
+	value = vargs->data[1];
+	index = vargs->data[2];
 	obj.value.str->value[(long)index.value.number] = (char)value.value.ch;
 	*result = make_char(value.value.ch);
 	return ERROR_OK;
 }
 
 /* disp [arg [output-port]] */
-error builtin_disp(struct vector vargs, atom *result) {
-	long l = vargs.size;
+error builtin_disp(struct vector *vargs, atom *result) {
+	long l = vargs->size;
 	FILE *fp;
 	switch (l) {
 	case 0:
@@ -1315,20 +1315,20 @@ error builtin_disp(struct vector vargs, atom *result) {
 		fp = stdout;
 		break;
 	case 2:
-		fp = vargs.data[1].value.fp;
+		fp = vargs->data[1].value.fp;
 		break;
 	default:
 		return ERROR_ARGS;
 	}
-	char *s = to_string(vargs.data[0], 0);
+	char *s = to_string(vargs->data[0], 0);
 	fprintf(fp, "%s", s);
 	free(s);
 	*result = nil;
 	return ERROR_OK;
 }
 
-error builtin_writeb(struct vector vargs, atom *result) {
-	long l = vargs.size;
+error builtin_writeb(struct vector *vargs, atom *result) {
+	long l = vargs->size;
 	FILE *fp;
 	switch (l) {
 	case 0: return ERROR_ARGS;
@@ -1336,48 +1336,48 @@ error builtin_writeb(struct vector vargs, atom *result) {
 		fp = stdout;
 		break;
 	case 2:
-		fp = vargs.data[1].value.fp;
+		fp = vargs->data[1].value.fp;
 		break;
 	default: return ERROR_ARGS;
 	}
-	fputc((int)vargs.data[0].value.number, fp);
+	fputc((int)vargs->data[0].value.number, fp);
 	*result = nil;
 	return ERROR_OK;
 }
 
-error builtin_expt(struct vector vargs, atom *result) {
+error builtin_expt(struct vector *vargs, atom *result) {
 	atom a, b;
-	if (vargs.size != 2) return ERROR_ARGS;
-	a = vargs.data[0];
-	b = vargs.data[1];
+	if (vargs->size != 2) return ERROR_ARGS;
+	a = vargs->data[0];
+	b = vargs->data[1];
 	*result = make_number(pow(a.value.number, b.value.number));
 	return ERROR_OK;
 }
 
-error builtin_log(struct vector vargs, atom *result) {
+error builtin_log(struct vector *vargs, atom *result) {
 	atom a;
-	if (vargs.size != 1) return ERROR_ARGS;
-	a = vargs.data[0];
+	if (vargs->size != 1) return ERROR_ARGS;
+	a = vargs->data[0];
 	*result = make_number(log(a.value.number));
 	return ERROR_OK;
 }
 
-error builtin_sqrt(struct vector vargs, atom *result) {
+error builtin_sqrt(struct vector *vargs, atom *result) {
 	atom a;
-	if (vargs.size != 1) return ERROR_ARGS;
-	a = vargs.data[0];
+	if (vargs->size != 1) return ERROR_ARGS;
+	a = vargs->data[0];
 	*result = make_number(sqrt(a.value.number));
 	return ERROR_OK;
 }
 
-error builtin_readline(struct vector vargs, atom *result) {
-	long l = vargs.size;
+error builtin_readline(struct vector *vargs, atom *result) {
+	long l = vargs->size;
 	char *str;
 	if (l == 0) {
 		str = readline("");
 	}
 	else if (l == 1) {
-		str = readline_fp("", vargs.data[0].value.fp);
+		str = readline_fp("", vargs->data[0].value.fp);
 	}
 	else {
 		return ERROR_ARGS;
@@ -1386,8 +1386,8 @@ error builtin_readline(struct vector vargs, atom *result) {
 	return ERROR_OK;
 }
 
-error builtin_quit(struct vector vargs, atom *result) {
-	if (vargs.size != 0) return ERROR_ARGS;
+error builtin_quit(struct vector *vargs, atom *result) {
+	if (vargs->size != 0) return ERROR_ARGS;
 	exit(0);
 }
 
@@ -1395,10 +1395,10 @@ double rand_double() {
 	return (double)rand() / ((double)RAND_MAX + 1.0);
 }
 
-error builtin_rand(struct vector vargs, atom *result) {
-	long alen = vargs.size;
+error builtin_rand(struct vector *vargs, atom *result) {
+	long alen = vargs->size;
 	if (alen == 0) *result = make_number(rand_double());
-	else if (alen == 1) *result = make_number(floor(rand_double() * vargs.data[0].value.number));
+	else if (alen == 1) *result = make_number(floor(rand_double() * vargs->data[0].value.number));
 	else return ERROR_ARGS;
 	return ERROR_OK;
 }
@@ -1425,16 +1425,16 @@ error read_fp(FILE *fp, atom *result) {
 
 /* read [input-source [eof]]
 Reads a S-expression from the input-source, which can be either a string or an input-port. If the end of file is reached, nil is returned or the specified eof value. */
-error builtin_read(struct vector vargs, atom *result) {
-	size_t alen = vargs.size;
+error builtin_read(struct vector *vargs, atom *result) {
+	size_t alen = vargs->size;
 	error err;
 	if (alen == 0) {
 		err = read_fp(stdin, result);
 	}
 	else if (alen <= 2) {
-		atom src = vargs.data[0];
+		atom src = vargs->data[0];
 		if (src.type == T_STRING) {
-			char *s = vargs.data[0].value.str->value;
+			char *s = vargs->data[0].value.str->value;
 			const char *buf = s;
 			err = read_expr(buf, &buf, result);
 		}
@@ -1452,7 +1452,7 @@ error builtin_read(struct vector vargs, atom *result) {
 	if (err == ERROR_FILE) {
 		atom eof = nil; /* default value when EOF */
 		if (alen == 2) { /* specified return value when EOF */
-			eof = vargs.data[1];
+			eof = vargs->data[1];
 		}
 
 		*result = eof;
@@ -1463,10 +1463,10 @@ error builtin_read(struct vector vargs, atom *result) {
 	}
 }
 
-error builtin_macex(struct vector vargs, atom *result) {
-	long alen = vargs.size;
+error builtin_macex(struct vector *vargs, atom *result) {
+	long alen = vargs->size;
 	if (alen == 1) {
-		error err = macex(vargs.data[0], result);
+		error err = macex(vargs->data[0], result);
 		return err;
 	}
 	else return ERROR_ARGS;
@@ -1478,12 +1478,12 @@ error builtin_macex(struct vector vargs, atom *result) {
  * Every argument will appear as it would look if printed out by pr,
  * except nil, which is ignored.
  */
-error builtin_string(struct vector vargs, atom *result) {
+error builtin_string(struct vector *vargs, atom *result) {
 	char *s = str_new();
 	size_t i;
-	for (i = 0; i < vargs.size; i++) {
-		if (!no(vargs.data[i])) {
-			char *a = to_string(vargs.data[i], 0);
+	for (i = 0; i < vargs->size; i++) {
+		if (!no(vargs->data[i])) {
+			char *a = to_string(vargs->data[i], 0);
 			strcat_alloc(&s, a);
 			free(a);
 		}
@@ -1492,34 +1492,34 @@ error builtin_string(struct vector vargs, atom *result) {
 	return ERROR_OK;
 }
 
-error builtin_sym(struct vector vargs, atom *result) {
-	long alen = vargs.size;
+error builtin_sym(struct vector *vargs, atom *result) {
+	long alen = vargs->size;
 	if (alen == 1) {
-		*result = make_sym(to_string(vargs.data[0], 0));
+		*result = make_sym(to_string(vargs->data[0], 0));
 		return ERROR_OK;
 	}
 	else return ERROR_ARGS;
 }
 
-error builtin_system(struct vector vargs, atom *result) {
-	long alen = vargs.size;
+error builtin_system(struct vector *vargs, atom *result) {
+	long alen = vargs->size;
 	if (alen == 1) {
-		atom a = vargs.data[0];
+		atom a = vargs->data[0];
 		if (a.type != T_STRING) return ERROR_TYPE;
-		*result = make_number(system(vargs.data[0].value.str->value));
+		*result = make_number(system(vargs->data[0].value.str->value));
 		return ERROR_OK;
 	}
 	else return ERROR_ARGS;
 }
 
-error builtin_eval(struct vector vargs, atom *result) {
-	if (vargs.size == 1) return macex_eval(vargs.data[0], result);
+error builtin_eval(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) return macex_eval(vargs->data[0], result);
 	else return ERROR_ARGS;
 }
 
-error builtin_load(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_load(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		if (a.type != T_STRING) return ERROR_TYPE;
 		*result = nil;
 		return arc_load_file(a.value.str->value);
@@ -1527,9 +1527,9 @@ error builtin_load(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_int(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_int(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		switch (a.type) {
 		case T_STRING:
 			*result = make_number(round(atof(a.value.str->value)));
@@ -1551,9 +1551,9 @@ error builtin_int(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_trunc(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_trunc(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		if (a.type != T_NUM) return ERROR_TYPE;
 		*result = make_number(trunc(a.value.number));
 		return ERROR_OK;
@@ -1561,9 +1561,9 @@ error builtin_trunc(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_sin(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_sin(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		if (a.type != T_NUM) return ERROR_TYPE;
 		*result = make_number(sin(a.value.number));
 		return ERROR_OK;
@@ -1571,9 +1571,9 @@ error builtin_sin(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_cos(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_cos(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		if (a.type != T_NUM) return ERROR_TYPE;
 		*result = make_number(cos(a.value.number));
 		return ERROR_OK;
@@ -1581,9 +1581,9 @@ error builtin_cos(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_tan(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_tan(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		if (a.type != T_NUM) return ERROR_TYPE;
 		*result = make_number(tan(a.value.number));
 		return ERROR_OK;
@@ -1591,9 +1591,9 @@ error builtin_tan(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_bound(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_bound(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		if (a.type != T_SYM) return ERROR_TYPE;
 		error err = env_get(env, a.value.symbol, result);
 		*result = (err ? nil : sym_t);
@@ -1602,9 +1602,9 @@ error builtin_bound(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_infile(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_infile(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		if (a.type != T_STRING) return ERROR_TYPE;
 		FILE *fp = fopen(a.value.str->value, "r");
 		*result = make_input(fp);
@@ -1613,9 +1613,9 @@ error builtin_infile(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_outfile(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_outfile(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		if (a.type != T_STRING) return ERROR_TYPE;
 		FILE *fp = fopen(a.value.str->value, "w");
 		*result = make_output(fp);
@@ -1624,9 +1624,9 @@ error builtin_outfile(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_close(struct vector vargs, atom *result) {
-	if (vargs.size == 1) {
-		atom a = vargs.data[0];
+error builtin_close(struct vector *vargs, atom *result) {
+	if (vargs->size == 1) {
+		atom a = vargs->data[0];
 		if (a.type != T_INPUT && a.type != T_OUTPUT) return ERROR_TYPE;
 		fclose(a.value.fp);
 		*result = nil;
@@ -1635,15 +1635,15 @@ error builtin_close(struct vector vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
-error builtin_readb(struct vector vargs, atom *result) {
-	long l = vargs.size;
+error builtin_readb(struct vector *vargs, atom *result) {
+	long l = vargs->size;
 	FILE *fp;
 	switch (l) {
 	case 0:
 		fp = stdin;
 		break;
 	case 1:
-		fp = vargs.data[0].value.fp;
+		fp = vargs->data[0].value.fp;
 		break;
 	default:
 		return ERROR_ARGS;
@@ -1653,10 +1653,10 @@ error builtin_readb(struct vector vargs, atom *result) {
 }
 
 /* sread input-port eof */
-error builtin_sread(struct vector vargs, atom *result) {
-	if (vargs.size != 2) return ERROR_ARGS;
-	FILE *fp = vargs.data[0].value.fp;
-	atom eof = vargs.data[1];
+error builtin_sread(struct vector *vargs, atom *result) {
+	if (vargs->size != 2) return ERROR_ARGS;
+	FILE *fp = vargs->data[0].value.fp;
+	atom eof = vargs->data[1];
 	error err;
 	if (feof(fp)) {
 		*result = eof;
@@ -1669,8 +1669,8 @@ error builtin_sread(struct vector vargs, atom *result) {
 }
 
 /* write [arg [output-port]] */
-error builtin_write(struct vector vargs, atom *result) {
-	long l = vargs.size;
+error builtin_write(struct vector *vargs, atom *result) {
+	long l = vargs->size;
 	FILE *fp;
 	switch (l) {
 	case 0:
@@ -1680,12 +1680,12 @@ error builtin_write(struct vector vargs, atom *result) {
 		fp = stdout;
 		break;
 	case 2:
-		fp = vargs.data[1].value.fp;
+		fp = vargs->data[1].value.fp;
 		break;
 	default:
 		return ERROR_ARGS;
 	}
-	atom a = vargs.data[0];
+	atom a = vargs->data[0];
 	if (a.type == T_STRING) fputc('"', fp);
 	char *s = to_string(a, 1);
 	fprintf(fp, "%s", s);
@@ -1696,15 +1696,15 @@ error builtin_write(struct vector vargs, atom *result) {
 }
 
 /* newstring length [char] */
-error builtin_newstring(struct vector vargs, atom *result) {
-	long arg_len = vargs.size;
-	long length = (long)vargs.data[0].value.number;
+error builtin_newstring(struct vector *vargs, atom *result) {
+	long arg_len = vargs->size;
+	long length = (long)vargs->data[0].value.number;
 	char c = 0;
 	char *s;
 	switch (arg_len) {
 	case 1: break;
 	case 2:
-		c = vargs.data[1].value.ch;
+		c = vargs->data[1].value.ch;
 		break;
 	default:
 		return ERROR_ARGS;
@@ -1718,27 +1718,27 @@ error builtin_newstring(struct vector vargs, atom *result) {
 	return ERROR_OK;
 }
 
-error builtin_table(struct vector vargs, atom *result) {
-	long arg_len = vargs.size;
+error builtin_table(struct vector *vargs, atom *result) {
+	long arg_len = vargs->size;
 	if (arg_len != 0) return ERROR_ARGS;
 	*result = make_table(8);
 	return ERROR_OK;
 }
 
 /* maptable proc table */
-error builtin_maptable(struct vector vargs, atom *result) {
-	long arg_len = vargs.size;
+error builtin_maptable(struct vector *vargs, atom *result) {
+	long arg_len = vargs->size;
 	if (arg_len != 2) return ERROR_ARGS;
-	atom proc = vargs.data[0];
-	atom tbl = vargs.data[1];
+	atom proc = vargs->data[0];
+	atom tbl = vargs->data[1];
 	if (tbl.type != T_TABLE) return ERROR_TYPE;
 	size_t i;
 	for (i = 0; i < tbl.value.table->capacity; i++) {
 		struct table_entry *p = tbl.value.table->data[i];
 		while (p) {
-			vector_clear(&vargs);
-			vector_add(&vargs, p->k);
-			vector_add(&vargs, p->v);
+			vector_clear(vargs);
+			vector_add(vargs, p->k);
+			vector_add(vargs, p->v);
 			error err = apply(proc, vargs, result);
 			if (err) return err;
 			p = p->next;
@@ -1749,13 +1749,13 @@ error builtin_maptable(struct vector vargs, atom *result) {
 }
 
 /* table-sref obj value index */
-error builtin_table_sref(struct vector vargs, atom *result) {
+error builtin_table_sref(struct vector *vargs, atom *result) {
 	atom index, obj, value;
-	if (vargs.size != 3) return ERROR_ARGS;
-	obj = vargs.data[0];
+	if (vargs->size != 3) return ERROR_ARGS;
+	obj = vargs->data[0];
 	if (obj.type != T_TABLE) return ERROR_TYPE;
-	value = vargs.data[1];
-	index = vargs.data[2];
+	value = vargs->data[1];
+	index = vargs->data[2];
 	table_set(obj.value.table, index, value);
 	*result = value;
 	return ERROR_OK;
@@ -1770,11 +1770,11 @@ A string can be coerced to sym, cons (char list), num, or int.
 A list of characters can be coerced to a string.
 A symbol can be coerced to a string.
 */
-error builtin_coerce(struct vector vargs, atom *result) {
+error builtin_coerce(struct vector *vargs, atom *result) {
 	atom obj, type;
-	if (vargs.size != 2) return ERROR_ARGS;
-	obj = vargs.data[0];
-	type = vargs.data[1];
+	if (vargs->size != 2) return ERROR_ARGS;
+	obj = vargs->data[0];
+	type = vargs->data[1];
 	switch (obj.type) {
 	case T_CHAR:
 		if (is(type, sym_int) || is(type, sym_num)) *result = make_number(obj.value.ch);
@@ -1854,28 +1854,28 @@ error builtin_coerce(struct vector vargs, atom *result) {
 	return ERROR_OK;
 }
 
-error builtin_flushout(struct vector vargs, atom *result) {
-	if (vargs.size != 0) return ERROR_ARGS;
+error builtin_flushout(struct vector *vargs, atom *result) {
+	if (vargs->size != 0) return ERROR_ARGS;
 	fflush(stdout);
 	*result = sym_t;
 	return ERROR_OK;
 }
 
-error builtin_err(struct vector vargs, atom *result) {
-	if (vargs.size == 0) return ERROR_ARGS;
+error builtin_err(struct vector *vargs, atom *result) {
+	if (vargs->size == 0) return ERROR_ARGS;
 	cur_expr = nil;
 	size_t i;
-	for (i = 0; i < vargs.size; i++) {
-		char *s = to_string(vargs.data[i], 0);
+	for (i = 0; i < vargs->size; i++) {
+		char *s = to_string(vargs->data[i], 0);
 		puts(s);
 		free(s);
 	}
 	return ERROR_USER;
 }
 
-error builtin_len(struct vector vargs, atom *result) {
-	if (vargs.size != 1) return ERROR_ARGS;
-	atom a = vargs.data[0];
+error builtin_len(struct vector *vargs, atom *result) {
+	if (vargs->size != 1) return ERROR_ARGS;
+	atom a = vargs->data[0];
 	if (a.type == T_CONS) {
 		*result = make_number(len(a));
 	}
@@ -1898,9 +1898,9 @@ atom make_continuation(jmp_buf *jb) {
 	return a;
 }
 
-error builtin_ccc(struct vector vargs, atom *result) {
-	if (vargs.size != 1) return ERROR_ARGS;
-	atom a = vargs.data[0];
+error builtin_ccc(struct vector *vargs, atom *result) {
+	if (vargs->size != 1) return ERROR_ARGS;
+	atom a = vargs->data[0];
 	if (a.type != T_BUILTIN && a.type != T_CLOSURE) return ERROR_TYPE;
 	jmp_buf jb;
 	int val = setjmp(jb);
@@ -1908,8 +1908,8 @@ error builtin_ccc(struct vector vargs, atom *result) {
 		*result = thrown;
 		return ERROR_OK;
 	}
-	vector_clear(&vargs);
-	vector_add(&vargs, make_continuation(&jb));
+	vector_clear(vargs);
+	vector_add(vargs, make_continuation(&jb));
 	return apply(a, vargs, result);
 }
 
@@ -2252,7 +2252,7 @@ error macex(atom expr, atom *result) {
 
 			atom result2;
 			struct vector vargs = atom_to_vector(args);
-			err = apply(op, vargs, &result2);
+			err = apply(op, &vargs, &result2);
 			if (err) {
 				vector_free(&vargs);
 				stack_restore(ss);
@@ -2523,7 +2523,7 @@ start_eval:
 			atom body = cdr(cdr(fn));
 
 			/* Bind the arguments */
-			env_bind(env, arg_names, vargs);
+			env_bind(env, arg_names, &vargs);
 
 			/* Evaluate the body */
 			*result = nil;
@@ -2545,7 +2545,7 @@ start_eval:
 			return ERROR_OK;
 		}
 		else {
-			err = apply(fn, vargs, result);
+			err = apply(fn, &vargs, result);
 		}
 		vector_free(&vargs);
 		stack_restore_add(ss, *result);

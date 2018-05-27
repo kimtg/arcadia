@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.14"
+#define VERSION "0.14.1"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -52,7 +52,7 @@ struct vector {
 	size_t capacity, size;
 };
 
-typedef error(*builtin)(struct vector vargs, atom *result);
+typedef error(*builtin)(struct vector *vargs, atom *result);
 
 struct atom {
 	enum type type;
@@ -96,7 +96,7 @@ struct table {
 };
 
 /* forward declarations */
-error apply(atom fn, struct vector vargs, atom *result);
+error apply(atom fn, struct vector *vargs, atom *result);
 int listp(atom expr);
 char *slurp_fp(FILE *fp);
 char *slurp(const char *path);
