@@ -2532,6 +2532,10 @@ start_eval:
 					/* tail call */
 					expr = car(body);
 					vector_free(&vargs);
+					stack_restore_no_gc(ss);
+					stack_add(expr);
+					stack_add(env);
+					stack_restore(ss + 2);
 					goto start_eval;
 				}
 				error err = eval_expr(car(body), env, result);
