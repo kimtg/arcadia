@@ -15,7 +15,7 @@ int symbol_capacity = 0;
 const atom nil = { T_NIL };
 atom env; /* the global environment */
 /* symbols for faster execution */
-atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_while, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char;
+atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char;
 atom cur_expr;
 atom thrown;
 
@@ -2463,33 +2463,6 @@ start_eval:
 					return err;
 				}
 			}
-			else if (op.value.symbol == sym_while.value.symbol) {
-				atom pred;
-				if (no(args)) {
-					stack_restore(ss);
-					return ERROR_ARGS;
-				}
-				pred = car(args);
-				int ss2 = stack_size;
-				while (err = eval_expr(pred, env, result), !no(*result)) {
-					if (err) {
-						stack_restore(ss);
-						return err;
-					}
-					atom e = cdr(args);
-					while (!no(e)) {
-						err = eval_expr(car(e), env, result);
-						if (err) {
-							stack_restore(ss);
-							return err;
-						}
-						e = cdr(e);
-					}
-					stack_restore(ss2);
-				}
-				stack_restore_add(ss, *result);
-				return ERROR_OK;
-			}
 		}
 
 		/* Evaluate operator */
@@ -2575,7 +2548,6 @@ void arc_init(char *file_path) {
 	sym_if = make_sym("if");
 	sym_mac = make_sym("mac");
 	sym_apply = make_sym("apply");
-	sym_while = make_sym("while");
 	sym_cons = make_sym("cons");
 	sym_sym = make_sym("sym");
 	sym_string = make_sym("string");
