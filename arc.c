@@ -2035,6 +2035,10 @@ char *to_string(atom a, int write) {
 	return s;
 }
 
+size_t hash_code_sym(char *s) {
+	return (size_t)s / sizeof(s) / sizeof(size_t) / 2;
+}
+
 size_t hash_code(atom a) {
 	size_t r = 1;
 	switch (a.type) {
@@ -2054,7 +2058,7 @@ size_t hash_code(atom a) {
 		}
 		return r;
 	case T_SYM:
-		return (size_t)a.value.symbol / sizeof(*a.value.symbol);
+		return hash_code_sym(a.value.symbol);
 	case T_STRING: {
 		char *v = a.value.str->value;
 		for (; *v != 0; v++) {
@@ -2180,7 +2184,7 @@ struct table_entry *table_get(struct table *tbl, atom k) {
 /* return entry. return NULL if not found */
 struct table_entry *table_get_sym(struct table *tbl, char *k) {
 	if (tbl->size == 0) return NULL;
-	int pos = ((size_t)k / sizeof(char)) % tbl->capacity;
+	int pos = hash_code_sym(k) % tbl->capacity;
 	struct table_entry *p = tbl->data[pos];
 	while (p) {
 		if (p->k.value.symbol == k) {
