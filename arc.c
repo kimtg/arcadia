@@ -2036,7 +2036,7 @@ char *to_string(atom a, int write) {
 }
 
 size_t hash_code_sym(char *s) {
-	return (size_t)s / sizeof(s) / sizeof(size_t) / 2;
+	return (size_t)s / sizeof(s) / 2;
 }
 
 size_t hash_code(atom a) {
