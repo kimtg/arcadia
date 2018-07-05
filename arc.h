@@ -138,7 +138,7 @@ atom cons(atom car_val, atom cdr_val);
 #define cdr(p) ((p).value.pair->cdr)
 #define no(atom) ((atom).type == T_NIL)
 
-extern int stack_size;
+extern size_t stack_size;
 extern const atom nil;
 
 #endif

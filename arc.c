@@ -1,17 +1,17 @@
 #include "arc.h"
 
 char *error_string[] = { "", "Syntax error", "Symbol not bound", "Wrong number of arguments", "Wrong type", "File error", "" };
-int stack_capacity = 0;
-int stack_size = 0;
+size_t stack_capacity = 0;
+size_t stack_size = 0;
 atom *stack = NULL;
 struct pair *pair_head = NULL;
 struct str *str_head = NULL;
 struct table *table_head = NULL;
-int alloc_count = 0;
-int alloc_count_old = 0;
+size_t alloc_count = 0;
+size_t alloc_count_old = 0;
 char **symbol_table = NULL;
-int symbol_size = 0;
-int symbol_capacity = 0;
+size_t symbol_size = 0;
+size_t symbol_capacity = 0;
 const atom nil = { T_NIL };
 atom env; /* the global environment */
 /* symbols for faster execution */
@@ -176,7 +176,7 @@ void gc()
 	struct table *at, **pt;
 
 	/* mark atoms in the stack */
-	int i;
+	size_t i;
 	for (i = 0; i < stack_size; i++) {
 		gc_mark(stack[i]);
 	}
