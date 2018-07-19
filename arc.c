@@ -2308,18 +2308,18 @@ error load_string(const char *text) {
 	error err = ERROR_OK;
 	const char *p = text;
 	atom expr;
-	while (1) {
-		error err = read_expr(p, &p, &expr);
-		if (err != ERROR_OK) {
+	while (*p) {
+		err = read_expr(p, &p, &expr);
+		if (err == ERROR_FILE) { // EOF
+			err = ERROR_OK;
+			break;
+		}
+		if (err) {
 			break;
 		}
 		atom result;
 		err = macex_eval(expr, &result);
 		if (err) {
-			print_error(err);
-			printf("error in expression:\n");
-			print_expr(expr);
-			putchar('\n');
 			break;
 		}
 		//else {
@@ -2623,7 +2623,10 @@ void arc_init(char *file_path) {
 	const char *stdlib =
 		#include "library.h"
 		;
-	load_string(stdlib);
+	error err = load_string(stdlib);
+	if (err) {
+		print_error(err);
+	}
 }
 
 char *get_dir_path(char *file_path) {
