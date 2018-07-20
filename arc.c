@@ -1,4 +1,5 @@
 #include "arc.h"
+#include <ctype.h>
 
 char *error_string[] = { "", "Syntax error", "Symbol not bound", "Wrong number of arguments", "Wrong type", "File error", "" };
 size_t stack_capacity = 0;
@@ -2310,10 +2311,6 @@ error load_string(const char *text) {
 	atom expr;
 	while (*p) {
 		err = read_expr(p, &p, &expr);
-		if (err == ERROR_FILE) { // EOF
-			err = ERROR_OK;
-			break;
-		}
 		if (err) {
 			break;
 		}
@@ -2326,6 +2323,7 @@ error load_string(const char *text) {
 		//	print_expr(result);
 		//	putchar(' ');
 		//}
+		while (*p && isspace(*p)) p++;
 	}
 	//puts("");
 	return err;
