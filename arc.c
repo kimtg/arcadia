@@ -22,15 +22,21 @@ atom thrown;
 
 /* Be sure to free after use */
 void vector_new(struct vector *a) {
-	a->capacity = 8;
+	a->capacity = sizeof(a->static_data) / sizeof(a->static_data[0]);
 	a->size = 0;
-	a->data = malloc(a->capacity * sizeof(atom));
+	a->data = a->static_data;
 }
 
 void vector_add(struct vector *a, atom item) {
 	if (a->size + 1 > a->capacity) {
 		a->capacity *= 2;
-		a->data = realloc(a->data, a->capacity * sizeof(atom));
+		if (a->data == a->static_data) {
+			a->data = malloc(a->capacity * sizeof(atom));
+			memcpy(a->data, a->static_data, a->size * sizeof(atom));
+		}
+		else {
+			a->data = realloc(a->data, a->capacity * sizeof(atom));
+		}		
 	}
 	a->data[a->size] = item;
 	a->size++;
@@ -41,7 +47,7 @@ void vector_clear(struct vector *a) {
 }
 
 void vector_free(struct vector *a) {
-	free(a->data);
+	if (a->data != a->static_data) free(a->data);
 }
 
 atom vector_to_atom(struct vector *a, int start) {
@@ -54,13 +60,11 @@ atom vector_to_atom(struct vector *a, int start) {
 }
 
 /* Be sure to free after use */
-struct vector atom_to_vector(atom a) {
-	struct vector r;
-	vector_new(&r);
+void atom_to_vector(atom a, struct vector *v) {
+	vector_new(v);
 	for (; !no(a); a = cdr(a)) {
-		vector_add(&r, car(a));
+		vector_add(v, car(a));
 	}
-	return r;
 }
 
 void stack_add(atom a) {
@@ -1169,7 +1173,8 @@ error builtin_apply(struct vector *vargs, atom *result)
 		return ERROR_ARGS;
 
 	fn = vargs->data[0];
-	struct vector v = atom_to_vector(vargs->data[1]);
+	struct vector v;
+	atom_to_vector(vargs->data[1], &v);
 	error err = apply(fn, &v, result);
 	vector_free(&v);
 	return err;
@@ -2256,7 +2261,8 @@ error macex(atom expr, atom *result) {
 			op.type = T_CLOSURE;
 
 			atom result2;
-			struct vector vargs = atom_to_vector(args);
+			struct vector vargs;
+			atom_to_vector(args, &vargs);
 			err = apply(op, &vargs, &result2);
 			if (err) {
 				vector_free(&vargs);

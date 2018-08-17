@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.15.4"
+#define VERSION "0.16"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -47,11 +47,6 @@ typedef enum {
 
 typedef struct atom atom;
 
-struct vector {
-	atom *data;
-	size_t capacity, size;
-};
-
 typedef error(*builtin)(struct vector *vargs, atom *result);
 
 struct atom {
@@ -68,6 +63,12 @@ struct atom {
 		char ch;
 		jmp_buf *jb;
 	} value;
+};
+
+struct vector {
+	atom *data;
+	atom static_data[8]; /* small size optimization */
+	size_t capacity, size;
 };
 
 struct pair {
