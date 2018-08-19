@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.16"
+#define VERSION "0.16.1"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -125,7 +125,7 @@ void print_error(error e);
 int is(atom a, atom b);
 int iso(atom a, atom b);
 size_t hash_code(atom a);
-atom make_table(int capacity);
+atom make_table(size_t capacity);
 void table_add(struct table *tbl, atom k, atom v);
 struct table_entry *table_get(struct table *tbl, atom k);
 struct table_entry *table_get_sym(struct table *tbl, char *k);

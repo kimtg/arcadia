@@ -2088,7 +2088,7 @@ size_t hash_code(atom a) {
 	}
 }
 
-atom make_table(int capacity) {
+atom make_table(size_t capacity) {
 	atom a;
 	struct table *s;
 	alloc_count++;
@@ -2096,7 +2096,7 @@ atom make_table(int capacity) {
 	s->capacity = capacity;
 	s->size = 0;
 	s->data = malloc(capacity * sizeof(struct table_entry *));
-	int i;
+	size_t i;
 	for (i = 0; i < capacity; i++) {
 		s->data[i] = NULL;
 	}
