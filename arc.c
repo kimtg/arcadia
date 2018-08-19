@@ -718,9 +718,9 @@ char *readline_fp(char *prompt, FILE *fp) {
 	return realloc(str, sizeof(char)*len);
 }
 
-atom env_create(atom parent)
+atom env_create(atom parent, size_t capacity)
 {
-	return cons(parent, make_table(1));
+	return cons(parent, make_table(capacity));
 }
 
 error env_get(atom env, char *symbol, atom *result)
@@ -883,9 +883,9 @@ error apply(atom fn, struct vector *vargs, atom *result)
 {
 	if (fn.type == T_BUILTIN)
 		return (*fn.value.builtin)(vargs, result);
-	else if (fn.type == T_CLOSURE) {
-		atom env = env_create(car(fn));
+	else if (fn.type == T_CLOSURE) {		
 		atom arg_names = car(cdr(fn));
+		atom env = env_create(car(fn), len(arg_names));
 		atom body = cdr(cdr(fn));
 
 		error err = env_bind(env, arg_names, vargs);
@@ -2498,9 +2498,9 @@ start_eval:
 		}
 
 		/* tail call optimization of err = apply(fn, args, result); */
-		if (fn.type == T_CLOSURE) {
-			env = env_create(car(fn));
+		if (fn.type == T_CLOSURE) {			
 			atom arg_names = car(cdr(fn));
+			env = env_create(car(fn), len(arg_names));
 			atom body = cdr(cdr(fn));
 
 			/* Bind the arguments */
@@ -2543,7 +2543,7 @@ void arc_init(char *file_path) {
 	rl_bind_key('\t', rl_insert); /* prevent tab completion */
 #endif
 	srand((unsigned int)time(0));
-	env = env_create(nil);
+	env = env_create(nil, 500);
 
 	symbol_capacity = 500;
 	symbol_table = malloc(symbol_capacity * sizeof(char *));
