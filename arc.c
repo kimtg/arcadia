@@ -778,7 +778,7 @@ size_t len(atom xs) {
 	size_t ret = 0;
 	while (!no(*p)) {
 		if (p->type != T_CONS)
-			return 0;
+			return ret + 1;
 		p = &cdr(*p);
 		ret++;
 	}
@@ -1882,17 +1882,14 @@ error builtin_err(struct vector *vargs, atom *result) {
 error builtin_len(struct vector *vargs, atom *result) {
 	if (vargs->size != 1) return ERROR_ARGS;
 	atom a = vargs->data[0];
-	if (a.type == T_CONS) {
-		*result = make_number(len(a));
-	}
-	else if (a.type == T_STRING) {
+	if (a.type == T_STRING) {
 		*result = make_number(strlen(a.value.str->value));
 	}
 	else if (a.type == T_TABLE) {
 		*result = make_number(a.value.table->size);
 	}
 	else {
-		*result = make_number(0);
+		*result = make_number(len(a));
 	}
 	return ERROR_OK;
 }
