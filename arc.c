@@ -1832,11 +1832,16 @@ error builtin_coerce(struct vector *vargs, atom *result) {
 		if (is(type, sym_string)) {
 			char *s = str_new();
 			atom p;
-			char buf[2];
-			buf[1] = 0;
 			for (p = obj; !no(p); p = cdr(p)) {
-				buf[0] = car(p).value.ch;
-				strcat_alloc(&s, buf);
+				atom x;
+				struct vector v; /* (car(p) string) */
+				vector_new(&v);
+				vector_add(&v, car(p));
+				vector_add(&v, sym_string);
+				error err = builtin_coerce(&v, &x);
+				vector_free(&v);
+				if (err) return err;
+				strcat_alloc(&s, x.value.str->value);
 			}
 			*result = make_string(s);
 		}
