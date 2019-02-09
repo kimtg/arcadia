@@ -50,7 +50,7 @@ OPTIONS:
 
 ## License ##
 
-   Copyright 2014-2018 Kim, Taegyoon
+   Copyright 2014-2019 Kim, Taegyoon
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
