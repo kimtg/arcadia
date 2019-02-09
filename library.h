@@ -1016,3 +1016,7 @@
 "                             (map1 cdr arg-lists))))\n"
 "      nil))\n"
 "\n"
+"(def intersperse(x ys)\n"
+"	\"Inserts 'x' between the elements of 'ys'.\"\n"
+"	(and ys(cons(car ys)\n"
+"	(mappend[list x _](cdr ys)))))\n"
