@@ -864,6 +864,7 @@ error env_bind(atom env, atom arg_names, struct vector *vargs) {
 			val = vargs->data[i];
 		}
 		else {
+			val = nil;
 			val_unspecified = 1;
 		}
 		error err = destructuring_bind(arg_name, val, val_unspecified, env);
