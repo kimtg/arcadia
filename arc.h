@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.16.6"
+#define VERSION "0.17"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -46,7 +46,7 @@ typedef enum {
 } error;
 
 typedef struct atom atom;
-
+struct vector;
 typedef error(*builtin)(struct vector *vargs, atom *result);
 
 struct atom {

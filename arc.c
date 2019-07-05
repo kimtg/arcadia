@@ -1297,17 +1297,34 @@ error builtin_type(struct vector *vargs, atom *result) {
 	return ERROR_OK;
 }
 
-/* string-sref obj value index */
-error builtin_string_sref(struct vector *vargs, atom *result) {
+/* sref obj value index
+     obj: cons, string, table
+ */
+error builtin_sref(struct vector *vargs, atom *result) {
 	atom index, obj, value;
+	size_t i;
 	if (vargs->size != 3) return ERROR_ARGS;
 	obj = vargs->data[0];
-	if (obj.type != T_STRING) return ERROR_TYPE;
 	value = vargs->data[1];
 	index = vargs->data[2];
-	obj.value.str->value[(long)index.value.number] = (char)value.value.ch;
-	*result = make_char(value.value.ch);
-	return ERROR_OK;
+	switch (obj.type) {
+	case T_CONS:
+	  for (i=0; i<(size_t)index.value.number; i++) {
+	    obj = cdr(obj);
+	  }
+	  car(obj) = value;
+	  return ERROR_OK;
+	case T_STRING:
+	  obj.value.str->value[(long)index.value.number] = (char)value.value.ch;
+	  *result = make_char(value.value.ch);
+	  return ERROR_OK;
+	case T_TABLE:
+	  table_set(obj.value.table, index, value);
+	  *result = value;
+	  return ERROR_OK;
+	default:
+	  return ERROR_TYPE;
+	}
 }
 
 /* disp [arg [output-port]] */
@@ -1752,19 +1769,6 @@ error builtin_maptable(struct vector *vargs, atom *result) {
 		}
 	}
 	*result = tbl;
-	return ERROR_OK;
-}
-
-/* table-sref obj value index */
-error builtin_table_sref(struct vector *vargs, atom *result) {
-	atom index, obj, value;
-	if (vargs->size != 3) return ERROR_ARGS;
-	obj = vargs->data[0];
-	if (obj.type != T_TABLE) return ERROR_TYPE;
-	value = vargs->data[1];
-	index = vargs->data[2];
-	table_set(obj.value.table, index, value);
-	*result = value;
 	return ERROR_OK;
 }
 
@@ -2586,7 +2590,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("scdr").value.symbol, make_builtin(builtin_scdr));
 	env_assign(env, make_sym("mod").value.symbol, make_builtin(builtin_mod));
 	env_assign(env, make_sym("type").value.symbol, make_builtin(builtin_type));
-	env_assign(env, make_sym("string-sref").value.symbol, make_builtin(builtin_string_sref));
+	env_assign(env, make_sym("sref").value.symbol, make_builtin(builtin_sref));
 	env_assign(env, make_sym("writeb").value.symbol, make_builtin(builtin_writeb));
 	env_assign(env, make_sym("expt").value.symbol, make_builtin(builtin_expt));
 	env_assign(env, make_sym("log").value.symbol, make_builtin(builtin_log));
@@ -2620,7 +2624,6 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("newstring").value.symbol, make_builtin(builtin_newstring));
 	env_assign(env, make_sym("table").value.symbol, make_builtin(builtin_table));
 	env_assign(env, make_sym("maptable").value.symbol, make_builtin(builtin_maptable));
-	env_assign(env, make_sym("table-sref").value.symbol, make_builtin(builtin_table_sref));
 	env_assign(env, make_sym("coerce").value.symbol, make_builtin(builtin_coerce));
 	env_assign(env, make_sym("flushout").value.symbol, make_builtin(builtin_flushout));
 	env_assign(env, make_sym("err").value.symbol, make_builtin(builtin_err));
