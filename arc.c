@@ -16,7 +16,7 @@ size_t symbol_capacity = 0;
 const atom nil = { T_NIL };
 atom env; /* the global environment */
 /* symbols for faster execution */
-atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char;
+atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char, sym_do;
 atom cur_expr;
 atom thrown;
 
@@ -304,7 +304,13 @@ error make_closure(atom env, atom args, atom body, atom *result)
 		p = cdr(p);
 	}
 
-	*result = cons(env, cons(args, body));
+	if (no(cdr(body))) { /* 1 form only: do form not required */
+		p = body;
+	}
+	else {
+		p = cons(cons(sym_do, body), nil);
+	}
+	*result = cons(env, cons(args, p));
 	result->type = T_CLOSURE;
 
 	return ERROR_OK;
@@ -895,13 +901,9 @@ error apply(atom fn, struct vector *vargs, atom *result)
 		}
 
 		/* Evaluate the body */
-		*result = nil;
-		while (!no(body)) {
-			error err = eval_expr(car(body), env, result);
-			if (err) {
-				return err;
-			}
-			body = cdr(body);
+		err = eval_expr(car(body), env, result);
+		if (err) {
+			return err;
 		}
 		return ERROR_OK;
 	}
@@ -2451,6 +2453,27 @@ start_eval:
 				stack_restore_add(ss, *result);
 				return err;
 			}
+			else if (op.value.symbol == sym_do.value.symbol) {
+				/* Evaluate the body */
+				*result = nil;
+				while (!no(args)) {
+					if (no(cdr(args))) {
+						/* tail call */
+						expr = car(args);
+						stack_restore_no_gc(ss);
+						stack_add(expr);
+						stack_add(env);
+						stack_restore(ss + 2);
+						goto start_eval;
+					}
+					error err = eval_expr(car(args), env, result);
+					if (err) {
+						return err;
+					}
+					args = cdr(args);
+				}
+				return ERROR_OK;
+			}
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
 				atom name, macro;
 
@@ -2508,38 +2531,20 @@ start_eval:
 		if (fn.type == T_CLOSURE) {			
 			atom arg_names = car(cdr(fn));
 			env = env_create(car(fn), len(arg_names));
-			atom body = cdr(cdr(fn));
+			expr = car(cdr(cdr(fn)));
 
 			/* Bind the arguments */
-			env_bind(env, arg_names, &vargs);
-
-			/* Evaluate the body */
-			*result = nil;
-			while (!no(body)) {
-				if (no(cdr(body))) {
-					/* tail call */
-					expr = car(body);
-					vector_free(&vargs);
-					stack_restore_no_gc(ss);
-					stack_add(expr);
-					stack_add(env);
-					stack_restore(ss + 2);
-					goto start_eval;
-				}
-				error err = eval_expr(car(body), env, result);
-				if (err) {
-					vector_free(&vargs);
-					return err;
-				}
-				body = cdr(body);
+			err = env_bind(env, arg_names, &vargs);
+			if (err) {
+				return err;
 			}
 			vector_free(&vargs);
-			return ERROR_OK;
+			goto start_eval;
 		}
 		else {
 			err = apply(fn, &vargs, result);
+			vector_free(&vargs);
 		}
-		vector_free(&vargs);
 		stack_restore_add(ss, *result);
 		return err;
 	}
@@ -2572,6 +2577,7 @@ void arc_init(char *file_path) {
 	sym_table = make_sym("table");
 	sym_int = make_sym("int");
 	sym_char = make_sym("char");
+	sym_do = make_sym("do");
 
 	env_assign(env, sym_t.value.symbol, sym_t);
 	env_assign(env, make_sym("nil").value.symbol, nil);
