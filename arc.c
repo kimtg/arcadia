@@ -1315,10 +1315,11 @@ error builtin_sref(struct vector *vargs, atom *result) {
 	    obj = cdr(obj);
 	  }
 	  car(obj) = value;
+	  *result = value;
 	  return ERROR_OK;
 	case T_STRING:
 	  obj.value.str->value[(long)index.value.number] = (char)value.value.ch;
-	  *result = make_char(value.value.ch);
+	  *result = value;
 	  return ERROR_OK;
 	case T_TABLE:
 	  table_set(obj.value.table, index, value);
