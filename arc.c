@@ -2226,7 +2226,6 @@ char *slurp_fp(FILE *fp) {
 
 	fread(buf, 1, len, fp);
 	buf[len] = 0;
-	fclose(fp);
 
 	return buf;
 }
@@ -2238,7 +2237,9 @@ char *slurp(const char *path)
 		/* printf("Reading %s failed.\n", path); */
 		return NULL;
 	}
-	return slurp_fp(fp);
+	char *r = slurp_fp(fp);
+	fclose(fp);
+	return r;
 }
 
 /* compile-time macro */
