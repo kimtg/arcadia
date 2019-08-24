@@ -2376,9 +2376,6 @@ start_eval:
 		*result = expr;
 		return ERROR_OK;
 	}
-	else if (!listp(expr)) {
-		return ERROR_SYNTAX;
-	}
 	else {
 		atom op = car(expr);
 		atom args = cdr(expr);
