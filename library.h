@@ -1002,7 +1002,7 @@
 "       ,gacc)))\n"
 "\n"
 "(def map (proc . arg-lists)\n"
-"  (if (and (car arg-lists) (all idfn (map1 car arg-lists)))\n"
+"  (if (car arg-lists)\n"
 "      (cons (apply proc (map1 car arg-lists))\n"
 "            (apply map (cons proc\n"
 "                             (map1 cdr arg-lists))))\n"
