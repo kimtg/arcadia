@@ -409,7 +409,7 @@ start:
 
 error parse_simple(const char *start, const char *end, atom *result)
 {
-	char *buf, *p;
+	char *p;
 
 	/* Is it a number? */
 	double val = strtod(start, &p);
@@ -454,10 +454,10 @@ error parse_simple(const char *start, const char *end, atom *result)
 		return ERROR_OK;
 	}
 	else if (start[0] == '#') { /* #\char */
-		buf = malloc(end - start + 1);
+		char *buf = malloc(end - start + 1);
 		memcpy(buf, start, end - start);
 		buf[end - start] = 0;
-		size_t length = strlen(buf);
+		size_t length = end - start;
 		if (length == 3 && buf[1] == '\\') { /* plain character e.g. #\a */
 			*result = make_char(buf[2]);
 			free(buf);
@@ -486,7 +486,7 @@ error parse_simple(const char *start, const char *end, atom *result)
 	}
 
 	/* NIL or symbol */
-	buf = malloc(end - start + 1);
+	char *buf = malloc(end - start + 1);
 	memcpy(buf, start, end - start);
 	buf[end - start] = 0;
 
@@ -505,9 +505,15 @@ error parse_simple(const char *start, const char *end, atom *result)
 				}
 				error err;
 				err = parse_simple(buf, buf + i, &a1);
-				if (err) return ERROR_SYNTAX;
+				if (err) {
+					free(buf);
+					return ERROR_SYNTAX;
+				}
 				err = parse_simple(buf + i + 1, buf + length, &a2);
-				if (err) return ERROR_SYNTAX;
+				if (err) {
+					free(buf);
+					return ERROR_SYNTAX;
+				}
 				free(buf);
 				*result = cons(a1, cons(a2, nil));
 				return ERROR_OK;
@@ -519,9 +525,15 @@ error parse_simple(const char *start, const char *end, atom *result)
 				}
 				error err;
 				err = parse_simple(buf, buf + i, &a1);
-				if (err) return ERROR_SYNTAX;
+				if (err) {
+					free(buf);
+					return ERROR_SYNTAX;
+				}
 				err = parse_simple(buf + i + 1, buf + length, &a2);
-				if (err) return ERROR_SYNTAX;
+				if (err) {
+					free(buf);
+					return ERROR_SYNTAX;
+				}
 				free(buf);
 				*result = cons(a1, cons(cons(sym_quote, cons(a2, nil)), nil));
 				return ERROR_OK;
@@ -533,9 +545,15 @@ error parse_simple(const char *start, const char *end, atom *result)
 				}
 				error err;
 				err = parse_simple(buf, buf + i, &a1);
-				if (err) return ERROR_SYNTAX;
+				if (err) {
+					free(buf);
+					return ERROR_SYNTAX;
+				}
 				err = parse_simple(buf + i + 1, buf + length, &a2);
-				if (err) return ERROR_SYNTAX;
+				if (err) {
+					free(buf);
+					return ERROR_SYNTAX;
+				}
 				free(buf);
 				*result = cons(make_sym("compose"), cons(a1, cons(a2, nil)));
 				return ERROR_OK;
@@ -544,7 +562,10 @@ error parse_simple(const char *start, const char *end, atom *result)
 		if (length >= 2 && buf[0] == '~') { /* ~a => (complement a) */
 			atom a1;
 			error err = parse_simple(buf + 1, buf + length, &a1);
-			if (err) return ERROR_SYNTAX;
+			free(buf);
+			if (err) {
+				return ERROR_SYNTAX;
+			}
 			*result = cons(make_sym("complement"), cons(a1, nil));
 			return ERROR_OK;
 		}
@@ -552,7 +573,6 @@ error parse_simple(const char *start, const char *end, atom *result)
 	}
 
 	free(buf);
-
 	return ERROR_OK;
 }
 
