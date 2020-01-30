@@ -16,7 +16,7 @@ size_t symbol_capacity = 0;
 const atom nil = { T_NIL };
 atom env; /* the global environment */
 /* symbols for faster execution */
-atom sym_t, sym_quote, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char, sym_do;
+atom sym_t, sym_quote, sym_quasiquote, sym_unquote, sym_unquote_splicing, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char, sym_do;
 atom cur_expr;
 atom thrown;
 
@@ -692,16 +692,16 @@ error read_expr(const char *input, const char **end, atom *result)
 	else if (token[0] == ']')
 		return ERROR_SYNTAX;
 	else if (token[0] == '\'') {
-		*result = cons(make_sym("quote"), cons(nil, nil));
+		*result = cons(sym_quote, cons(nil, nil));
 		return read_expr(*end, end, &car(cdr(*result)));
 	}
 	else if (token[0] == '`') {
-		*result = cons(make_sym("quasiquote"), cons(nil, nil));
+		*result = cons(sym_quasiquote, cons(nil, nil));
 		return read_expr(*end, end, &car(cdr(*result)));
 	}
 	else if (token[0] == ',') {
-		*result = cons(make_sym(
-			token[1] == '@' ? "unquote-splicing" : "unquote"),
+		*result = cons(
+			token[1] == '@' ? sym_unquote_splicing : sym_unquote,
 			cons(nil, nil));
 		return read_expr(*end, end, &car(cdr(*result)));
 	}
@@ -1972,22 +1972,40 @@ char *to_string(atom a, int write) {
 		strcat_alloc(&s, "nil");
 		break;
 	case T_CONS:
-		strcat_alloc(&s, "(");
-		strcat_alloc(&s, to_string(car(a), write));
-		a = cdr(a);
-		while (!no(a)) {
-			if (a.type == T_CONS) {
-				strcat_alloc(&s, " ");
-				strcat_alloc(&s, to_string(car(a), write));
-				a = cdr(a);
-			}
-			else {
-				strcat_alloc(&s, " . ");
-				strcat_alloc(&s, to_string(a, write));
-				break;
-			}
+		if (listp(a) && len(a) == 2 && is(car(a), sym_quote)) {
+			strcat_alloc(&s, "'");
+			strcat_alloc(&s, to_string(car(cdr(a)), write));
 		}
-		strcat_alloc(&s, ")");
+		else if (listp(a) && len(a) == 2 && is(car(a), sym_quasiquote)) {
+			strcat_alloc(&s, "`");
+			strcat_alloc(&s, to_string(car(cdr(a)), write));
+		}
+		else if (listp(a) && len(a) == 2 && is(car(a), sym_unquote)) {
+			strcat_alloc(&s, ",");
+			strcat_alloc(&s, to_string(car(cdr(a)), write));
+		}
+		else if (listp(a) && len(a) == 2 && is(car(a), sym_unquote_splicing)) {
+			strcat_alloc(&s, ",@");
+			strcat_alloc(&s, to_string(car(cdr(a)), write));
+		}
+		else {
+			strcat_alloc(&s, "(");
+			strcat_alloc(&s, to_string(car(a), write));
+			a = cdr(a);
+			while (!no(a)) {
+				if (a.type == T_CONS) {
+					strcat_alloc(&s, " ");
+					strcat_alloc(&s, to_string(car(a), write));
+					a = cdr(a);
+				}
+				else {
+					strcat_alloc(&s, " . ");
+					strcat_alloc(&s, to_string(a, write));
+					break;
+				}
+			}
+			strcat_alloc(&s, ")");
+		}
 		break;
 	case T_SYM:
 		strcat_alloc(&s, a.value.symbol);
@@ -2582,6 +2600,9 @@ void arc_init(char *file_path) {
 	/* Set up the initial environment */
 	sym_t = make_sym("t");
 	sym_quote = make_sym("quote");
+	sym_quasiquote = make_sym("quasiquote");
+	sym_unquote = make_sym("unquote");
+	sym_unquote_splicing = make_sym("unquote-splicing");
 	sym_assign = make_sym("assign");
 	sym_fn = make_sym("fn");
 	sym_if = make_sym("if");
