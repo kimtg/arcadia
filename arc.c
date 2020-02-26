@@ -84,9 +84,10 @@ void stack_add(atom a) {
 		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
 	stack[stack_size - 1] = a;
+	consider_gc();
 }
 
-void stack_restore_no_gc(int saved_size) {
+void stack_restore(int saved_size) {
 	stack_size = saved_size;
 	/* if there is waste of memory, realloc */
 	if (stack_size < stack_capacity / 4) {
@@ -95,15 +96,9 @@ void stack_restore_no_gc(int saved_size) {
 	}
 }
 
-void stack_restore(int saved_size) {
-	stack_restore_no_gc(saved_size);
-	consider_gc();
-}
-
 void stack_restore_add(int saved_size, atom a) {
-	stack_restore_no_gc(saved_size);
+	stack_restore(saved_size);
 	stack_add(a);
-	consider_gc();
 }
 
 void consider_gc() {
@@ -2497,10 +2492,7 @@ start_eval:
 					if (no(cdr(args))) {
 						/* tail call */
 						expr = car(args);
-						stack_restore_no_gc(ss);
-						stack_add(expr);
-						stack_add(env);
-						stack_restore(ss + 2);
+						stack_restore(ss);
 						goto start_eval;
 					}
 					error err = eval_expr(car(args), env, result);
