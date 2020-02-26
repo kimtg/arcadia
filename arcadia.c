@@ -8,7 +8,6 @@ void repl() {
 	char *input;
 
 	while ((input = readline("> ")) != NULL) {
-		int ss = stack_size;
 	read_start:;
 #ifdef READLINE
 		if (input && *input)
@@ -51,7 +50,6 @@ void repl() {
 		} else {
 			print_error(err);
 		}
-		stack_restore(ss);
 		free(input);
 	}
 }

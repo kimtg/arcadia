@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.20"
+#define VERSION "0.20.1"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -104,9 +104,6 @@ char *slurp(const char *path);
 error eval_expr(atom expr, atom env, atom *result);
 void gc_mark(atom root);
 void gc();
-void stack_add(atom a);
-void stack_restore(int saved_size);
-void stack_restore_add(int saved_size, atom a);
 error macex(atom expr, atom *result);
 char *to_string(atom a, int write);
 char *strcat_alloc(char **dst, char *src);
@@ -139,7 +136,6 @@ atom cons(atom car_val, atom cdr_val);
 #define cdr(p) ((p).value.pair->cdr)
 #define no(atom) ((atom).type == T_NIL)
 
-extern size_t stack_size;
 extern const atom nil;
 
 #endif

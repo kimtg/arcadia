@@ -2369,13 +2369,13 @@ error load_string(const char *text) {
 		if (err) {
 			break;
 		}
-		//else {
-		//	print_expr(result);
-		//	putchar(' ');
-		//}
+		/*else {
+			print_expr(result);
+			putchar(' ');
+		}*/
 		while (*p && isspace(*p)) p++;
 	}
-	//puts("");
+	/*puts("");*/
 	return err;
 }
 
