@@ -134,7 +134,7 @@ void gc_mark(atom root)
 	struct pair *a;
 	struct str *as;
 	struct table *at;
-
+start:
 	switch (root.type) {
 	case T_CONS:
 	case T_CLOSURE:
@@ -143,7 +143,9 @@ void gc_mark(atom root)
 		if (a->mark) return;
 		a->mark = 1;
 		gc_mark(car(root));
-		gc_mark(cdr(root));
+		/* reduce recursion */
+		root = cdr(root);
+		goto start;
 		break;
 	case T_STRING:
 		as = root.value.str;
