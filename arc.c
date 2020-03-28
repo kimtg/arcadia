@@ -929,15 +929,15 @@ error apply(atom fn, struct vector *vargs, atom *result)
 	}
 	else if (fn.type == T_STRING) { /* implicit indexing for string */
 		if (vargs->size != 1) return ERROR_ARGS;
-		long index = (long)(vargs->data[0]).value.number;
+		size_t index = (size_t)(vargs->data[0]).value.number;
 		*result = make_char(fn.value.str->value[index]);
 		return ERROR_OK;
 	}
 	else if (fn.type == T_CONS && listp(fn)) { /* implicit indexing for list */
 		if (vargs->size != 1) return ERROR_ARGS;
-		long index = (long)(vargs->data[0]).value.number;
+		size_t index = (size_t)(vargs->data[0]).value.number;
 		atom a = fn;
-		long i;
+		size_t i;
 		for (i = 0; i < index; i++) {
 			a = cdr(a);
 			if (no(a)) {
@@ -2219,7 +2219,7 @@ void table_add(struct table *tbl, atom k, atom v) {
 /* return entry. return NULL if not found */
 struct table_entry *table_get(struct table *tbl, atom k) {
 	if (tbl->size == 0) return NULL;
-	int pos = hash_code(k) % tbl->capacity;
+	size_t pos = hash_code(k) % tbl->capacity;
 	struct table_entry *p = tbl->data[pos];
 	while (p) {
 		if (iso(p->k, k)) {
@@ -2233,7 +2233,7 @@ struct table_entry *table_get(struct table *tbl, atom k) {
 /* return entry. return NULL if not found */
 struct table_entry *table_get_sym(struct table *tbl, char *k) {
 	if (tbl->size == 0) return NULL;
-	int pos = hash_code_sym(k) % tbl->capacity;
+	size_t pos = hash_code_sym(k) % tbl->capacity;
 	struct table_entry *p = tbl->data[pos];
 	while (p) {
 		if (p->k.value.symbol == k) {
