@@ -159,3 +159,9 @@ TAGS
 
 # emacs crap
 \#*\#
+
+# Code::Blocks
+*.layout
+*.depend
+bin/
+obj/
