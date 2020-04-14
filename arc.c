@@ -2118,7 +2118,9 @@ size_t hash_code(atom a) {
 		}
 		return r; }
 	case T_NUM:
-		return (size_t)a.value.number;
+		//return (size_t)(void *)a.value.symbol;
+		//return (size_t)a.value.number;
+		return (size_t)((void*)a.value.symbol) + (size_t)a.value.number;
 	case T_BUILTIN:
 		return (size_t)a.value.builtin;
 	case T_CLOSURE:
