@@ -2364,6 +2364,15 @@ error load_string(const char *text) {
 	const char *p = text;
 	atom expr;
 	while (*p) {
+		if (isspace(*p)) {
+			p++;
+			continue;
+		}
+		/* comment */
+		if (*p == ';') {
+			p += strcspn(p, "\n");
+			continue;
+		}
 		err = read_expr(p, &p, &expr);
 		if (err) {
 			break;
@@ -2377,7 +2386,6 @@ error load_string(const char *text) {
 			print_expr(result);
 			putchar(' ');
 		}*/
-		while (*p && isspace(*p)) p++;
 	}
 	/*puts("");*/
 	return err;
