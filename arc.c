@@ -84,7 +84,6 @@ void stack_add(atom a) {
 		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
 	stack[stack_size - 1] = a;
-	consider_gc();
 }
 
 void stack_restore(int saved_size) {
@@ -94,11 +93,18 @@ void stack_restore(int saved_size) {
 		stack_capacity = stack_size * 2;
 		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
+	consider_gc();
 }
 
 void stack_restore_add(int saved_size, atom a) {
-	stack_restore(saved_size);
+	stack_size = saved_size;
+	/* if there is waste of memory, realloc */
+	if (stack_size < stack_capacity / 4) {
+		stack_capacity = stack_size * 2;
+		stack = realloc(stack, stack_capacity * sizeof(atom));
+	}
 	stack_add(a);
+	consider_gc();
 }
 
 void consider_gc() {
