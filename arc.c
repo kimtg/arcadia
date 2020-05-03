@@ -1545,7 +1545,9 @@ error builtin_string(struct vector *vargs, atom *result) {
 error builtin_sym(struct vector *vargs, atom *result) {
 	long alen = vargs->size;
 	if (alen == 1) {
-		*result = make_sym(to_string(vargs->data[0], 0));
+		char *s = to_string(vargs->data[0], 0);
+		*result = make_sym(s);
+		free(s);
 		return ERROR_OK;
 	}
 	else return ERROR_ARGS;
@@ -1977,33 +1979,47 @@ char *to_string(atom a, int write) {
 	case T_CONS:
 		if (listp(a) && len(a) == 2 && is(car(a), sym_quote)) {
 			strcat_alloc(&s, "'");
-			strcat_alloc(&s, to_string(car(cdr(a)), write));
+			char *s2 = to_string(car(cdr(a)), write);
+			strcat_alloc(&s, s2);
+			free(s2);
 		}
 		else if (listp(a) && len(a) == 2 && is(car(a), sym_quasiquote)) {
 			strcat_alloc(&s, "`");
-			strcat_alloc(&s, to_string(car(cdr(a)), write));
+			char *s2 = to_string(car(cdr(a)), write);
+			strcat_alloc(&s, s2);
+			free(s2);
 		}
 		else if (listp(a) && len(a) == 2 && is(car(a), sym_unquote)) {
 			strcat_alloc(&s, ",");
-			strcat_alloc(&s, to_string(car(cdr(a)), write));
+			char *s2 = to_string(car(cdr(a)), write);
+			strcat_alloc(&s, s2);
+			free(s2);
 		}
 		else if (listp(a) && len(a) == 2 && is(car(a), sym_unquote_splicing)) {
 			strcat_alloc(&s, ",@");
-			strcat_alloc(&s, to_string(car(cdr(a)), write));
+			char *s2 = to_string(car(cdr(a)), write);
+			strcat_alloc(&s, s2);
+			free(s2);
 		}
 		else {
 			strcat_alloc(&s, "(");
-			strcat_alloc(&s, to_string(car(a), write));
+			char *s2 = to_string(car(a), write);
+			strcat_alloc(&s, s2);
+			free(s2);
 			a = cdr(a);
 			while (!no(a)) {
 				if (a.type == T_CONS) {
 					strcat_alloc(&s, " ");
-					strcat_alloc(&s, to_string(car(a), write));
+					s2 = to_string(car(a), write);
+					strcat_alloc(&s, s2);
+					free(s2);
 					a = cdr(a);
 				}
 				else {
 					strcat_alloc(&s, " . ");
-					strcat_alloc(&s, to_string(a, write));
+					s2 = to_string(a, write);
+					strcat_alloc(&s, s2);
+					free(s2);
 					break;
 				}
 			}
@@ -2029,12 +2045,16 @@ char *to_string(atom a, int write) {
 	case T_CLOSURE:
 	{
 		atom a2 = cons(sym_fn, cdr(a));
-		strcat_alloc(&s, to_string(a2, write));
+		char *s2 = to_string(a2, write);
+		strcat_alloc(&s, s2);
+		free(s2);
 		break;
 	}
 	case T_MACRO:
 		strcat_alloc(&s, "#<macro:");
-		strcat_alloc(&s, to_string(cdr(a), write));
+		char *s2 = to_string(cdr(a), write);
+		strcat_alloc(&s, s2);
+		free(s2);
 		strcat_alloc(&s, ">");
 		break;
 	case T_INPUT:
