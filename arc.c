@@ -2438,6 +2438,7 @@ error eval_expr(atom expr, atom env, atom *result)
 	error err;
 	int ss = stack_size; /* save stack point */
 start_eval:
+    stack_add(env);
 	cur_expr = expr; /* for error reporting */
 	if (expr.type == T_SYM) {
 		err = env_get(env, expr.value.symbol, result);
