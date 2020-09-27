@@ -2287,7 +2287,7 @@ char *slurp_fp(FILE *fp) {
 	if (!buf)
 		return NULL;
 
-	fread(buf, 1, len, fp);
+	if (fread(buf, 1, len, fp) != len) return NULL;
 	buf[len] = 0;
 
 	return buf;
