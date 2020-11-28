@@ -1317,6 +1317,8 @@ error builtin_type(struct vector *vargs, atom *result) {
 	case T_MACRO: *result = sym_mac; break;
 	case T_TABLE: *result = sym_table; break;
 	case T_CHAR: *result = sym_char; break;
+	case T_INPUT: *result = make_sym("input"); break;
+	case T_OUTPUT: *result = make_sym("output"); break;
 	default: *result = nil; break; /* impossible */
 	}
 	return ERROR_OK;
@@ -1427,6 +1429,7 @@ error builtin_readline(struct vector *vargs, atom *result) {
 		str = readline("");
 	}
 	else if (l == 1) {
+		if (vargs->data[0].type != T_INPUT) return ERROR_TYPE;
 		str = readline_fp("", vargs->data[0].value.fp);
 	}
 	else {
@@ -1954,6 +1957,19 @@ error builtin_ccc(struct vector *vargs, atom *result) {
 	return apply(a, vargs, result);
 }
 
+/* pipe-from command
+ * Executes command in the underlying OS. Then opens an input-port to the results.
+ */
+error builtin_pipe_from(struct vector* vargs, atom* result) {
+	if (vargs->size != 1) return ERROR_ARGS;
+	atom a = vargs->data[0];
+	if (a.type != T_STRING) return ERROR_TYPE;
+	FILE *fp = popen(vargs->data[0].value.str->value, "r");
+	if (fp == NULL) return ERROR_FILE;
+	*result = make_input(fp);
+	return ERROR_OK;
+}
+
 /* end builtin */
 
 char *strcat_alloc(char **dst, char *src) {
@@ -1964,7 +1980,7 @@ char *strcat_alloc(char **dst, char *src) {
 }
 
 char *str_new() {
-	char *s = malloc(1 * sizeof(char));
+	char *s = malloc(2 * sizeof(char));
 	s[0] = 0;
 	return s;
 }
@@ -2390,7 +2406,7 @@ error load_string(const char *text) {
 	const char *p = text;
 	atom expr;
 	while (*p) {
-		if (isspace(*p)) {
+		if (isspace((int)*p)) {
 			p++;
 			continue;
 		}
@@ -2706,6 +2722,7 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("err").value.symbol, make_builtin(builtin_err));
 	env_assign(env, make_sym("len").value.symbol, make_builtin(builtin_len));
 	env_assign(env, make_sym("ccc").value.symbol, make_builtin(builtin_ccc));
+	env_assign(env, make_sym("pipe-from").value.symbol, make_builtin(builtin_pipe_from));
 
 	const char *stdlib =
 		#include "library.h"

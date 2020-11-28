@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.22.4"
+#define VERSION "0.22.5"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -23,6 +23,7 @@
 
 #ifdef _MSC_VER
 #define strdup _strdup
+#define popen _popen
 #endif
 
 enum type {
