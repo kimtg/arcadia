@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.22.5"
+#define VERSION "0.23"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -24,6 +24,7 @@
 #ifdef _MSC_VER
 #define strdup _strdup
 #define popen _popen
+#define pclose _pclose
 #endif
 
 enum type {
@@ -36,6 +37,7 @@ enum type {
 	T_MACRO,
 	T_STRING,
 	T_INPUT,
+	T_INPUT_PIPE,
 	T_OUTPUT,
 	T_TABLE,
 	T_CHAR,

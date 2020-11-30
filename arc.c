@@ -342,6 +342,13 @@ atom make_input(FILE *fp) {
 	return a;
 }
 
+atom make_input_pipe(FILE *fp) {
+	atom a;
+	a.type = T_INPUT_PIPE;
+	a.value.fp = fp;
+	return a;
+}
+
 atom make_output(FILE *fp) {
 	atom a;
 	a.type = T_OUTPUT;
@@ -1228,6 +1235,7 @@ int is(atom a, atom b) {
 		case T_TABLE:
 			return a.value.table == b.value.table;
 		case T_INPUT:
+		case T_INPUT_PIPE:
 		case T_OUTPUT:
 			return a.value.fp == b.value.fp;
 		case T_CONTINUATION:
@@ -1318,6 +1326,7 @@ error builtin_type(struct vector *vargs, atom *result) {
 	case T_TABLE: *result = sym_table; break;
 	case T_CHAR: *result = sym_char; break;
 	case T_INPUT: *result = make_sym("input"); break;
+	case T_INPUT_PIPE: *result = make_sym("input-pipe"); break;
 	case T_OUTPUT: *result = make_sym("output"); break;
 	default: *result = nil; break; /* impossible */
 	}
@@ -1429,7 +1438,7 @@ error builtin_readline(struct vector *vargs, atom *result) {
 		str = readline("");
 	}
 	else if (l == 1) {
-		if (vargs->data[0].type != T_INPUT) return ERROR_TYPE;
+		if (vargs->data[0].type != T_INPUT && vargs->data[0].type != T_INPUT_PIPE) return ERROR_TYPE;
 		str = readline_fp("", vargs->data[0].value.fp);
 	}
 	else {
@@ -1491,7 +1500,7 @@ error builtin_read(struct vector *vargs, atom *result) {
 			const char *buf = s;
 			err = read_expr(buf, &buf, result);
 		}
-		else if (src.type == T_INPUT) {
+		else if (src.type == T_INPUT || src.type == T_INPUT_PIPE) {
 			err = read_fp(src.value.fp, result);
 		}
 		else {
@@ -1679,11 +1688,18 @@ error builtin_outfile(struct vector *vargs, atom *result) {
 	else return ERROR_ARGS;
 }
 
+/* close port ... */
 error builtin_close(struct vector *vargs, atom *result) {
-	if (vargs->size == 1) {
-		atom a = vargs->data[0];
-		if (a.type != T_INPUT && a.type != T_OUTPUT) return ERROR_TYPE;
-		fclose(a.value.fp);
+	if (vargs->size >= 1) {
+		size_t i;
+		for (i = 0; i < vargs->size; i++) {
+			atom a = vargs->data[i];
+			if (a.type != T_INPUT && a.type != T_INPUT_PIPE && a.type != T_OUTPUT) return ERROR_TYPE;
+			if (a.type == T_INPUT_PIPE)
+				pclose(a.value.fp);
+			else
+				fclose(a.value.fp);
+		}
 		*result = nil;
 		return ERROR_OK;
 	}
@@ -1966,7 +1982,7 @@ error builtin_pipe_from(struct vector* vargs, atom* result) {
 	if (a.type != T_STRING) return ERROR_TYPE;
 	FILE *fp = popen(vargs->data[0].value.str->value, "r");
 	if (fp == NULL) return ERROR_FILE;
-	*result = make_input(fp);
+	*result = make_input_pipe(fp);
 	return ERROR_OK;
 }
 
@@ -2076,6 +2092,9 @@ char *to_string(atom a, int write) {
 	case T_INPUT:
 		strcat_alloc(&s, "#<input>");
 		break;
+	case T_INPUT_PIPE:
+		strcat_alloc(&s, "#<input-pipe>");
+		break;
 	case T_OUTPUT:
 		strcat_alloc(&s, "#<output>");
 		break;
@@ -2170,6 +2189,7 @@ size_t hash_code(atom a) {
 	case T_MACRO:
 		return hash_code(cdr(a));
 	case T_INPUT:
+	case T_INPUT_PIPE:
 	case T_OUTPUT:
 		return (size_t)a.value.fp / sizeof(*a.value.fp);
 	default:
