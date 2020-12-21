@@ -93,7 +93,6 @@ void stack_restore(int saved_size) {
 		stack_capacity = stack_size * 2;
 		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
-	consider_gc();
 }
 
 void stack_restore_add(int saved_size, atom a) {
@@ -104,7 +103,6 @@ void stack_restore_add(int saved_size, atom a) {
 		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
 	stack_add(a);
-	consider_gc();
 }
 
 void consider_gc() {
@@ -2474,7 +2472,7 @@ error eval_expr(atom expr, atom env, atom *result)
 	error err;
 	int ss = stack_size; /* save stack point */
 start_eval:
-    stack_add(env);
+	consider_gc();
 	cur_expr = expr; /* for error reporting */
 	if (expr.type == T_SYM) {
 		err = env_get(env, expr.value.symbol, result);
