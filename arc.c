@@ -1594,13 +1594,13 @@ error builtin_int(struct vector *vargs, atom *result) {
 		atom a = vargs->data[0];
 		switch (a.type) {
 		case T_STRING:
-			*result = make_number(round(atof(a.value.str->value)));
+			*result = make_number(atol(a.value.str->value));
 			break;
 		case T_SYM:
-			*result = make_number(round(atof(a.value.symbol)));
+			*result = make_number(atol(a.value.symbol));
 			break;
 		case T_NUM:
-			*result = make_number(round(a.value.number));
+			*result = make_number((long)a.value.number);
 			break;
 		case T_CHAR:
 			*result = make_number(a.value.ch);
