@@ -2565,7 +2565,6 @@ start_eval:
 					if (no(cdr(args))) {
 						/* tail call */
 						expr = car(args);
-						stack_restore(ss);
 						goto start_eval;
 					}
 					error err = eval_expr(car(args), env, result);
