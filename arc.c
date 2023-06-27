@@ -292,7 +292,7 @@ error make_closure(atom env, atom args, atom body, atom *result)
 {
 	atom p;
 
-	if (!listp(body))
+	if (body.type != T_CONS || !listp(body))
 		return ERROR_SYNTAX;
 
 	/* Check argument names are all symbols or conses */
