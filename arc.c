@@ -305,11 +305,15 @@ error make_closure(atom env, atom args, atom body, atom *result)
 		p = cdr(p);
 	}
 
-	if (no(cdr(body))) { /* 1 form only: do form not required */
-		p = body;
+	if (no(body)) { /* no body */
+		p = nil;
+	}
+
+	else if (no(cdr(body))) { /* 1 form only: do form not required */
+		p = car(body);
 	}
 	else {
-		p = cons(cons(sym_do, body), nil);
+		p = cons(sym_do, body);
 	}
 	*result = cons(env, cons(args, p));
 	result->type = T_CLOSURE;
@@ -929,7 +933,7 @@ error apply(atom fn, struct vector *vargs, atom *result)
 		}
 
 		/* Evaluate the body */
-		err = eval_expr(car(body), env, result);
+		err = eval_expr(body, env, result);
 		if (err) {
 			return err;
 		}
@@ -2632,7 +2636,7 @@ start_eval:
 		if (fn.type == T_CLOSURE) {			
 			atom arg_names = car(cdr(fn));
 			env = env_create(car(fn), len(arg_names));
-			expr = car(cdr(cdr(fn)));
+			expr = cdr(cdr(fn));
 
 			/* Bind the arguments */
 			err = env_bind(env, arg_names, &vargs);
