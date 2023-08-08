@@ -400,7 +400,8 @@ start:
 		*end = str + (str[1] == '@' ? 2 : 1);
 	else if (str[0] == '"') {
 		str++;
-		while (*str != 0) {
+		while (1) {
+			if (*str == 0) return ERROR_FILE; /* string not terminated */
 			if (*str == '\\') str++;
 			else if (*str == '"') {
 				break;
