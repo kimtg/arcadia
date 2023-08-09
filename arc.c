@@ -2746,9 +2746,8 @@ void arc_init(char *file_path) {
 	env_assign(env, make_sym("ccc").value.symbol, make_builtin(builtin_ccc));
 	env_assign(env, make_sym("pipe-from").value.symbol, make_builtin(builtin_pipe_from));
 
-	const char *stdlib =
-		#include "library.h"
-		;
+#include "library.h"
+
 	error err = load_string(stdlib);
 	if (err) {
 		print_error(err);
