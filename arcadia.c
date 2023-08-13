@@ -5,16 +5,17 @@ void print_logo() {
 }
 
 void repl() {
-	char *input;
+	struct string input;
 
-	while ((input = readline("> ")) != NULL) {
+	while ((input.str = readline("> ")) != NULL) {
 	read_start:;
+		input.cap = input.len = strlen(input.str);
 #ifdef READLINE
 		if (input && *input)
 			add_history(input);
 #endif
 
-		const char *p = input;
+		const char *p = input.str;
 		error err;
 
 		atom expr;
@@ -22,8 +23,8 @@ void repl() {
 		if (err == ERROR_FILE) { /* read more lines */
 			char *line = readline("  ");
 			if (!line) break;
-			input = strcat_alloc(&input, "\n");
-			input = strcat_alloc(&input, line);
+			string_cat(&input, "\n");
+			string_cat(&input, line);
 			free(line);
 			goto read_start;
 		}
@@ -50,7 +51,7 @@ void repl() {
 		} else {
 			print_error(err);
 		}
-		free(input);
+		free(input.str);
 	}
 }
 

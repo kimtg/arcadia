@@ -1064,14 +1064,15 @@ error builtin_add(struct vector *vargs, atom *result)
 			*result = make_number(r);
 		}
 		else if (vargs->data[0].type == T_STRING) {
-			char *buf = str_new();
+			struct string buf;
+			string_new(&buf);
 			size_t i;
 			for (i = 0; i < vargs->size; i++) {
 				char *s = to_string(vargs->data[i], 0);
-				strcat_alloc(&buf, s);
+				string_cat(&buf, s);
 				free(s);
 			}
-			*result = make_string(buf);
+			*result = make_string(buf.str);
 		}
 		else if (vargs->data[0].type == T_CONS || vargs->data[0].type == T_NIL) {
 			atom acc = nil;
@@ -1543,17 +1544,18 @@ error builtin_macex(struct vector *vargs, atom *result) {
  * Every argument will appear as it would look if printed out by pr,
  * except nil, which is ignored.
  */
-error builtin_string(struct vector *vargs, atom *result) {
-	char *s = str_new();
+error builtin_string(struct vector *vargs, atom *result) {	
+	struct string s;
+	string_new(&s);
 	size_t i;
 	for (i = 0; i < vargs->size; i++) {
 		if (!no(vargs->data[i])) {
 			char *a = to_string(vargs->data[i], 0);
-			strcat_alloc(&s, a);
+			string_cat(&s, a);
 			free(a);
 		}
 	}
-	*result = make_string(s);
+	*result = make_string(s.str);
 	return ERROR_OK;
 }
 
@@ -1885,7 +1887,8 @@ error builtin_coerce(struct vector *vargs, atom *result) {
 		break;
 	case T_CONS:
 		if (is(type, sym_string)) {
-			char *s = str_new();
+			struct string s;
+			string_new(&s);
 			atom p;
 			for (p = obj; !no(p); p = cdr(p)) {
 				atom x;
@@ -1896,9 +1899,9 @@ error builtin_coerce(struct vector *vargs, atom *result) {
 				error err = builtin_coerce(&v, &x);
 				vector_free(&v);
 				if (err) return err;
-				strcat_alloc(&s, x.value.str->value);
+				string_cat(&s, x.value.str->value);
 			}
-			*result = make_string(s);
+			*result = make_string(s.str);
 		}
 		else if (is(type, sym_cons))
 			*result = obj;
@@ -1991,163 +1994,174 @@ error builtin_pipe_from(struct vector* vargs, atom* result) {
 
 /* end builtin */
 
-char *strcat_alloc(char **dst, char *src) {
-	size_t len = strlen(*dst) + strlen(src);
-	*dst = realloc(*dst, (len + 1) * sizeof(char));
-	strcat(*dst, src);
-	return *dst;
+void string_new(struct string *dst) {
+	dst->len = 0;
+	dst->cap = 2;
+	dst->str = malloc(dst->cap * sizeof(char));
+	dst->str[0] = 0;
 }
 
-char *str_new() {
-	char *s = malloc(2 * sizeof(char));
-	s[0] = 0;
-	return s;
+void string_cat(struct string* dst, char* src) {
+	size_t len = dst->len + strlen(src);
+	
+	if (len + 1 > dst->cap) {		
+		while (len + 1 > dst->cap) {
+			dst->cap *= 2;
+		}
+		dst->str = realloc(dst->str, dst->cap * sizeof(char));
+	}
+	
+	strcpy(dst->str + dst->len, src);
+	dst->len = len;
 }
 
 char *to_string(atom a, int write) {
-	char *s = str_new();
+	struct string s;
+	string_new(&s);
+
 	char buf[80];
 	switch (a.type) {
 	case T_NIL:
-		strcat_alloc(&s, "nil");
+		string_cat(&s, "nil");
 		break;
 	case T_CONS:
 		if (listp(a) && len(a) == 2 && is(car(a), sym_quote)) {
-			strcat_alloc(&s, "'");
+			string_cat(&s, "'");
 			char *s2 = to_string(car(cdr(a)), write);
-			strcat_alloc(&s, s2);
+			string_cat(&s, s2);
 			free(s2);
 		}
 		else if (listp(a) && len(a) == 2 && is(car(a), sym_quasiquote)) {
-			strcat_alloc(&s, "`");
+			string_cat(&s, "`");
 			char *s2 = to_string(car(cdr(a)), write);
-			strcat_alloc(&s, s2);
+			string_cat(&s, s2);
 			free(s2);
 		}
 		else if (listp(a) && len(a) == 2 && is(car(a), sym_unquote)) {
-			strcat_alloc(&s, ",");
+			string_cat(&s, ",");
 			char *s2 = to_string(car(cdr(a)), write);
-			strcat_alloc(&s, s2);
+			string_cat(&s, s2);
 			free(s2);
 		}
 		else if (listp(a) && len(a) == 2 && is(car(a), sym_unquote_splicing)) {
-			strcat_alloc(&s, ",@");
+			string_cat(&s, ",@");
 			char *s2 = to_string(car(cdr(a)), write);
-			strcat_alloc(&s, s2);
+			string_cat(&s, s2);
 			free(s2);
 		}
 		else {
-			strcat_alloc(&s, "(");
+			string_cat(&s, "(");
 			char *s2 = to_string(car(a), write);
-			strcat_alloc(&s, s2);
+			string_cat(&s, s2);
 			free(s2);
 			a = cdr(a);
 			while (!no(a)) {
 				if (a.type == T_CONS) {
-					strcat_alloc(&s, " ");
+					string_cat(&s, " ");
 					s2 = to_string(car(a), write);
-					strcat_alloc(&s, s2);
+					string_cat(&s, s2);
 					free(s2);
 					a = cdr(a);
 				}
 				else {
-					strcat_alloc(&s, " . ");
+					string_cat(&s, " . ");
 					s2 = to_string(a, write);
-					strcat_alloc(&s, s2);
+					string_cat(&s, s2);
 					free(s2);
 					break;
 				}
 			}
-			strcat_alloc(&s, ")");
+			string_cat(&s, ")");
 		}
 		break;
 	case T_SYM:
-		strcat_alloc(&s, a.value.symbol);
+		string_cat(&s, a.value.symbol);
 		break;
 	case T_STRING:
-		if (write) strcat_alloc(&s, "\"");
-		strcat_alloc(&s, a.value.str->value);
-		if (write) strcat_alloc(&s, "\"");
+		if (write) string_cat(&s, "\"");
+		string_cat(&s, a.value.str->value);
+		if (write) string_cat(&s, "\"");
 		break;
 	case T_NUM:
 		sprintf(buf, "%.16g", a.value.number);
-		strcat_alloc(&s, buf);
+		string_cat(&s, buf);
 		break;
 	case T_BUILTIN:
 		sprintf(buf, "#<builtin:%p>", a.value.builtin);
-		strcat_alloc(&s, buf);
+		string_cat(&s, buf);
 		break;
 	case T_CLOSURE:
 	{
 		atom a2 = cons(sym_fn, cdr(a));
 		char *s2 = to_string(a2, write);
-		strcat_alloc(&s, s2);
+		string_cat(&s, s2);
 		free(s2);
 		break;
 	}
 	case T_MACRO:
-		strcat_alloc(&s, "#<macro:");
+		string_cat(&s, "#<macro:");
 		char *s2 = to_string(cdr(a), write);
-		strcat_alloc(&s, s2);
+		string_cat(&s, s2);
 		free(s2);
-		strcat_alloc(&s, ">");
+		string_cat(&s, ">");
 		break;
 	case T_INPUT:
-		strcat_alloc(&s, "#<input>");
+		string_cat(&s, "#<input>");
 		break;
 	case T_INPUT_PIPE:
-		strcat_alloc(&s, "#<input-pipe>");
+		string_cat(&s, "#<input-pipe>");
 		break;
 	case T_OUTPUT:
-		strcat_alloc(&s, "#<output>");
+		string_cat(&s, "#<output>");
 		break;
 	case T_TABLE: {
-		strcat_alloc(&s, "#<table:");
+		string_cat(&s, "#<table:");
 		size_t i;
 		for (i = 0; i < a.value.table->capacity; i++) {
 			struct table_entry *p = a.value.table->data[i];
 			while (p) {
 				char *s2 = to_string(p->k, write);
-				strcat_alloc(&s, " ");
-				strcat_alloc(&s, s2);
+				string_cat(&s, " ");
+				string_cat(&s, s2);
 				free(s2);
-				strcat_alloc(&s, ":");
+				string_cat(&s, ":");
 				s2 = to_string(p->v, write);
-				strcat_alloc(&s, s2);
+				string_cat(&s, s2);
 				free(s2);
 				p = p->next;
 			}
 		}
-		strcat_alloc(&s, ">");
+		string_cat(&s, ">");
 		break; }
 	case T_CHAR:
 		if (write) {
-			strcat_alloc(&s, "#\\");
+			string_cat(&s, "#\\");
 			switch (a.value.ch) {
-			case '\0': strcat_alloc(&s, "nul"); break;
-			case '\r': strcat_alloc(&s, "return"); break;
-			case '\n': strcat_alloc(&s, "newline"); break;
-			case '\t': strcat_alloc(&s, "tab"); break;
-			case ' ': strcat_alloc(&s, "space"); break;
+			case '\0': string_cat(&s, "nul"); break;
+			case '\r': string_cat(&s, "return"); break;
+			case '\n': string_cat(&s, "newline"); break;
+			case '\t': string_cat(&s, "tab"); break;
+			case ' ': string_cat(&s, "space"); break;
 			default:
 				buf[0] = a.value.ch;
 				buf[1] = '\0';
-				strcat_alloc(&s, buf);
+				string_cat(&s, buf);
 			}
 		}
 		else {
-			s[0] = a.value.ch;
-			s[1] = '\0';
+			s.str[0] = a.value.ch;
+			s.str[1] = '\0';
 		}
 		break;
 	case T_CONTINUATION:
-		strcat_alloc(&s, "#<continuation>");
+		string_cat(&s, "#<continuation>");
 		break;
 	default:
-		strcat_alloc(&s, "#<unknown type>");
+		string_cat(&s, "#<unknown type>");
 		break;
 	}
-	return s;
+	s.str = realloc(s.str, s.len + 1);
+	return s.str;
 }
 
 size_t hash_code_sym(char *s) {

@@ -2,7 +2,7 @@
 #ifndef _INC_ARC
 #define _INC_ARC
 
-#define VERSION "0.28"
+#define VERSION "0.29"
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
@@ -99,6 +99,12 @@ struct table {
 	struct table *next;
 };
 
+/* simple string with length and capacity */
+struct string {
+	char *str;
+	size_t len, cap;
+};
+
 /* forward declarations */
 error apply(atom fn, struct vector *vargs, atom *result);
 int listp(atom expr);
@@ -109,8 +115,8 @@ void gc_mark(atom root);
 void gc();
 error macex(atom expr, atom *result);
 char *to_string(atom a, int write);
-char *strcat_alloc(char **dst, char *src);
-char *str_new();
+void string_new(struct string* dst);
+void string_cat(struct string *dst, char *src);
 error macex_eval(atom expr, atom *result);
 error arc_load_file(const char *path);
 char *get_dir_path(char *file_path);
