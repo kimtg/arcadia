@@ -9,7 +9,7 @@ void repl() {
 
 	while ((input.str = readline("> ")) != NULL) {
 	read_start:;
-		input.cap = input.len = strlen(input.str);
+		input.cap = (input.len = strlen(input.str)) + 1;
 #ifdef READLINE
 		if (input && *input)
 			add_history(input);
