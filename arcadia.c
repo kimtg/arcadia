@@ -8,12 +8,8 @@ void repl() {
 	struct string input;
 
 	while ((input.str = readline("> ")) != NULL) {
-	read_start:;
 		input.cap = (input.len = strlen(input.str)) + 1;
-#ifdef READLINE
-		if (input && *input)
-			add_history(input);
-#endif
+	read_start:;
 
 		const char *p = input.str;
 		error err;
@@ -28,6 +24,11 @@ void repl() {
 			free(line);
 			goto read_start;
 		}
+
+#ifdef READLINE
+		add_history(input.str);
+#endif
+
 		if (!err) {
 			while (1) {
 				atom result;
