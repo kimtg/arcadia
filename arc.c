@@ -2584,6 +2584,7 @@ start_eval:
 					if (no(cdr(args))) {
 						/* tail call */
 						expr = car(args);
+						stack_restore(ss);
 						goto start_eval;
 					}
 					error err = eval_expr(car(args), env, result);
@@ -2648,7 +2649,7 @@ start_eval:
 		}
 
 		/* tail call optimization of err = apply(fn, args, result); */
-		if (fn.type == T_CLOSURE) {			
+		if (fn.type == T_CLOSURE) {
 			atom arg_names = car(cdr(fn));
 			env = env_create(car(fn), len(arg_names));
 			expr = cdr(cdr(fn));
