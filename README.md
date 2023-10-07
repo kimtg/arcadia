@@ -44,7 +44,7 @@ OPTIONS:
 * [Syntax sugar](http://arclanguage.github.io/ref/evaluation.html) (`[]`, `~`, `.`, `!`, `:`)
 
 ## See also
-* [Arc Tutorial](http://www.arclanguage.org/tut.txt)
+* [Arc Tutorial](http://www.arclanguage.org/tut.txt), [Arc Tutorial (HTML)](https://arclanguage.github.io/tut-stable.html)
 * [Arc Documentation](http://arclanguage.github.io/ref/index.html)
 * [Try Arc: Arc REPL In Your Web Browser](http://tryarc.org/)
 
