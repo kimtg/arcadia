@@ -2579,7 +2579,6 @@ start_eval:
 			}
 			else if (op.value.symbol == sym_do.value.symbol) {
 				/* Evaluate the body */
-				*result = nil;
 				while (!no(args)) {
 					if (no(cdr(args))) {
 						/* tail call */
