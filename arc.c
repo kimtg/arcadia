@@ -757,7 +757,12 @@ char *readline_fp(char *prompt, FILE *fp) {
 	return realloc(str, sizeof(char)*len);
 }
 
-atom env_create(atom parent, size_t capacity)
+atom env_create(atom parent)
+{
+	return cons(parent, make_table(4));
+}
+
+atom env_create_cap(atom parent, size_t capacity)
 {
 	return cons(parent, make_table(capacity));
 }
@@ -849,24 +854,15 @@ atom copy_list(atom list)
 }
 
 error destructuring_bind(atom arg_name, atom val, int val_unspecified, atom env) {
-	if (no(arg_name)) {
-		if (no(val))
-			return ERROR_OK;
-		else {
-			return ERROR_ARGS;
-		}
-	}
-	else if (arg_name.type == T_SYM) {		
-		return env_assign(env, arg_name.value.symbol, val);		
-	}
-	else if (arg_name.type == T_CONS) {
+	switch (arg_name.type) {
+	case T_SYM:
+		return env_assign(env, arg_name.value.symbol, val);
+	case T_CONS:
 		if (is(car(arg_name), sym_o)) { /* (o ARG [DEFAULT]) */
 			if (val_unspecified) { /* missing argument */
 				if (!no(cdr(cdr(arg_name)))) {
 					error err = eval_expr(car(cdr(cdr(arg_name))), env, &val);
-					if (err) {
-						return err;
-					}
+					if (err) return err;
 				}
 			}
 			return env_assign(env, car(cdr(arg_name)).value.symbol, val);
@@ -876,13 +872,15 @@ error destructuring_bind(atom arg_name, atom val, int val_unspecified, atom env)
 				return ERROR_ARGS;
 			}
 			error err = destructuring_bind(car(arg_name), car(val), 0, env);
-			if (err) {
-				return err;
-			}
+			if (err) return err;
 			return destructuring_bind(cdr(arg_name), cdr(val), no(cdr(val)), env);
 		}
-	}
-	else {
+	case T_NIL:
+		if (no(val))
+			return ERROR_OK;
+		else
+			return ERROR_ARGS;
+	default:
 		return ERROR_ARGS;
 	}
 }
@@ -925,7 +923,7 @@ error apply(atom fn, struct vector *vargs, atom *result)
 		return (*fn.value.builtin)(vargs, result);
 	else if (fn.type == T_CLOSURE) {		
 		atom arg_names = car(cdr(fn));
-		atom env = env_create(car(fn), len(arg_names));
+		atom env = env_create(car(fn));
 		atom body = cdr(cdr(fn));
 
 		error err = env_bind(env, arg_names, vargs);
@@ -2650,7 +2648,7 @@ start_eval:
 		/* tail call optimization of err = apply(fn, args, result); */
 		if (fn.type == T_CLOSURE) {
 			atom arg_names = car(cdr(fn));
-			env = env_create(car(fn), len(arg_names));
+			env = env_create(car(fn));
 			expr = cdr(cdr(fn));
 
 			/* Bind the arguments */
@@ -2675,7 +2673,7 @@ void arc_init(char *file_path) {
 	rl_bind_key('\t', rl_insert); /* prevent tab completion */
 #endif
 	srand((unsigned int)time(0));
-	env = env_create(nil, 500);
+	env = env_create_cap(nil, 500);
 
 	symbol_capacity = 500;
 	symbol_table = malloc(symbol_capacity * sizeof(char *));
