@@ -2489,6 +2489,8 @@ error eval_expr(atom expr, atom env, atom *result)
 	error err;
 	int ss = stack_size; /* save stack point */
 start_eval:
+	stack_add(expr);
+	stack_add(env);
 	consider_gc();
 	cur_expr = expr; /* for error reporting */
 	if (expr.type == T_SYM) {
@@ -2657,6 +2659,7 @@ start_eval:
 				return err;
 			}
 			vector_free(&vargs);
+			stack_restore(ss);
 			goto start_eval;
 		}
 		else {
