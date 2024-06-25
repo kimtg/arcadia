@@ -17,7 +17,7 @@ const atom nil = { T_NIL };
 atom env; /* the global environment */
 /* symbols for faster execution */
 atom sym_t, sym_quote, sym_quasiquote, sym_unquote, sym_unquote_splicing, sym_assign, sym_fn, sym_if, sym_mac, sym_apply, sym_cons, sym_sym, sym_string, sym_num, sym__, sym_o, sym_table, sym_int, sym_char, sym_do;
-atom cur_expr;
+atom err_expr;
 atom thrown;
 
 /* Be sure to free after use */
@@ -1930,7 +1930,7 @@ error builtin_flushout(struct vector *vargs, atom *result) {
 
 error builtin_err(struct vector *vargs, atom *result) {
 	if (vargs->size == 0) return ERROR_ARGS;
-	cur_expr = nil;
+	err_expr = nil;
 	size_t i;
 	for (i = 0; i < vargs->size; i++) {
 		char *s = to_string(vargs->data[i], 0);
@@ -2360,8 +2360,6 @@ char *slurp(const char *path)
 error macex(atom expr, atom *result) {
 	error err = ERROR_OK;
 
-	cur_expr = expr; /* for error reporting */
-
 	if (expr.type != T_CONS || !listp(expr)) {
 		*result = expr;
 		return ERROR_OK;
@@ -2492,7 +2490,6 @@ start_eval:
 	stack_add(expr);
 	stack_add(env);
 	consider_gc();
-	cur_expr = expr; /* for error reporting */
 	if (expr.type == T_SYM) {
 		err = env_get(env, expr.value.symbol, result);
 		return err;
@@ -2787,8 +2784,8 @@ char *get_dir_path(char *file_path) {
 
 void print_error(error e) {
 	if (e != ERROR_USER) {
-		printf("%s : ", error_string[e]);
-		print_expr(cur_expr);
+		printf("%s: ", error_string[e]);
+		print_expr(err_expr);
 		puts("");
 	}
 }
