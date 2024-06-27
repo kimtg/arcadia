@@ -2450,11 +2450,13 @@ error load_string(const char *text) {
 		}
 		err = read_expr(p, &p, &expr);
 		if (err) {
+			err_expr = expr;
 			break;
 		}
 		atom result;
 		err = macex_eval(expr, &result);
 		if (err) {
+			err_expr = expr;
 			break;
 		}
 		/*else {
@@ -2492,6 +2494,7 @@ start_eval:
 	consider_gc();
 	if (expr.type == T_SYM) {
 		err = env_get(env, expr.value.symbol, result);
+		err_expr = expr;
 		return err;
 	}
 	else if (expr.type != T_CONS) {
