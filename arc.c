@@ -1670,14 +1670,21 @@ error builtin_bound(struct vector *vargs, atom *result) {
 }
 
 error builtin_infile(struct vector *vargs, atom *result) {
-	if (vargs->size == 1) {
-		atom a = vargs->data[0];
-		if (a.type != T_STRING) return ERROR_TYPE;
-		FILE *fp = fopen(a.value.str->value, "r");
-		*result = make_input(fp);
-		return ERROR_OK;
+	char* mode = "rb";
+	if (vargs->size == 2) {
+		if (vargs->data[1].type != T_SYM) return ERROR_TYPE;
+		if (strcmp(vargs->data[1].value.symbol, "text") == 0) {
+			mode = "r";
+		}
+	} else if (vargs->size == 1) {
+		/* pass */
 	}
 	else return ERROR_ARGS;
+	atom a = vargs->data[0];
+	if (a.type != T_STRING) return ERROR_TYPE;
+	FILE* fp = fopen(a.value.str->value, mode);
+	*result = make_input(fp);
+	return ERROR_OK;
 }
 
 error builtin_outfile(struct vector *vargs, atom *result) {
