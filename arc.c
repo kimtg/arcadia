@@ -1683,6 +1683,7 @@ error builtin_infile(struct vector *vargs, atom *result) {
 	atom a = vargs->data[0];
 	if (a.type != T_STRING) return ERROR_TYPE;
 	FILE* fp = fopen(a.value.str->value, mode);
+	if (!fp) return ERROR_FILE;
 	*result = make_input(fp);
 	return ERROR_OK;
 }
