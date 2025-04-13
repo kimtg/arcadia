@@ -1677,9 +1677,7 @@ error builtin_infile(struct vector *vargs, atom *result) {
 			mode = "r";
 		}
 	} else if (vargs->size == 1) {
-		/* pass */
-	}
-	else return ERROR_ARGS;
+	} else return ERROR_ARGS;
 	atom a = vargs->data[0];
 	if (a.type != T_STRING) return ERROR_TYPE;
 	FILE* fp = fopen(a.value.str->value, mode);
@@ -1688,15 +1686,19 @@ error builtin_infile(struct vector *vargs, atom *result) {
 	return ERROR_OK;
 }
 
+/* outfile filename ['append]
+   Opens the specified path for writing. By default, the file is truncated if it already exists. Returns an output - port. Arc supports only 'text mode for outfile. */
 error builtin_outfile(struct vector *vargs, atom *result) {
-	if (vargs->size == 1) {
-		atom a = vargs->data[0];
-		if (a.type != T_STRING) return ERROR_TYPE;
-		FILE *fp = fopen(a.value.str->value, "w");
-		*result = make_output(fp);
-		return ERROR_OK;
-	}
-	else return ERROR_ARGS;
+	char* mode = "w";
+	if (vargs->size == 2) {
+		mode = "a";
+	} else if (vargs->size == 1) {
+	} else return ERROR_ARGS;
+	atom a = vargs->data[0];
+	if (a.type != T_STRING) return ERROR_TYPE;
+	FILE* fp = fopen(a.value.str->value, mode);
+	*result = make_output(fp);
+	return ERROR_OK;
 }
 
 /* close port ... */
@@ -1768,10 +1770,8 @@ error builtin_write(struct vector *vargs, atom *result) {
 		return ERROR_ARGS;
 	}
 	atom a = vargs->data[0];
-	if (a.type == T_STRING) fputc('"', fp);
 	char *s = to_string(a, 1);
 	fprintf(fp, "%s", s);
-	if (a.type == T_STRING) fputc('"', fp);
 	free(s);
 	*result = nil;
 	return ERROR_OK;
@@ -2202,8 +2202,6 @@ size_t hash_code(atom a) {
 		}
 		return r; }
 	case T_NUM:
-		//return (size_t)(void *)a.value.symbol;
-		//return (size_t)a.value.number;
 		return (size_t)((void*)a.value.symbol) + (size_t)a.value.number;
 	case T_BUILTIN:
 		return (size_t)a.value.builtin;
