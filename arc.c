@@ -2598,6 +2598,7 @@ start_eval:
 					}
 					args = cdr(args);
 				}
+				*result = nil;
 				return ERROR_OK;
 			}
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
