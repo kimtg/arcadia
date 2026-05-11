@@ -2212,7 +2212,7 @@ size_t hash_code(atom a) {
 	case T_INPUT:
 	case T_INPUT_PIPE:
 	case T_OUTPUT:
-		return (size_t)a.value.fp / sizeof(*a.value.fp);
+		return (size_t)a.value.fp / sizeof(void*); /* discard the lowest bits of the pointer, which are always 0 anyway due to the pointer alignment */
 	default:
 		return 0;
 	}
