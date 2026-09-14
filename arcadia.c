@@ -1,5 +1,5 @@
 #include "arc.h"
-#define VERSION "0.44"
+#define VERSION "0.45"
 
 void print_logo() {
 	printf("Arcadia %s\n", VERSION);
@@ -9,6 +9,7 @@ void repl() {
 	struct string input;
 
 	while ((input.str = readline("> ")) != NULL) {
+		int ss = stack_size;
 		input.cap = (input.len = strlen(input.str)) + 1;
 	read_start:;
 
@@ -53,6 +54,7 @@ void repl() {
 		} else {
 			print_error(err);
 		}
+		stack_restore(ss);
 		free(input.str);
 	}
 }

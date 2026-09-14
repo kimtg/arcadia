@@ -137,6 +137,9 @@ int table_set(struct table *tbl, atom k, atom v);
 int table_set_sym(struct table *tbl, char *k, atom v);
 void consider_gc();
 atom cons(atom car_val, atom cdr_val);
+extern size_t stack_size;
+void stack_restore(int saved_size);
+void stack_add(atom a);
 /* end forward */
 
 #define car(p) ((p).value.pair->car)

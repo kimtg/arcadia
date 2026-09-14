@@ -91,17 +91,13 @@ void stack_restore(int saved_size) {
 	/* if there is waste of memory, realloc */
 	if (stack_size < stack_capacity / 4) {
 		stack_capacity = stack_size * 2;
+		if (stack_capacity < 8) stack_capacity = 8;
 		stack = realloc(stack, stack_capacity * sizeof(atom));
 	}
 }
 
 void stack_restore_add(int saved_size, atom a) {
-	stack_size = saved_size;
-	/* if there is waste of memory, realloc */
-	if (stack_size < stack_capacity / 4) {
-		stack_capacity = stack_size * 2;
-		stack = realloc(stack, stack_capacity * sizeof(atom));
-	}
+	stack_restore(saved_size);
 	stack_add(a);
 }
 
@@ -180,6 +176,11 @@ void gc()
 	struct pair *a, **p;
 	struct str *as, **ps;
 	struct table *at, **pt;
+
+	/* mark globals */
+	gc_mark(env);
+	gc_mark(err_expr);
+	gc_mark(thrown);
 
 	/* mark atoms in the stack */
 	size_t i;
@@ -2372,6 +2373,7 @@ error macex(atom expr, atom *result) {
 	}
 	else {
 		int ss = stack_size; /* save stack point */
+		stack_add(expr);
 		atom op = car(expr);
 
 		/* Handle quote */
@@ -2454,13 +2456,16 @@ error load_string(const char *text) {
 			p += strcspn(p, "\n");
 			continue;
 		}
+		int ss = stack_size;
 		err = read_expr(p, &p, &expr);
 		if (err) {
 			err_expr = expr;
+			stack_restore(ss);
 			break;
 		}
 		atom result;
 		err = macex_eval(expr, &result);
+		stack_restore(ss);
 		if (err) {
 			err_expr = expr;
 			break;
@@ -2501,10 +2506,16 @@ start_eval:
 	if (expr.type == T_SYM) {
 		err = env_get(env, expr.value.symbol, result);
 		err_expr = expr;
-		return err;
+		if (err) {
+			stack_restore(ss);
+			return err;
+		}
+		stack_restore_add(ss, *result);
+		return ERROR_OK;
 	}
 	else if (expr.type != T_CONS) {
 		*result = expr;
+		stack_restore_add(ss, *result);
 		return ERROR_OK;
 	}
 	else {
@@ -2520,6 +2531,7 @@ start_eval:
 					if (no(cdr(*p))) { /* else */
 						/* tail call optimization of else part */
 						expr = car(*p);
+						stack_restore(ss);
 						goto start_eval;
 					}
 					err = eval_expr(car(*p), env, &cond);
@@ -2530,6 +2542,7 @@ start_eval:
 					if (!no(cond)) { /* then */
 						/* tail call optimization of err = eval_expr(car(cdr(*p)), env, result); */
 						expr = car(cdr(*p));
+						stack_restore(ss);
 						goto start_eval;
 					}
 					p = &cdr(cdr(*p));
@@ -2594,11 +2607,13 @@ start_eval:
 					}
 					error err = eval_expr(car(args), env, result);
 					if (err) {
+						stack_restore(ss);
 						return err;
 					}
 					args = cdr(args);
 				}
 				*result = nil;
+				stack_restore_add(ss, *result);
 				return ERROR_OK;
 			}
 			else if (op.value.symbol == sym_mac.value.symbol) { /* (mac name (arg ...) body) */
@@ -2663,6 +2678,8 @@ start_eval:
 			/* Bind the arguments */
 			err = env_bind(env, arg_names, &vargs);
 			if (err) {
+				vector_free(&vargs);
+				stack_restore(ss);
 				return err;
 			}
 			vector_free(&vargs);

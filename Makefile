@@ -1,3 +1,4 @@
+CC=gcc
 BIN=arcadia
 CFLAGS=-Wall -O3 -c
 LDFLAGS=-s -lm
@@ -9,7 +10,6 @@ readline: CFLAGS+=-DREADLINE
 readline: LDFLAGS+=-lreadline
 readline: $(BIN)
 
-mingw: CC=mingw32-gcc
 mingw: arcadia.o arc.o ico.o
 	$(CC) -o $(BIN) arcadia.o arc.o ico.o $(LDFLAGS)
 
