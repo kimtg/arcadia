@@ -46,6 +46,13 @@ typedef enum {
   ERROR_OK = 0, ERROR_SYNTAX, ERROR_UNBOUND, ERROR_ARGS, ERROR_TYPE, ERROR_FILE, ERROR_USER
 } error;
 
+struct continuation {
+	jmp_buf jb;
+	int is_active;
+	int mark;
+	struct continuation *next;
+};
+
 typedef struct atom atom;
 struct vector;
 typedef error(*builtin)(struct vector *vargs, atom *result);
@@ -62,7 +69,7 @@ struct atom {
 		FILE *fp;
 		struct table *table;
 		char ch;
-		jmp_buf *jb;
+		struct continuation *cont;
 	} value;
 };
 

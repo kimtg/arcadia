@@ -8,6 +8,7 @@ atom *stack = NULL;
 struct pair *pair_head = NULL;
 struct str *str_head = NULL;
 struct table *table_head = NULL;
+struct continuation *cont_head = NULL;
 size_t alloc_count = 0;
 size_t alloc_count_old = 0;
 char **symbol_table = NULL;
@@ -166,6 +167,10 @@ start:
 			}
 		}
 		break; }
+	case T_CONTINUATION:
+		if (root.value.cont->mark) return;
+		root.value.cont->mark = 1;
+		break;
 	default:
 		return;
 	}
@@ -176,6 +181,7 @@ void gc()
 	struct pair *a, **p;
 	struct str *as, **ps;
 	struct table *at, **pt;
+	struct continuation *ac, **pc;
 
 	/* mark globals */
 	gc_mark(global_env);
@@ -242,6 +248,20 @@ void gc()
 			pt = &at->next;
 			at->mark = 0; /* clear mark */
 			alloc_count_old++;
+		}
+	}
+
+	/* Free unmarked "continuation" allocations */
+	pc = &cont_head;
+	while (*pc != NULL) {
+		ac = *pc;
+		if (!ac->mark) {
+			*pc = ac->next;
+			free(ac);
+		}
+		else {
+			pc = &ac->next;
+			ac->mark = 0; /* clear mark */
 		}
 	}
 	alloc_count = alloc_count_old;
@@ -403,7 +423,10 @@ start:
 		str++;
 		while (1) {
 			if (*str == 0) return ERROR_FILE; /* string not terminated */
-			if (*str == '\\') str++;
+			if (*str == '\\') {
+				str++;
+				if (*str == 0) return ERROR_FILE; /* string not terminated */
+			}
 			else if (*str == '"') {
 				break;
 			}
@@ -421,8 +444,9 @@ start:
 	return ERROR_OK;
 }
 
-error parse_simple(const char *start, const char *end, atom *result)
+error parse_simple_internal(const char *start, const char *end, atom *result, int depth)
 {
+	if (depth > 256) return ERROR_SYNTAX;
 	char *p;
 
 	/* Is it a number? */
@@ -518,12 +542,12 @@ error parse_simple(const char *start, const char *end, atom *result)
 					return ERROR_SYNTAX;
 				}
 				error err;
-				err = parse_simple(buf, buf + i, &a1);
+				err = parse_simple_internal(buf, buf + i, &a1, depth + 1);
 				if (err) {
 					free(buf);
 					return ERROR_SYNTAX;
 				}
-				err = parse_simple(buf + i + 1, buf + length, &a2);
+				err = parse_simple_internal(buf + i + 1, buf + length, &a2, depth + 1);
 				if (err) {
 					free(buf);
 					return ERROR_SYNTAX;
@@ -538,12 +562,12 @@ error parse_simple(const char *start, const char *end, atom *result)
 					return ERROR_SYNTAX;
 				}
 				error err;
-				err = parse_simple(buf, buf + i, &a1);
+				err = parse_simple_internal(buf, buf + i, &a1, depth + 1);
 				if (err) {
 					free(buf);
 					return ERROR_SYNTAX;
 				}
-				err = parse_simple(buf + i + 1, buf + length, &a2);
+				err = parse_simple_internal(buf + i + 1, buf + length, &a2, depth + 1);
 				if (err) {
 					free(buf);
 					return ERROR_SYNTAX;
@@ -558,12 +582,12 @@ error parse_simple(const char *start, const char *end, atom *result)
 					return ERROR_SYNTAX;
 				}
 				error err;
-				err = parse_simple(buf, buf + i, &a1);
+				err = parse_simple_internal(buf, buf + i, &a1, depth + 1);
 				if (err) {
 					free(buf);
 					return ERROR_SYNTAX;
 				}
-				err = parse_simple(buf + i + 1, buf + length, &a2);
+				err = parse_simple_internal(buf + i + 1, buf + length, &a2, depth + 1);
 				if (err) {
 					free(buf);
 					return ERROR_SYNTAX;
@@ -575,7 +599,7 @@ error parse_simple(const char *start, const char *end, atom *result)
 		}
 		if (length >= 2 && buf[0] == '~') { /* ~a => (complement a) */
 			atom a1;
-			error err = parse_simple(buf + 1, buf + length, &a1);
+			error err = parse_simple_internal(buf + 1, buf + length, &a1, depth + 1);
 			free(buf);
 			if (err) {
 				return ERROR_SYNTAX;
@@ -588,6 +612,11 @@ error parse_simple(const char *start, const char *end, atom *result)
 
 	free(buf);
 	return ERROR_OK;
+}
+
+error parse_simple(const char *start, const char *end, atom *result)
+{
+	return parse_simple_internal(start, end, result, 0);
 }
 
 error read_list(const char *start, const char **end, atom *result)
@@ -941,12 +970,24 @@ error apply(atom fn, struct vector *vargs, atom *result)
 	}
 	else if (fn.type == T_CONTINUATION) {
 		if (vargs->size != 1) return ERROR_ARGS;
+		struct continuation *c = fn.value.cont;
+		if (!c || !c->is_active) {
+			return ERROR_USER;
+		}
 		thrown = vargs->data[0];
-		longjmp(*fn.value.jb, 1);
+		longjmp(c->jb, 1);
 	}
 	else if (fn.type == T_STRING) { /* implicit indexing for string */
 		if (vargs->size != 1) return ERROR_ARGS;
-		size_t index = (size_t)(vargs->data[0]).value.number;
+		if (vargs->data[0].type != T_NUM) return ERROR_TYPE;
+		double num = vargs->data[0].value.number;
+		if (num < 0) return ERROR_ARGS;
+		size_t index = (size_t)num;
+		size_t slen = strlen(fn.value.str->value);
+		if (index >= slen) {
+			*result = nil;
+			return ERROR_OK;
+		}
 		*result = make_char(fn.value.str->value[index]);
 		return ERROR_OK;
 	}
@@ -1242,24 +1283,30 @@ int is(atom a, atom b) {
 		case T_OUTPUT:
 			return a.value.fp == b.value.fp;
 		case T_CONTINUATION:
-			return a.value.jb == b.value.jb;
+			return a.value.cont == b.value.cont;
+		}
+	}
+	return 0;
+}
+
+static int iso_internal(atom a, atom b, int depth) {
+	if (depth > 1000) return 0;
+	if (a.type == b.type) {
+		switch (a.type) {
+		case T_CONS:
+		case T_CLOSURE:
+		case T_MACRO:
+			return iso_internal(a.value.pair->car, b.value.pair->car, depth + 1) &&
+			       iso_internal(a.value.pair->cdr, b.value.pair->cdr, depth + 1);
+		default:
+			return is(a, b);
 		}
 	}
 	return 0;
 }
 
 int iso(atom a, atom b) {
-	if (a.type == b.type) {
-		switch (a.type) {
-		case T_CONS:
-		case T_CLOSURE:
-		case T_MACRO:
-			return iso(a.value.pair->car, b.value.pair->car) && iso(a.value.pair->cdr, b.value.pair->cdr);
-		default:
-			return is(a, b);
-		}
-	}
-	return 0;
+	return iso_internal(a, b, 0);
 }
 
 error builtin_is(struct vector *vargs, atom *result)
@@ -1347,23 +1394,35 @@ error builtin_sref(struct vector *vargs, atom *result) {
 	value = vargs->data[1];
 	index = vargs->data[2];
 	switch (obj.type) {
-	case T_CONS:
-	  for (i=0; i<(size_t)index.value.number; i++) {
-	    obj = cdr(obj);
-	  }
-	  car(obj) = value;
-	  *result = value;
-	  return ERROR_OK;
-	case T_STRING:
-	  obj.value.str->value[(long)index.value.number] = (char)value.value.ch;
-	  *result = value;
-	  return ERROR_OK;
+	case T_CONS: {
+		if (index.type != T_NUM || index.value.number < 0) return ERROR_TYPE;
+		size_t n = (size_t)index.value.number;
+		for (i = 0; i < n; i++) {
+			obj = cdr(obj);
+			if (no(obj) || obj.type != T_CONS) return ERROR_ARGS;
+		}
+		if (no(obj) || obj.type != T_CONS) return ERROR_ARGS;
+		car(obj) = value;
+		*result = value;
+		return ERROR_OK;
+	}
+	case T_STRING: {
+		if (index.type != T_NUM || value.type != T_CHAR) return ERROR_TYPE;
+		double num = index.value.number;
+		if (num < 0) return ERROR_ARGS;
+		size_t idx = (size_t)num;
+		size_t slen = strlen(obj.value.str->value);
+		if (idx >= slen) return ERROR_ARGS;
+		obj.value.str->value[idx] = (char)value.value.ch;
+		*result = value;
+		return ERROR_OK;
+	}
 	case T_TABLE:
-	  table_set(obj.value.table, index, value);
-	  *result = value;
-	  return ERROR_OK;
+		table_set(obj.value.table, index, value);
+		*result = value;
+		return ERROR_OK;
 	default:
-	  return ERROR_TYPE;
+		return ERROR_TYPE;
 	}
 }
 
@@ -1698,6 +1757,7 @@ error builtin_outfile(struct vector *vargs, atom *result) {
 	atom a = vargs->data[0];
 	if (a.type != T_STRING) return ERROR_TYPE;
 	FILE* fp = fopen(a.value.str->value, mode);
+	if (!fp) return ERROR_FILE;
 	*result = make_output(fp);
 	return ERROR_OK;
 }
@@ -1740,6 +1800,7 @@ error builtin_readb(struct vector *vargs, atom *result) {
 /* sread input-port eof */
 error builtin_sread(struct vector *vargs, atom *result) {
 	if (vargs->size != 2) return ERROR_ARGS;
+	if (vargs->data[0].type != T_INPUT && vargs->data[0].type != T_INPUT_PIPE) return ERROR_TYPE;
 	FILE *fp = vargs->data[0].value.fp;
 	atom eof = vargs->data[1];
 	error err;
@@ -1748,8 +1809,13 @@ error builtin_sread(struct vector *vargs, atom *result) {
 		return ERROR_OK;
 	}
 	char *s = slurp_fp(fp);
+	if (!s) {
+		*result = eof;
+		return ERROR_OK;
+	}
 	const char *p = s;
 	err = read_expr(p, &p, result);
+	free(s);
 	return err;
 }
 
@@ -1781,19 +1847,20 @@ error builtin_write(struct vector *vargs, atom *result) {
 /* newstring length [char] */
 error builtin_newstring(struct vector *vargs, atom *result) {
 	long arg_len = vargs->size;
-	long length = (long)vargs->data[0].value.number;
+	if (arg_len < 1 || arg_len > 2) return ERROR_ARGS;
+	if (vargs->data[0].type != T_NUM) return ERROR_TYPE;
+	double num = vargs->data[0].value.number;
+	if (num < 0) return ERROR_ARGS;
+	long length = (long)num;
 	char c = 0;
 	char *s;
-	switch (arg_len) {
-	case 1: break;
-	case 2:
+	if (arg_len == 2) {
+		if (vargs->data[1].type != T_CHAR) return ERROR_TYPE;
 		c = vargs->data[1].value.ch;
-		break;
-	default:
-		return ERROR_ARGS;
 	}
 	s = malloc((length + 1) * sizeof(char));
-	int i;
+	if (!s) return ERROR_USER;
+	long i;
 	for (i = 0; i < length; i++)
 		s[i] = c;
 	s[length] = 0; /* end of string */
@@ -1815,18 +1882,37 @@ error builtin_maptable(struct vector *vargs, atom *result) {
 	atom proc = vargs->data[0];
 	atom tbl = vargs->data[1];
 	if (tbl.type != T_TABLE) return ERROR_TYPE;
+
+	int ss = stack_size;
+	struct vector snapshot;
+	vector_new(&snapshot);
 	size_t i;
 	for (i = 0; i < tbl.value.table->capacity; i++) {
 		struct table_entry *p = tbl.value.table->data[i];
 		while (p) {
-			vector_clear(vargs);
-			vector_add(vargs, p->k);
-			vector_add(vargs, p->v);
-			error err = apply(proc, vargs, result);
-			if (err) return err;
+			vector_add(&snapshot, p->k);
+			vector_add(&snapshot, p->v);
+			stack_add(p->k);
+			stack_add(p->v);
 			p = p->next;
 		}
 	}
+
+	for (i = 0; i < snapshot.size; i += 2) {
+		atom k = snapshot.data[i];
+		atom v = snapshot.data[i + 1];
+		vector_clear(vargs);
+		vector_add(vargs, k);
+		vector_add(vargs, v);
+		error err = apply(proc, vargs, result);
+		if (err) {
+			vector_free(&snapshot);
+			stack_restore(ss);
+			return err;
+		}
+	}
+	vector_free(&snapshot);
+	stack_restore(ss);
 	*result = tbl;
 	return ERROR_OK;
 }
@@ -1964,10 +2050,16 @@ error builtin_len(struct vector *vargs, atom *result) {
 	return ERROR_OK;
 }
 
-atom make_continuation(jmp_buf *jb) {
+atom make_continuation() {
 	atom a;
+	struct continuation *c = malloc(sizeof(struct continuation));
+	c->is_active = 1;
+	c->mark = 0;
+	c->next = cont_head;
+	cont_head = c;
+
 	a.type = T_CONTINUATION;
-	a.value.jb = jb;
+	a.value.cont = c;
 	return a;
 }
 
@@ -1975,15 +2067,21 @@ error builtin_ccc(struct vector *vargs, atom *result) {
 	if (vargs->size != 1) return ERROR_ARGS;
 	atom a = vargs->data[0];
 	if (a.type != T_BUILTIN && a.type != T_CLOSURE) return ERROR_TYPE;
-	jmp_buf jb;
-	int val = setjmp(jb);
+
+	atom cont_atom = make_continuation();
+	struct continuation *c = cont_atom.value.cont;
+
+	int val = setjmp(c->jb);
 	if (val) {
 		*result = thrown;
+		c->is_active = 0;
 		return ERROR_OK;
 	}
 	vector_clear(vargs);
-	vector_add(vargs, make_continuation(&jb));
-	return apply(a, vargs, result);
+	vector_add(vargs, cont_atom);
+	error err = apply(a, vargs, result);
+	c->is_active = 0;
+	return err;
 }
 
 /* pipe-from command
@@ -2022,7 +2120,12 @@ void string_cat(struct string* dst, char* src) {
 	dst->len = len;
 }
 
-char *to_string(atom a, int write) {
+char *to_string_internal(atom a, int write, int depth) {
+	if (depth > 500) {
+		char *dots = malloc(4);
+		if (dots) strcpy(dots, "...");
+		return dots;
+	}
 	struct string s;
 	string_new(&s);
 
@@ -2034,45 +2137,45 @@ char *to_string(atom a, int write) {
 	case T_CONS:
 		if (listp(a) && len(a) == 2 && is(car(a), sym_quote)) {
 			string_cat(&s, "'");
-			char *s2 = to_string(car(cdr(a)), write);
+			char *s2 = to_string_internal(car(cdr(a)), write, depth + 1);
 			string_cat(&s, s2);
 			free(s2);
 		}
 		else if (listp(a) && len(a) == 2 && is(car(a), sym_quasiquote)) {
 			string_cat(&s, "`");
-			char *s2 = to_string(car(cdr(a)), write);
+			char *s2 = to_string_internal(car(cdr(a)), write, depth + 1);
 			string_cat(&s, s2);
 			free(s2);
 		}
 		else if (listp(a) && len(a) == 2 && is(car(a), sym_unquote)) {
 			string_cat(&s, ",");
-			char *s2 = to_string(car(cdr(a)), write);
+			char *s2 = to_string_internal(car(cdr(a)), write, depth + 1);
 			string_cat(&s, s2);
 			free(s2);
 		}
 		else if (listp(a) && len(a) == 2 && is(car(a), sym_unquote_splicing)) {
 			string_cat(&s, ",@");
-			char *s2 = to_string(car(cdr(a)), write);
+			char *s2 = to_string_internal(car(cdr(a)), write, depth + 1);
 			string_cat(&s, s2);
 			free(s2);
 		}
 		else {
 			string_cat(&s, "(");
-			char *s2 = to_string(car(a), write);
+			char *s2 = to_string_internal(car(a), write, depth + 1);
 			string_cat(&s, s2);
 			free(s2);
 			a = cdr(a);
 			while (!no(a)) {
 				if (a.type == T_CONS) {
 					string_cat(&s, " ");
-					s2 = to_string(car(a), write);
+					s2 = to_string_internal(car(a), write, depth + 1);
 					string_cat(&s, s2);
 					free(s2);
 					a = cdr(a);
 				}
 				else {
 					string_cat(&s, " . ");
-					s2 = to_string(a, write);
+					s2 = to_string_internal(a, write, depth + 1);
 					string_cat(&s, s2);
 					free(s2);
 					break;
@@ -2100,14 +2203,14 @@ char *to_string(atom a, int write) {
 	case T_CLOSURE:
 	{
 		atom a2 = cons(sym_fn, cdr(a));
-		char *s2 = to_string(a2, write);
+		char *s2 = to_string_internal(a2, write, depth + 1);
 		string_cat(&s, s2);
 		free(s2);
 		break;
 	}
 	case T_MACRO:
 		string_cat(&s, "#<macro:");
-		char *s2 = to_string(cdr(a), write);
+		char *s2 = to_string_internal(cdr(a), write, depth + 1);
 		string_cat(&s, s2);
 		free(s2);
 		string_cat(&s, ">");
@@ -2127,12 +2230,12 @@ char *to_string(atom a, int write) {
 		for (i = 0; i < a.value.table->capacity; i++) {
 			struct table_entry *p = a.value.table->data[i];
 			while (p) {
-				char *s2 = to_string(p->k, write);
+				char *s2 = to_string_internal(p->k, write, depth + 1);
 				string_cat(&s, " ");
 				string_cat(&s, s2);
 				free(s2);
 				string_cat(&s, ":");
-				s2 = to_string(p->v, write);
+				s2 = to_string_internal(p->v, write, depth + 1);
 				string_cat(&s, s2);
 				free(s2);
 				p = p->next;
@@ -2169,6 +2272,10 @@ char *to_string(atom a, int write) {
 	}
 	s.str = realloc(s.str, s.len + 1);
 	return s.str;
+}
+
+char *to_string(atom a, int write) {
+	return to_string_internal(a, write, 0);
 }
 
 size_t hash_code_sym(char *s) {
@@ -2214,6 +2321,8 @@ size_t hash_code(atom a) {
 	case T_INPUT_PIPE:
 	case T_OUTPUT:
 		return (size_t)a.value.fp / sizeof(void*); /* discard the lowest bits of the pointer, which are always 0 anyway due to the pointer alignment */
+	case T_CONTINUATION:
+		return (size_t)a.value.cont / sizeof(void*);
 	default:
 		return 0;
 	}
@@ -2345,8 +2454,12 @@ char *slurp_fp(FILE *fp) {
 	if (!buf)
 		return NULL;
 
-	if (fread(buf, 1, len, fp) != len) return NULL;
-	buf[len] = 0;
+	size_t read_bytes = fread(buf, 1, len, fp);
+	if (read_bytes != (size_t)len && ferror(fp)) {
+		free(buf);
+		return NULL;
+	}
+	buf[read_bytes] = 0;
 
 	return buf;
 }
