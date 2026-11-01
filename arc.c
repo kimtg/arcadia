@@ -2279,7 +2279,7 @@ char *to_string(atom a, int write) {
 }
 
 size_t hash_code_sym(char *s) {
-	return (size_t)s / sizeof(s) / 2;
+	return (size_t)s / sizeof(s);
 }
 
 size_t hash_code(atom a) {
@@ -2323,6 +2323,8 @@ size_t hash_code(atom a) {
 		return (size_t)a.value.fp / sizeof(void*); /* discard the lowest bits of the pointer, which are always 0 anyway due to the pointer alignment */
 	case T_CONTINUATION:
 		return (size_t)a.value.cont / sizeof(void*);
+	case T_CHAR:
+		return (size_t) a.value.ch;
 	default:
 		return 0;
 	}
