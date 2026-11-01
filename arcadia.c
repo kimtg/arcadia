@@ -1,5 +1,5 @@
 #include "arc.h"
-#define VERSION "0.47"
+#define VERSION "0.48"
 
 void print_logo() {
 	printf("Arcadia %s\n", VERSION);

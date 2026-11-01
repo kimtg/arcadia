@@ -75,16 +75,17 @@ void stack_add(atom a) {
 	case T_MACRO:
 	case T_STRING:
 	case T_TABLE:
-		break;
+	case T_CONTINUATION:
+		stack_size++;
+		if (stack_size > stack_capacity) {
+			stack_capacity = stack_size * 2;
+			stack = realloc(stack, stack_capacity * sizeof(atom));
+		}
+		stack[stack_size - 1] = a;
+		return;
 	default:
 		return;
 	}
-	stack_size++;
-	if (stack_size > stack_capacity) {
-		stack_capacity = stack_size * 2;
-		stack = realloc(stack, stack_capacity * sizeof(atom));
-	}
-	stack[stack_size - 1] = a;
 }
 
 void stack_restore(int saved_size) {
