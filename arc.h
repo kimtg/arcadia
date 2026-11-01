@@ -93,13 +93,13 @@ struct str {
 
 struct table_entry {
 	struct atom k, v;
-	struct table_entry *next;
+	char occupied;
 };
 
 struct table {
 	size_t capacity;
 	size_t size;
-	struct table_entry **data;
+	struct table_entry *data;
 	char mark;
 	struct table *next;
 };

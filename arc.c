@@ -160,11 +160,10 @@ start:
 		at->mark = 1;
 		size_t i;
 		for (i = 0; i < at->capacity; i++) {
-			struct table_entry *e = at->data[i];
-			while (e) {
+			struct table_entry *e = &at->data[i];
+			if (e->occupied) {
 				gc_mark(e->k);
 				gc_mark(e->v);
-				e = e->next;
 			}
 		}
 		break; }
@@ -233,15 +232,6 @@ void gc()
 		at = *pt;
 		if (!at->mark) {
 			*pt = at->next;
-			size_t i;
-			for (i = 0; i < at->capacity; i++) {
-				struct table_entry *e = at->data[i];
-				while (e) {
-					struct table_entry *next = e->next;
-					free(e);
-					e = next;
-				}
-			}
 			free(at->data);
 			free(at);
 		}
@@ -790,7 +780,7 @@ char *readline_fp(char *prompt, FILE *fp) {
 
 atom env_create(atom parent)
 {
-	return cons(parent, make_table(4));
+	return cons(parent, make_table(8));
 }
 
 atom env_create_cap(atom parent, size_t capacity)
@@ -1889,13 +1879,12 @@ error builtin_maptable(struct vector *vargs, atom *result) {
 	vector_new(&snapshot);
 	size_t i;
 	for (i = 0; i < tbl.value.table->capacity; i++) {
-		struct table_entry *p = tbl.value.table->data[i];
-		while (p) {
+		struct table_entry *p = &tbl.value.table->data[i];
+		if (p->occupied) {
 			vector_add(&snapshot, p->k);
 			vector_add(&snapshot, p->v);
 			stack_add(p->k);
 			stack_add(p->v);
-			p = p->next;
 		}
 	}
 
@@ -2229,8 +2218,8 @@ char *to_string_internal(atom a, int write, int depth) {
 		string_cat(&s, "#<table:");
 		size_t i;
 		for (i = 0; i < a.value.table->capacity; i++) {
-			struct table_entry *p = a.value.table->data[i];
-			while (p) {
+			struct table_entry *p = &a.value.table->data[i];
+			if (p->occupied) {
 				char *s2 = to_string_internal(p->k, write, depth + 1);
 				string_cat(&s, " ");
 				string_cat(&s, s2);
@@ -2239,7 +2228,6 @@ char *to_string_internal(atom a, int write, int depth) {
 				s2 = to_string_internal(p->v, write, depth + 1);
 				string_cat(&s, s2);
 				free(s2);
-				p = p->next;
 			}
 		}
 		string_cat(&s, ">");
@@ -2280,7 +2268,8 @@ char *to_string(atom a, int write) {
 }
 
 size_t hash_code_sym(char *s) {
-	return (size_t)s / sizeof(s);
+	/* on 64-bit systems, malloc aligns 16 bytes. 32-bit: 8 bytes */
+	return (size_t)s / sizeof(s) / 2;
 }
 
 size_t hash_code(atom a) {
@@ -2334,14 +2323,15 @@ size_t hash_code(atom a) {
 atom make_table(size_t capacity) {
 	atom a;
 	struct table *s;
+	if (capacity < 4) capacity = 4;
 	alloc_count++;
 	s = a.value.table = malloc(sizeof(struct table));
 	s->capacity = capacity;
 	s->size = 0;
-	s->data = malloc(capacity * sizeof(struct table_entry *));
+	s->data = malloc(capacity * sizeof(struct table_entry));
 	size_t i;
 	for (i = 0; i < capacity; i++) {
-		s->data[i] = NULL;
+		s->data[i].occupied = 0;
 	}
 	s->mark = 0;
 	s->next = table_head;
@@ -2352,11 +2342,11 @@ atom make_table(size_t capacity) {
 	return a;
 }
 
-struct table_entry *table_entry_new(atom k, atom v, struct table_entry *next) {
-	struct table_entry *r = malloc(sizeof(*r));
-	r->k = k;
-	r->v = v;
-	r->next = next;
+struct table_entry table_entry_new(atom k, atom v) {
+	struct table_entry r;
+	r.k = k;
+	r.v = v;
+	r.occupied = 1;
 	return r;
 }
 
@@ -2389,43 +2379,49 @@ int table_set_sym(struct table *tbl, char *k, atom v) {
 }
 
 void table_add(struct table *tbl, atom k, atom v) {
-	if (tbl->size + 1 > tbl->capacity) { /* rehash, load factor = 1 */
-		size_t new_capacity = (tbl->size + 1) * 2;
-		struct table_entry **data2 = malloc(new_capacity * sizeof(struct table_entry *));
+	if (tbl->size * 2 >= tbl->capacity) { /* rehash, load factor = 0.5 */
+		size_t new_capacity = tbl->capacity * 2;
+		struct table_entry *data2 = malloc(new_capacity * sizeof(struct table_entry));
 		size_t i;
+		/* rehash existing items, linear probing */
 		for (i = 0; i < new_capacity; i++) {
-			data2[i] = NULL;
+			data2[i].occupied = 0;
 		}
 		for (i = 0; i < tbl->capacity; i++) {
-			struct table_entry *p = tbl->data[i];
-			while (p) {
-				struct table_entry **p2 = &data2[hash_code(p->k) % new_capacity];
-				struct table_entry *next = p->next;
-				*p2 = table_entry_new(p->k, p->v, *p2);
-				free(p);
-				p = next;
+			if (!tbl->data[i].occupied) continue;
+			struct table_entry *p = &tbl->data[i];
+			size_t idx = hash_code(p->k) % new_capacity;
+			while (data2[idx].occupied) {
+				idx = (idx + 1) % new_capacity;
 			}
+			data2[idx] = table_entry_new(p->k, p->v);
 		}
 		free(tbl->data);
 		tbl->data = data2;
 		tbl->capacity = new_capacity;
 	}
 	/* insert new item */
-	struct table_entry **p = &tbl->data[hash_code(k) % tbl->capacity];
-	*p = table_entry_new(k, v, *p);
+	size_t idx = hash_code(k) % tbl->capacity;
+	while (tbl->data[idx].occupied) {
+		idx = (idx + 1) % tbl->capacity;
+	}
+	tbl->data[idx] = table_entry_new(k, v);
 	tbl->size++;
 }
 
 /* return entry. return NULL if not found */
 struct table_entry *table_get(struct table *tbl, atom k) {
 	if (tbl->size == 0) return NULL;
-	size_t pos = hash_code(k) % tbl->capacity;
-	struct table_entry *p = tbl->data[pos];
-	while (p) {
+	size_t idx = hash_code(k) % tbl->capacity;
+	size_t i = idx;
+	while (1) {
+		struct table_entry *p = &tbl->data[i];
+		if (!p->occupied) return NULL;
 		if (iso(p->k, k)) {
 			return p;
 		}
-		p = p->next;
+		i = (i + 1) % tbl->capacity;
+		if (i == idx) break; /* not found */
 	}
 	return NULL;
 }
@@ -2433,13 +2429,16 @@ struct table_entry *table_get(struct table *tbl, atom k) {
 /* return entry. return NULL if not found */
 struct table_entry *table_get_sym(struct table *tbl, char *k) {
 	if (tbl->size == 0) return NULL;
-	size_t pos = hash_code_sym(k) % tbl->capacity;
-	struct table_entry *p = tbl->data[pos];
-	while (p) {
+	size_t idx = hash_code_sym(k) % tbl->capacity;
+	size_t i = idx;
+	while (1) {
+		struct table_entry *p = &tbl->data[i];
+		if (!p->occupied) return NULL;
 		if (p->k.value.symbol == k) {
 			return p;
 		}
-		p = p->next;
+		i = (i + 1) % tbl->capacity;
+		if (i == idx) break; /* not found */
 	}
 	return NULL;
 }
